@@ -36,6 +36,10 @@ def get_millis():
     return int(time.time()*1000)
 
 
+def create_unique_group_id():
+    return str(get_millis())
+
+
 def foreach_line(path_str, proc_function, delimiter='\n', bufsize=4096):
     delimiter_str = delimiter
     bufsize_int = bufsize
@@ -55,6 +59,24 @@ def foreach_line(path_str, proc_function, delimiter='\n', bufsize=4096):
                 proc_function(line_str)
             buf_str = line_str_list[-1]
 
+
+def replicate(source_kash, source_topic_str, target_kash, target_topic_str, group=None, map=None):
+    group_str = group
+    map_function = map
+    #
+    if group_str == None:
+        group_str = create_unique_group_id()
+    #
+    source_kash.subscribe(source_topic_str, group_str)
+    while True:
+        message_dict_list = source_kash.consume(num_messages=500, timeout=1, key_type="bytes", value_type="bytes")
+        if not message_dict_list:
+            break
+        for message_dict in message_dict_list:
+            if map_function:
+                message_dict = map_function(message_dict)
+            target_kash.producer.produce(target_topic_str, key=message_dict["key"], value=message_dict["value"], partition=message_dict["partition"], timestamp=message_dict["timestamp"], headers=message_dict["headers"])
+    source_kash.unsubscribe()
 
 class Kash:
     def __init__(self, cluster_str):
@@ -88,7 +110,6 @@ class Kash:
             partitions_dict = {partition_int: {"id": partitionMetadata.id, "leader": partitionMetadata.leader, "replicas": partitionMetadata.replicas, "isrs": partitionMetadata.isrs, "error": partitionMetadata.error} for partition_int, partitionMetadata in topicMetadata.partitions.items()}
             topic_dict = {"topic": topicMetadata.topic, "partitions": partitions_dict, "error": topicMetadata.error}
         return topic_dict
-
 
     def watermarks(self, topic_str):
         config_dict = self.config_dict
@@ -187,9 +208,11 @@ class Kash:
     def unsubscribe(self):
         self.consumer.unsubscribe()
 
-    def consume(self, num_messages=1, timeout=1.0):
+    def consume(self, num_messages=1, timeout=1.0, key_type="str", value_type="str"):
         num_messages_int = num_messages
         timeout_float = timeout
+        key_type_str = key_type
+        value_type_str = value_type
         #
         if num_messages_int == 1:
             message_list = [self.consumer.poll(timeout_float)]
@@ -197,16 +220,53 @@ class Kash:
             message_list = self.consumer.consume(num_messages=num_messages_int, timeout=timeout_float)
         #
         if message_list and message_list[0]:
-            dict_list = [{"headers": message.headers(), "partition": message.partition(), "offset": message.offset(), "timestamp": message.timestamp(), "key": message.key(), "value": message.value()} for message in message_list]
+            def bytes_to_str(bytes):
+                if bytes:
+                    return bytes.decode("utf-8")
+                else:
+                    return bytes
+            #
+            def bytes_to_bytes(bytes):
+                return bytes
+            #
+            if key_type_str == "str":
+                decode_key = bytes_to_str
+            elif key_type_str == "bytes":
+                decode_key = bytes_to_bytes
+            #
+            if value_type_str == "str":
+                decode_value = bytes_to_str
+            elif value_type_str == "bytes":
+                decode_value = bytes_to_bytes
+            #
+            message_dict_list = [{"headers": message.headers(), "partition": message.partition(), "offset": message.offset(), "timestamp": message.timestamp(), "key": decode_key(message.key()), "value": decode_value(message.value())} for message in message_list]
         else:
-            dict_list = []
+            message_dict_list = []
         #
-        return dict_list
+        return message_dict_list
 
     def offsets(self):
         topicPartition_list = self.consumer.committed(self.topicPartition_list, timeout=1.0)
         offsets_dict = {topicPartition.partition: topicPartition.offset for topicPartition in topicPartition_list}
         return offsets_dict
+
+    def cat(self, topic_str, group=None, foreach=print, key_type="bytes", value_type="bytes"):
+        group_str = group
+        foreach_function = foreach
+        key_type_str = key_type
+        value_type_str = value_type
+        #
+        if group_str == None:
+            group_str = create_unique_group_id()
+        #
+        self.subscribe(topic_str, group_str)
+        while True:
+            message_dict_list = self.consume(num_messages=500, timeout=1, key_type=key_type_str, value_type=value_type_str)
+            if not message_dict_list:
+                break
+            for message_dict in message_dict_list:
+                foreach_function(message_dict)
+        self.unsubscribe()
 
     def download(self, topic_str, path_str, group=None, key_value_separator=None, message_separator="\n", overwrite=True):
         group_str = group
@@ -215,24 +275,25 @@ class Kash:
         overwrite_bool = overwrite
         #
         if group_str == None:
-            group_str = str(get_millis())
+            group_str = create_unique_group_id()
         #
         mode_str = "w" if overwrite_bool else "a"
         #
         self.subscribe(topic_str, group_str)
         with open(path_str, mode_str) as textIOWrapper:
             while True:
-                message_list = self.consumer.consume(num_messages=500, timeout=1)
+                message_dict_list = self.consume(num_messages=500, timeout=1)
                 output_str_list = []
-                if not message_list:
+                if not message_dict_list:
                     break
-                for message in message_list:
-                    value_str = message.value().decode("utf-8") if isinstance(message.value(), bytes) else message.value()
+                for message_dict in message_dict_list:
+                    value_str = message_dict["value"]
                     if key_value_separator_str == None:
                         output_str = value_str
                     else:
-                        key_str = message.key().decode("utf-8") if isinstance(message.key(), bytes) else message.key()
+                        key_str = message_dict["key"]
                         output_str = f"{key_str}{key_value_separator_str}{value_str}"
                     output_str_list += [output_str + message_separator_str]
                 textIOWrapper.writelines(output_str_list)
         self.unsubscribe()
+
