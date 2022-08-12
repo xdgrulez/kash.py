@@ -1,6 +1,5 @@
-from confluent_kafka import TopicPartition
-import confluent_kafka
-import confluent_kafka.admin
+from confluent_kafka import Consumer, KafkaError, Producer, TIMESTAMP_CREATE_TIME, TopicPartition
+from confluent_kafka.admin import AdminClient, ConfigResource, NewPartitions, NewTopic, ResourceType
 import configparser
 import os
 import time
@@ -18,17 +17,17 @@ def get_config_dict(cluster_str):
 
 
 def get_adminClient(config_dict):
-    adminClient = confluent_kafka.admin.AdminClient(config_dict)
+    adminClient = AdminClient(config_dict)
     return adminClient
 
 
 def get_producer(config_dict):
-    producer = confluent_kafka.Producer(config_dict)
+    producer = Producer(config_dict)
     return producer
 
 
 def get_consumer(config_dict):
-    consumer = confluent_kafka.Consumer(config_dict)
+    consumer = Consumer(config_dict)
     return consumer
 
 
@@ -60,25 +59,84 @@ def foreach_line(path_str, proc_function, delimiter='\n', bufsize=4096):
             buf_str = line_str_list[-1]
 
 
-def replicate(source_kash, source_topic_str, target_kash, target_topic_str, group=None, map=None):
+def message_to_message_dict(message, key_type="bytes", value_type="bytes"):
+    key_type_str = key_type
+    value_type_str = value_type
+    #
+    def bytes_to_str(bytes):
+        if bytes:
+            return bytes.decode("utf-8")
+        else:
+            return bytes
+    #
+    def bytes_to_bytes(bytes):
+        return bytes
+    #
+    if key_type_str == "str":
+        decode_key = bytes_to_str
+    elif key_type_str == "bytes":
+        decode_key = bytes_to_bytes
+    #
+    if value_type_str == "str":
+        decode_value = bytes_to_str
+    elif value_type_str == "bytes":
+        decode_value = bytes_to_bytes
+    #
+    message_dict = {"headers": message.headers(), "partition": message.partition(), "offset": message.offset(), "timestamp": message.timestamp(), "key": decode_key(message.key()), "value": decode_value(message.value())}
+    return message_dict
+
+
+def groupMetadata_to_group_dict(groupMetadata):
+    group_dict = {"id": groupMetadata.id, "error": groupMetadata.error, "state": groupMetadata.state, "protocol_type": groupMetadata.protocol_type, "protocol": groupMetadata.protocol, "members": groupMetadata.members}
+    return group_dict
+
+
+def partitionMetadata_to_partition_dict(partitionMetadata):
+    partition_dict = {"id": partitionMetadata.id, "leader": partitionMetadata.leader, "replicas": partitionMetadata.replicas, "isrs": partitionMetadata.isrs, "error": kafkaError_to_error_dict(partitionMetadata.error)}
+    return partition_dict
+
+
+def topicMetadata_to_topic_dict(topicMetadata):
+    partitions_dict = {partition_int: partitionMetadata_to_partition_dict(partitionMetadata) for partition_int, partitionMetadata in topicMetadata.partitions.items()}
+    topic_dict = {"topic": topicMetadata.topic, "partitions": partitions_dict, "error": kafkaError_to_error_dict(topicMetadata.error)}
+    return topic_dict
+
+
+def kafkaError_to_error_dict(kafkaError):
+    error_dict = None
+    if kafkaError:
+        error_dict = {"code": kafkaError.code(), "fatal": kafkaError.fatal(), "name": kafkaError.name(), "retriable": kafkaError.retriable(), "str": kafkaError.str(), "txn_requires_abort": kafkaError.txn_requires_abort()}
+    return error_dict
+
+
+def replicate(source_cluster, source_topic_str, target_cluster, target_topic_str, group=None, map=None, keep_timestamps=True):
     group_str = group
     map_function = map
+    keep_timestamps_bool = keep_timestamps
     #
-    if group_str == None:
-        group_str = create_unique_group_id()
-    #
-    source_kash.subscribe(source_topic_str, group_str)
+    source_cluster.subscribe(source_topic_str, group=group_str)
     while True:
-        message_dict_list = source_kash.consume(num_messages=500, timeout=1, key_type="bytes", value_type="bytes")
+        message_dict_list = source_cluster.consume(num_messages=500, timeout=1, key_type="bytes", value_type="bytes")
         if not message_dict_list:
             break
         for message_dict in message_dict_list:
             if map_function:
                 message_dict = map_function(message_dict)
-            target_kash.producer.produce(target_topic_str, key=message_dict["key"], value=message_dict["value"], partition=message_dict["partition"], timestamp=message_dict["timestamp"], headers=message_dict["headers"])
-    source_kash.unsubscribe()
+            #
+            if keep_timestamps_bool:
+                timestamp_int_int_tuple = message_dict["timestamp"]
+                if timestamp_int_int_tuple[0] == TIMESTAMP_CREATE_TIME:
+                    timestamp_int = timestamp_int_int_tuple[1]
+                    #
+                    target_cluster.producer.produce(target_topic_str, key=message_dict["key"], value=message_dict["value"], partition=message_dict["partition"], timestamp=timestamp_int, headers=message_dict["headers"])
+                    #
+                    continue
+            target_cluster.producer.produce(target_topic_str, key=message_dict["key"], value=message_dict["value"], partition=message_dict["partition"], headers=message_dict["headers"])
+        target_cluster.flush()
+    source_cluster.unsubscribe()
 
-class Kash:
+
+class Cluster:
     def __init__(self, cluster_str):
         self.cluster_str = cluster_str
         self.config_dict = get_config_dict(cluster_str)
@@ -94,21 +152,24 @@ class Kash:
         topic_str_list.sort()
         return topic_str_list
 
+    def list_brokers(self):
+        broker_dict = {broker_int: brokerMetadata.host + ":" + str(brokerMetadata.port) for broker_int, brokerMetadata in self.adminClient.list_topics().brokers.items()}
+        return broker_dict
+
     def delete(self, topic_str):
         self.adminClient.delete_topics([topic_str])
 
-    def create(self, topic_str, num_partitions=1):
-        num_partitions_int = num_partitions
+    def create(self, topic_str, partitions=1):
+        partitions_int = partitions
         #
-        newTopic = confluent_kafka.admin.NewTopic(topic_str, num_partitions_int)
+        newTopic = NewTopic(topic_str, partitions_int)
         self.adminClient.create_topics([newTopic])
 
     def describe(self, topic_str):
         topicMetadata = self.adminClient.list_topics(topic=topic_str).topics[topic_str]
         topic_dict = {}
         if topicMetadata:
-            partitions_dict = {partition_int: {"id": partitionMetadata.id, "leader": partitionMetadata.leader, "replicas": partitionMetadata.replicas, "isrs": partitionMetadata.isrs, "error": partitionMetadata.error} for partition_int, partitionMetadata in topicMetadata.partitions.items()}
-            topic_dict = {"topic": topicMetadata.topic, "partitions": partitions_dict, "error": topicMetadata.error}
+            topic_dict = topicMetadata_to_topic_dict(topicMetadata)
         return topic_dict
 
     def watermarks(self, topic_str):
@@ -116,23 +177,40 @@ class Kash:
         config_dict["group.id"] = "dummy_group_id"
         consumer = get_consumer(config_dict)
         #
-        num_partitions_int = self.num_partitions(topic_str)
-        offset_int_tuple_list = [consumer.get_watermark_offsets(TopicPartition(topic_str, partition=partition_int)) for partition_int in range(num_partitions_int)]
-        return offset_int_tuple_list
+        partitions_int = self.partitions(topic_str)
+        offset_int_tuple_dict = {partition_int: consumer.get_watermark_offsets(TopicPartition(topic_str, partition=partition_int)) for partition_int in range(partitions_int)}
+        return offset_int_tuple_dict
 
-    def size(self, topic_str, partition=None):
-        offset_int_tuple_list = self.watermarks(topic_str)
-        if partition != None:
-            offset_int_tuple_list = [offset_int_tuple_list[partition]]
-        total_size_int = 0
-        for offset_int_tuple in offset_int_tuple_list:
-            partition_size_int = offset_int_tuple[1] - offset_int_tuple[0]
-            total_size_int += partition_size_int
-        return total_size_int
+    def size(self, topic_str, verbose=False):
+        verbose_bool = verbose
+        #
+        watermarks_dict = self.watermarks(topic_str)
+        if verbose_bool:
+            size_dict = {partition_int: watermarks_dict[partition_int][1]-watermarks_dict[partition_int][0] for partition_int in watermarks_dict.keys()}
+            return size_dict
+        else:
+            total_size_int = 0
+            for offset_int_tuple in watermarks_dict.values():
+                partition_size_int = offset_int_tuple[1] - offset_int_tuple[0]
+                total_size_int += partition_size_int
+            return total_size_int
 
-    def num_partitions(self, topic_str):
-        num_partitions_int = len(self.adminClient.list_topics(topic=topic_str).topics[topic_str].partitions)
-        return num_partitions_int
+    def exists(self, topic_str):
+        topic_dict = self.describe(topic_str)
+        if topic_dict["error"] != None:
+            if topic_dict["error"]["code"] == KafkaError.UNKNOWN_TOPIC_OR_PART:
+                return False
+        return True
+
+    def partitions(self, topic_str):
+        partitions_int = len(self.adminClient.list_topics(topic=topic_str).topics[topic_str].partitions)
+        return partitions_int
+
+    def set_partitions(self, topic_str, new_partitions_int, test=False):
+        test_bool = test
+        #
+        newPartitions = NewPartitions(topic_str, new_partitions_int)
+        self.adminClient.create_partitions([newPartitions], validate_only=test_bool)
 
     def list_groups(self):
         groupMetadata_list = self.adminClient.list_groups()
@@ -145,8 +223,21 @@ class Kash:
         group_dict = {}
         if groupMetadata_list:            
             groupMetadata = groupMetadata_list[0]
-            group_dict = {"id": groupMetadata.id, "error": groupMetadata.error, "state": groupMetadata.state, "protocol_type": groupMetadata.protocol_type, "protocol": groupMetadata.protocol, "members": groupMetadata.members}
+            group_dict = groupMetadata_to_group_dict(groupMetadata)
         return group_dict
+
+    def get_config_dict(self, resourceType, resource_str):
+        configResource = ConfigResource(resourceType, resource_str)
+        configResource_list = [configResource]
+        configEntry_dict = self.adminClient.describe_configs(configResource_list)[configResource].result()
+        config_dict = {config_key_str: configEntry.value for config_key_str, configEntry in configEntry_dict.items()}
+        return config_dict
+
+    def config(self, topic_str):
+        return self.get_config_dict(ResourceType.TOPIC, topic_str)
+
+    def broker_config(self, broker_int):
+        return self.get_config_dict(ResourceType.BROKER, str(broker_int))
 
 # Producer
 
@@ -183,11 +274,16 @@ class Kash:
 
 # Consumer
     
-    def subscribe(self, topic_str, group_str, offset_reset="earliest", offsets=None):
+    def subscribe(self, topic_str, group=None, offset_reset="earliest", offsets=None):
         offset_reset_str = offset_reset
         offsets_dict = offsets
         #
         self.topic_str = topic_str
+        #
+        if group == None:
+            group_str = create_unique_group_id()
+        else:
+            group_str = group
         #
         self.config_dict["group.id"] = group_str
         self.config_dict["auto.offset.reset"] = offset_reset_str
@@ -220,26 +316,7 @@ class Kash:
             message_list = self.consumer.consume(num_messages=num_messages_int, timeout=timeout_float)
         #
         if message_list and message_list[0]:
-            def bytes_to_str(bytes):
-                if bytes:
-                    return bytes.decode("utf-8")
-                else:
-                    return bytes
-            #
-            def bytes_to_bytes(bytes):
-                return bytes
-            #
-            if key_type_str == "str":
-                decode_key = bytes_to_str
-            elif key_type_str == "bytes":
-                decode_key = bytes_to_bytes
-            #
-            if value_type_str == "str":
-                decode_value = bytes_to_str
-            elif value_type_str == "bytes":
-                decode_value = bytes_to_bytes
-            #
-            message_dict_list = [{"headers": message.headers(), "partition": message.partition(), "offset": message.offset(), "timestamp": message.timestamp(), "key": decode_key(message.key()), "value": decode_value(message.value())} for message in message_list]
+            message_dict_list = [message_to_message_dict(message, key_type=key_type_str, value_type=value_type_str) for message in message_list]
         else:
             message_dict_list = []
         #
@@ -256,10 +333,7 @@ class Kash:
         key_type_str = key_type
         value_type_str = value_type
         #
-        if group_str == None:
-            group_str = create_unique_group_id()
-        #
-        self.subscribe(topic_str, group_str)
+        self.subscribe(topic_str, group=group_str)
         while True:
             message_dict_list = self.consume(num_messages=500, timeout=1, key_type=key_type_str, value_type=value_type_str)
             if not message_dict_list:
@@ -274,12 +348,9 @@ class Kash:
         message_separator_str = message_separator
         overwrite_bool = overwrite
         #
-        if group_str == None:
-            group_str = create_unique_group_id()
-        #
         mode_str = "w" if overwrite_bool else "a"
         #
-        self.subscribe(topic_str, group_str)
+        self.subscribe(topic_str, group=group_str)
         with open(path_str, mode_str) as textIOWrapper:
             while True:
                 message_dict_list = self.consume(num_messages=500, timeout=1)
@@ -297,3 +368,9 @@ class Kash:
                 textIOWrapper.writelines(output_str_list)
         self.unsubscribe()
 
+#
+
+c = Cluster("karapace")
+print(c.list_brokers())
+x = c.broker_config(1)
+print(x)
