@@ -147,12 +147,12 @@ class Cluster:
 
 # Admin
 
-    def list(self):
+    def topics(self):
         topic_str_list = list(self.adminClient.list_topics().topics.keys())
         topic_str_list.sort()
         return topic_str_list
 
-    def list_brokers(self):
+    def brokers(self):
         broker_dict = {broker_int: brokerMetadata.host + ":" + str(brokerMetadata.port) for broker_int, brokerMetadata in self.adminClient.list_topics().brokers.items()}
         return broker_dict
 
@@ -212,7 +212,7 @@ class Cluster:
         newPartitions = NewPartitions(topic_str, new_partitions_int)
         self.adminClient.create_partitions([newPartitions], validate_only=test_bool)
 
-    def list_groups(self):
+    def groups(self):
         groupMetadata_list = self.adminClient.list_groups()
         group_str_list = [groupMetadata.id for groupMetadata in groupMetadata_list]
         group_str_list.sort()
@@ -228,8 +228,9 @@ class Cluster:
 
     def get_config_dict(self, resourceType, resource_str):
         configResource = ConfigResource(resourceType, resource_str)
-        configResource_list = [configResource]
-        configEntry_dict = self.adminClient.describe_configs(configResource_list)[configResource].result()
+        # configEntry_dict: ConfigResource -> ConfigEntry
+        configEntry_dict = self.adminClient.describe_configs([configResource])[configResource].result()
+        # config_dict: str -> str
         config_dict = {config_key_str: configEntry.value for config_key_str, configEntry in configEntry_dict.items()}
         return config_dict
 
@@ -239,6 +240,37 @@ class Cluster:
     def broker_config(self, broker_int):
         return self.get_config_dict(ResourceType.BROKER, str(broker_int))
 
+    def set_config_dict(self, resourceType, resource_str, new_config_dict, test=False):
+        test_bool = test
+        #
+        old_config_dict = self.get_config_dict(resourceType, resource_str)
+        #
+        if resourceType == ResourceType.BROKER:
+            # https://docs.confluent.io/platform/current/installation/configuration/broker-configs.html#cp-config-brokers
+            white_list_key_str_list = ["advertised.listeners", "background.threads", "compression.type", "confluent.balancer.enable", "confluent.balancer.heal.uneven.load.trigger", "confluent.balancer.throttle.bytes.per.second", "confluent.tier.local.hotset.bytes", "confluent.tier.local.hotset.ms", "listeners", "log.flush.interval.messages", "log.flush.interval.ms", "log.retention.bytes", "log.retention.ms", "log.roll.jitter.ms", "log.roll.ms", "log.segment.bytes", "log.segment.delete.delay.ms", "message.max.bytes", "min.insync.replicas", "num.io.threads", "num.network.threads", "num.recovery.threads.per.data.dir", "num.replica.fetchers", "unclean.leader.election.enable", "confluent.balancer.exclude.topic.names", "confluent.balancer.exclude.topic.prefixes", "confluent.clm.enabled", "confluent.clm.frequency.in.hours", "confluent.clm.max.backup.days", "confluent.clm.min.delay.in.minutes", "confluent.clm.topic.retention.days.to.backup.days", "confluent.cluster.link.fetch.response.min.bytes", "confluent.cluster.link.fetch.response.total.bytes", "confluent.cluster.link.io.max.bytes.per.second", "confluent.tier.enable", "confluent.tier.max.partition.fetch.bytes.override", "log.cleaner.backoff.ms", "log.cleaner.dedupe.buffer.size", "log.cleaner.delete.retention.ms", "log.cleaner.io.buffer.load.factor", "log.cleaner.io.buffer.size", "log.cleaner.io.max.bytes.per.second", "log.cleaner.max.compaction.lag.ms", "log.cleaner.min.cleanable.ratio", "log.cleaner.min.compaction.lag.ms", "log.cleaner.threads", "log.cleanup.policy", "log.deletion.max.segments.per.run", "log.index.interval.bytes", "log.index.size.max.bytes", "log.message.timestamp.difference.max.ms", "log.message.timestamp.type", "log.preallocate", "max.connection.creation.rate", "max.connections", "max.connections.per.ip", "max.connections.per.ip.overrides", "principal.builder.class", "sasl.enabled.mechanisms", "sasl.jaas.config", "sasl.kerberos.kinit.cmd", "sasl.kerberos.min.time.before.relogin", "sasl.kerberos.principal.to.local.rules", "sasl.kerberos.service.name", "sasl.kerberos.ticket.renew.jitter", "sasl.kerberos.ticket.renew.window.factor", "sasl.login.refresh.buffer.seconds", "sasl.login.refresh.min.period.seconds", "sasl.login.refresh.window.factor", "sasl.login.refresh.window.jitter", "sasl.mechanism.inter.broker.protocol", "ssl.cipher.suites", "ssl.client.auth", "ssl.enabled.protocols", "ssl.keymanager.algorithm", "ssl.protocol", "ssl.provider", "ssl.trustmanager.algorithm", "confluent.cluster.link.replication.quota.mode", "confluent.metadata.server.cluster.registry.clusters", "confluent.reporters.telemetry.auto.enable", "confluent.security.event.router.config", "confluent.telemetry.enabled", "confluent.tier.topic.delete.backoff.ms", "confluent.tier.topic.delete.check.interval.ms", "confluent.tier.topic.delete.max.inprogress.partitions", "follower.replication.throttled.rate", "follower.replication.throttled.replicas", "leader.replication.throttled.rate", "leader.replication.throttled.replicas", "listener.security.protocol.map", "log.message.downconversion.enable", "metric.reporters", "ssl.endpoint.identification.algorithm", "ssl.engine.factory.class", "ssl.secure.random.implementation"]
+        #
+        alter_config_dict = {}
+        for key_str, value_str in old_config_dict.items():
+            if resourceType == ResourceType.BROKER:
+                if key_str not in white_list_key_str_list:
+                    continue
+            if key_str in new_config_dict:
+                value_str = new_config_dict[key_str]
+            if value_str:
+                alter_config_dict[key_str] = value_str
+        #
+        alter_configResource = ConfigResource(resourceType, resource_str, set_config=alter_config_dict)
+        #
+        future = self.adminClient.alter_configs([alter_configResource], validate_only=test_bool)[alter_configResource]
+        #
+        future.result()
+
+    def set_config(self, topic_str, key_str, value_str, test=False):
+        self.set_config_dict(ResourceType.TOPIC, topic_str, {key_str: value_str}, test)
+
+    def set_broker_config(self, broker_int, key_str, value_str, test=False):
+        self.set_config_dict(ResourceType.BROKER, str(broker_int), {key_str: value_str}, test)
+        
 # Producer
 
     def produce(self, topic_str, key_str, value_str):
@@ -367,10 +399,3 @@ class Cluster:
                     output_str_list += [output_str + message_separator_str]
                 textIOWrapper.writelines(output_str_list)
         self.unsubscribe()
-
-#
-
-c = Cluster("karapace")
-print(c.list_brokers())
-x = c.broker_config(1)
-print(x)
