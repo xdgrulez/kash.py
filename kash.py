@@ -1,35 +1,11 @@
 from confluent_kafka import Consumer, KafkaError, Producer, TIMESTAMP_CREATE_TIME, TopicPartition
-from confluent_kafka.admin import AdminClient, ConfigResource, NewPartitions, NewTopic, ResourceType
+from confluent_kafka.admin import AclBinding, AclBindingFilter, AclOperation, AclPermissionType, AdminClient, ConfigResource, NewPartitions, NewTopic, ResourceType, ResourcePatternType
 import configparser
 import os
 import time
 
-def get_config_dict(cluster_str):
-    rawConfigParser = configparser.RawConfigParser()
-    if os.path.exists(f"./clusters_secured/{cluster_str}.conf"):
-        rawConfigParser.read(f"./clusters_secured/{cluster_str}.conf")
-    elif os.path.exists(f"./clusters_unsecured/{cluster_str}.conf"):
-        rawConfigParser.read(f"./clusters_unsecured/{cluster_str}.conf")
-    else:
-        raise Exception(f"No cluster configuration file \"{cluster_str}.conf\" found in \"clusters_secured\" and \"clusters_unsecured\".")
-    config_dict = dict(rawConfigParser.items("kafka"))
-    return config_dict
 
-
-def get_adminClient(config_dict):
-    adminClient = AdminClient(config_dict)
-    return adminClient
-
-
-def get_producer(config_dict):
-    producer = Producer(config_dict)
-    return producer
-
-
-def get_consumer(config_dict):
-    consumer = Consumer(config_dict)
-    return consumer
-
+# Helpers.
 
 def get_millis():
     return int(time.time()*1000)
@@ -59,6 +35,39 @@ def foreach_line(path_str, proc_function, delimiter='\n', bufsize=4096):
             buf_str = line_str_list[-1]
 
 
+# Get cluster configurations.
+
+def get_config_dict(cluster_str):
+    rawConfigParser = configparser.RawConfigParser()
+    if os.path.exists(f"./clusters_secured/{cluster_str}.conf"):
+        rawConfigParser.read(f"./clusters_secured/{cluster_str}.conf")
+    elif os.path.exists(f"./clusters_unsecured/{cluster_str}.conf"):
+        rawConfigParser.read(f"./clusters_unsecured/{cluster_str}.conf")
+    else:
+        raise Exception(f"No cluster configuration file \"{cluster_str}.conf\" found in \"clusters_secured\" and \"clusters_unsecured\".")
+    config_dict = dict(rawConfigParser.items("kafka"))
+    return config_dict
+
+
+# Get AdminClient, Producer and Consumer objects from a configuration dictionary.
+
+def get_adminClient(config_dict):
+    adminClient = AdminClient(config_dict)
+    return adminClient
+
+
+def get_producer(config_dict):
+    producer = Producer(config_dict)
+    return producer
+
+
+def get_consumer(config_dict):
+    consumer = Consumer(config_dict)
+    return consumer
+
+
+# Conversion functions from confluent_kafka objects to kash.py basic Python datatypes like strings and dictionaries.
+
 def message_to_message_dict(message, key_type="bytes", value_type="bytes"):
     key_type_str = key_type
     value_type_str = value_type
@@ -87,7 +96,7 @@ def message_to_message_dict(message, key_type="bytes", value_type="bytes"):
 
 
 def groupMetadata_to_group_dict(groupMetadata):
-    group_dict = {"id": groupMetadata.id, "error": groupMetadata.error, "state": groupMetadata.state, "protocol_type": groupMetadata.protocol_type, "protocol": groupMetadata.protocol, "members": groupMetadata.members}
+    group_dict = {"id": groupMetadata.id, "error": kafkaError_to_error_dict(groupMetadata.error), "state": groupMetadata.state, "protocol_type": groupMetadata.protocol_type, "protocol": groupMetadata.protocol, "members": groupMetadata.members}
     return group_dict
 
 
@@ -108,6 +117,155 @@ def kafkaError_to_error_dict(kafkaError):
         error_dict = {"code": kafkaError.code(), "fatal": kafkaError.fatal(), "name": kafkaError.name(), "retriable": kafkaError.retriable(), "str": kafkaError.str(), "txn_requires_abort": kafkaError.txn_requires_abort()}
     return error_dict
 
+
+def str_to_resourceType(restype_str):
+    restype_str1 = restype_str.lower()
+    if restype_str1 == "unknown":
+        return ResourceType.UNKNOWN
+    elif restype_str1 == "any":
+        return ResourceType.ANY
+    elif restype_str1 == "topic":
+        return ResourceType.TOPIC
+    elif restype_str1 == "group":
+        return ResourceType.GROUP
+    elif restype_str1 == "broker":
+        return ResourceType.BROKER
+
+
+def resourceType_to_str(resourceType):
+    if resourceType == ResourceType.UNKNOWN:
+        return "unknown"
+    elif resourceType == ResourceType.ANY:
+        return "any"
+    elif resourceType == ResourceType.TOPIC:
+        return "topic"
+    elif resourceType == ResourceType.GROUP:
+        return "group"
+    elif resourceType == ResourceType.BROKER:
+        return "broker"
+
+
+def str_to_resourcePatternType(resource_pattern_type_str):
+    resource_pattern_type_str1 = resource_pattern_type_str.lower()
+    if resource_pattern_type_str1 == "unknown":
+        return ResourcePatternType.UNKNOWN
+    elif resource_pattern_type_str1 == "any":
+        return ResourcePatternType.ANY
+    elif resource_pattern_type_str1 == "match":
+        return ResourcePatternType.MATCH
+    elif resource_pattern_type_str1 == "literal":
+        return ResourcePatternType.LITERAL
+    elif resource_pattern_type_str1 == "prefixed":
+        return ResourcePatternType.PREFIXED
+
+
+def resourcePatternType_to_str(resourcePatternType):
+    if resourcePatternType == ResourcePatternType.UNKNOWN:
+        return "unknown"
+    elif resourcePatternType == ResourcePatternType.ANY:
+        return "any"
+    elif resourcePatternType == ResourcePatternType.MATCH:
+        return "match"
+    elif resourcePatternType == ResourcePatternType.LITERAL:
+        return "literal"
+    elif resourcePatternType == ResourcePatternType.PREFIXED:
+        return "prefixed"
+
+
+def str_to_aclOperation(operation_str):
+    operation_str1 = operation_str.lower()
+    if operation_str1 == "unknown":
+        return AclOperation.UNKNOWN
+    elif operation_str1 == "any":
+        return AclOperation.ANY
+    elif operation_str1 == "all":
+        return AclOperation.ALL
+    elif operation_str1 == "read":
+        return AclOperation.READ
+    elif operation_str1 == "write":
+        return AclOperation.WRITE
+    elif operation_str1 == "create":
+        return AclOperation.CREATE
+    elif operation_str1 == "delete":
+        return AclOperation.DELETE
+    elif operation_str1 == "alter":
+        return AclOperation.ALTER
+    elif operation_str1 == "describe":
+        return AclOperation.DESCRIBE
+    elif operation_str1 == "cluster_action":
+        return AclOperation.CLUSTER_ACTION
+    elif operation_str1 == "describe_configs":
+        return AclOperation.DESCRIBE_CONFIGS
+    elif operation_str1 == "alter_configs":
+        return AclOperation.ALTER_CONFIGS
+    elif operation_str1 == "itempotent_write":
+        return AclOperation.IDEMPOTENT_WRITE
+
+    
+def aclOperation_to_str(aclOperation):
+    if aclOperation == AclOperation.UNKNOWN:
+        return "unknown"
+    elif aclOperation == AclOperation.ANY:
+        return "any"
+    elif aclOperation == AclOperation.ALL:
+        return "all"
+    elif aclOperation == AclOperation.READ:
+        return "read"
+    elif aclOperation == AclOperation.WRITE:
+        return "write"
+    elif aclOperation == AclOperation.CREATE:
+        return "create"
+    elif aclOperation == AclOperation.DELETE:
+        return "delete"
+    elif aclOperation == AclOperation.ALTER:
+        return "alter"
+    elif aclOperation == AclOperation.DESCRIBE:
+        return "describe"
+    elif aclOperation == AclOperation.CLUSTER_ACTION:
+        return "cluster_action"
+    elif aclOperation == AclOperation.DESCRIBE_CONFIGS:
+        return "describe_configs"
+    elif aclOperation == AclOperation.ALTER_CONFIGS:
+        return "alter_configs"
+    elif aclOperation == AclOperation.IDEMPOTENT_WRITE:
+        return "itempotent_write"
+    
+
+def str_to_aclPermissionType(permission_type_str):
+    permission_type_str1 = permission_type_str.lower()
+    if permission_type_str1 == "unknown":
+        return AclPermissionType.UNKNOWN
+    elif permission_type_str1 == "any":
+        return AclPermissionType.ANY
+    elif permission_type_str1 == "deny":
+        return AclPermissionType.DENY
+    elif permission_type_str1 == "allow":
+        return AclPermissionType.ALLOW
+
+    
+def aclPermissionType_to_str(aclPermissionType):
+    if aclPermissionType == AclPermissionType.UNKNOWN:
+        return "unknown"
+    elif aclPermissionType == AclPermissionType.ANY:
+        return "any"
+    elif aclPermissionType == AclPermissionType.DENY:
+        return "deny"
+    elif aclPermissionType == AclPermissionType.ALLOW:
+        return "allow"
+
+
+def aclBinding_to_dict(aclBinding):
+    dict = {"restype": resourceType_to_str(aclBinding.restype),
+    "name": aclBinding.name,
+    "resource_pattern_type": resourcePatternType_to_str(aclBinding.resource_pattern_type),
+    "principal": aclBinding.principal,
+    "host": aclBinding.host,
+    "operation": aclOperation_to_str(aclBinding.operation),
+    "permission_type": aclPermissionType_to_str(aclBinding.permission_type)}
+    return dict
+
+
+# Cross-cluster add-ons.
 
 def replicate(source_cluster, source_topic_str, target_cluster, target_topic_str, group=None, map=None, keep_timestamps=True):
     group_str = group
@@ -136,6 +294,8 @@ def replicate(source_cluster, source_topic_str, target_cluster, target_topic_str
     source_cluster.unsubscribe()
 
 
+# Main kash.py class.
+
 class Cluster:
     def __init__(self, cluster_str):
         self.cluster_str = cluster_str
@@ -145,87 +305,6 @@ class Cluster:
         #
         self.producer = get_producer(self.config_dict)
 
-# Admin
-
-    def topics(self):
-        topic_str_list = list(self.adminClient.list_topics().topics.keys())
-        topic_str_list.sort()
-        return topic_str_list
-
-    def brokers(self):
-        broker_dict = {broker_int: brokerMetadata.host + ":" + str(brokerMetadata.port) for broker_int, brokerMetadata in self.adminClient.list_topics().brokers.items()}
-        return broker_dict
-
-    def delete(self, topic_str):
-        self.adminClient.delete_topics([topic_str])
-
-    def create(self, topic_str, partitions=1):
-        partitions_int = partitions
-        #
-        newTopic = NewTopic(topic_str, partitions_int)
-        self.adminClient.create_topics([newTopic])
-
-    def describe(self, topic_str):
-        topicMetadata = self.adminClient.list_topics(topic=topic_str).topics[topic_str]
-        topic_dict = {}
-        if topicMetadata:
-            topic_dict = topicMetadata_to_topic_dict(topicMetadata)
-        return topic_dict
-
-    def watermarks(self, topic_str):
-        config_dict = self.config_dict
-        config_dict["group.id"] = "dummy_group_id"
-        consumer = get_consumer(config_dict)
-        #
-        partitions_int = self.partitions(topic_str)
-        offset_int_tuple_dict = {partition_int: consumer.get_watermark_offsets(TopicPartition(topic_str, partition=partition_int)) for partition_int in range(partitions_int)}
-        return offset_int_tuple_dict
-
-    def size(self, topic_str, verbose=False):
-        verbose_bool = verbose
-        #
-        watermarks_dict = self.watermarks(topic_str)
-        if verbose_bool:
-            size_dict = {partition_int: watermarks_dict[partition_int][1]-watermarks_dict[partition_int][0] for partition_int in watermarks_dict.keys()}
-            return size_dict
-        else:
-            total_size_int = 0
-            for offset_int_tuple in watermarks_dict.values():
-                partition_size_int = offset_int_tuple[1] - offset_int_tuple[0]
-                total_size_int += partition_size_int
-            return total_size_int
-
-    def exists(self, topic_str):
-        topic_dict = self.describe(topic_str)
-        if topic_dict["error"] != None:
-            if topic_dict["error"]["code"] == KafkaError.UNKNOWN_TOPIC_OR_PART:
-                return False
-        return True
-
-    def partitions(self, topic_str):
-        partitions_int = len(self.adminClient.list_topics(topic=topic_str).topics[topic_str].partitions)
-        return partitions_int
-
-    def set_partitions(self, topic_str, new_partitions_int, test=False):
-        test_bool = test
-        #
-        newPartitions = NewPartitions(topic_str, new_partitions_int)
-        self.adminClient.create_partitions([newPartitions], validate_only=test_bool)
-
-    def groups(self):
-        groupMetadata_list = self.adminClient.list_groups()
-        group_str_list = [groupMetadata.id for groupMetadata in groupMetadata_list]
-        group_str_list.sort()
-        return group_str_list
-
-    def describe_group(self, group_str):
-        groupMetadata_list = self.adminClient.list_groups(group=group_str)
-        group_dict = {}
-        if groupMetadata_list:            
-            groupMetadata = groupMetadata_list[0]
-            group_dict = groupMetadata_to_group_dict(groupMetadata)
-        return group_dict
-
     def get_config_dict(self, resourceType, resource_str):
         configResource = ConfigResource(resourceType, resource_str)
         # configEntry_dict: ConfigResource -> ConfigEntry
@@ -233,12 +312,6 @@ class Cluster:
         # config_dict: str -> str
         config_dict = {config_key_str: configEntry.value for config_key_str, configEntry in configEntry_dict.items()}
         return config_dict
-
-    def config(self, topic_str):
-        return self.get_config_dict(ResourceType.TOPIC, topic_str)
-
-    def broker_config(self, broker_int):
-        return self.get_config_dict(ResourceType.BROKER, str(broker_int))
 
     def set_config_dict(self, resourceType, resource_str, new_config_dict, test=False):
         test_bool = test
@@ -265,13 +338,144 @@ class Cluster:
         #
         future.result()
 
+    # AdminClient - topics.
+
+    def topics(self):
+        topic_str_list = list(self.adminClient.list_topics().topics.keys())
+        topic_str_list.sort()
+        return topic_str_list
+
+    def config(self, topic_str):
+        return self.get_config_dict(ResourceType.TOPIC, topic_str)
+
     def set_config(self, topic_str, key_str, value_str, test=False):
         self.set_config_dict(ResourceType.TOPIC, topic_str, {key_str: value_str}, test)
 
+    def create(self, topic_str, partitions=1):
+        partitions_int = partitions
+        #
+        newTopic = NewTopic(topic_str, partitions_int)
+        self.adminClient.create_topics([newTopic])
+
+    def delete(self, topic_str):
+        self.adminClient.delete_topics([topic_str])
+
+    def describe(self, topic_str):
+        topicMetadata = self.adminClient.list_topics(topic=topic_str).topics[topic_str]
+        topic_dict = {}
+        if topicMetadata:
+            topic_dict = topicMetadata_to_topic_dict(topicMetadata)
+        return topic_dict
+
+    def exists(self, topic_str):
+        topic_dict = self.describe(topic_str)
+        if topic_dict["error"] != None:
+            if topic_dict["error"]["code"] == KafkaError.UNKNOWN_TOPIC_OR_PART:
+                return False
+        return True
+
+    def partitions(self, topic_str):
+        partitions_int = len(self.adminClient.list_topics(topic=topic_str).topics[topic_str].partitions)
+        return partitions_int
+
+    def set_partitions(self, topic_str, new_partitions_int, test=False):
+        test_bool = test
+        #
+        newPartitions = NewPartitions(topic_str, new_partitions_int)
+        self.adminClient.create_partitions([newPartitions], validate_only=test_bool)
+
+    def size(self, topic_str, verbose=False):
+        verbose_bool = verbose
+        #
+        watermarks_dict = self.watermarks(topic_str)
+        if verbose_bool:
+            size_dict = {partition_int: watermarks_dict[partition_int][1]-watermarks_dict[partition_int][0] for partition_int in watermarks_dict.keys()}
+            return size_dict
+        else:
+            total_size_int = 0
+            for offset_int_tuple in watermarks_dict.values():
+                partition_size_int = offset_int_tuple[1] - offset_int_tuple[0]
+                total_size_int += partition_size_int
+            return total_size_int
+
+    def watermarks(self, topic_str):
+        config_dict = self.config_dict
+        config_dict["group.id"] = "dummy_group_id"
+        consumer = get_consumer(config_dict)
+        #
+        partitions_int = self.partitions(topic_str)
+        offset_int_tuple_dict = {partition_int: consumer.get_watermark_offsets(TopicPartition(topic_str, partition=partition_int)) for partition_int in range(partitions_int)}
+        return offset_int_tuple_dict
+    
+    # AdminClient - groups.
+
+    def groups(self):
+        groupMetadata_list = self.adminClient.list_groups()
+        group_str_list = [groupMetadata.id for groupMetadata in groupMetadata_list]
+        group_str_list.sort()
+        return group_str_list
+
+    def describe_group(self, group_str):
+        groupMetadata_list = self.adminClient.list_groups(group=group_str)
+        group_dict = {}
+        if groupMetadata_list:            
+            groupMetadata = groupMetadata_list[0]
+            group_dict = groupMetadata_to_group_dict(groupMetadata)
+        return group_dict
+
+    # AdminClient - brokers.
+
+    def brokers(self):
+        broker_dict = {broker_int: brokerMetadata.host + ":" + str(brokerMetadata.port) for broker_int, brokerMetadata in self.adminClient.list_topics().brokers.items()}
+        return broker_dict
+
+    def broker_config(self, broker_int):
+        return self.get_config_dict(ResourceType.BROKER, str(broker_int))
+
     def set_broker_config(self, broker_int, key_str, value_str, test=False):
         self.set_config_dict(ResourceType.BROKER, str(broker_int), {key_str: value_str}, test)
-        
-# Producer
+
+    # AdminClient - ACLs.
+
+    def acls(self, restype="any", name=None, resource_pattern_type="any", principal=None, host=None, operation="any", permission_type="any"):
+        resourceType = str_to_resourceType(restype)
+        name_str = name
+        resourcePatternType = str_to_resourcePatternType(resource_pattern_type)
+        principal_str = principal
+        host_str = host
+        aclOperation = str_to_aclOperation(operation)
+        aclPermissionType = str_to_aclPermissionType(permission_type)
+        #
+        aclBindingFilter = AclBindingFilter(resourceType, name_str, resourcePatternType, principal_str, host_str, aclOperation, aclPermissionType)
+        aclBinding_list = self.adminClient.describe_acls(aclBindingFilter).result()
+        return [aclBinding_to_dict(aclBinding) for aclBinding in aclBinding_list]
+
+    def create_acl(self, restype="any", name=None, resource_pattern_type="any", principal=None, host=None, operation="any", permission_type="any"):
+        resourceType = str_to_resourceType(restype)
+        name_str = name
+        resourcePatternType = str_to_resourcePatternType(resource_pattern_type)
+        principal_str = principal
+        host_str = host
+        aclOperation = str_to_aclOperation(operation)
+        aclPermissionType = str_to_aclPermissionType(permission_type)
+        #
+        aclBinding = AclBinding(resourceType, name_str, resourcePatternType, principal_str, host_str, aclOperation, aclPermissionType)
+        self.adminClient.create_acls([aclBinding])[aclBinding].result()
+
+    def delete_acl(self, restype=ResourceType.ANY, name=None, resource_pattern_type=ResourcePatternType.ANY, principal=None, host=None, operation=AclOperation.ANY, permission_type=AclPermissionType.ANY):
+        resourceType = str_to_resourceType(restype)
+        name_str = name
+        resourcePatternType = str_to_resourcePatternType(resource_pattern_type)
+        principal_str = principal
+        host_str = host
+        aclOperation = str_to_aclOperation(operation)
+        aclPermissionType = str_to_aclPermissionType(permission_type)
+        #
+        aclBindingFilter = AclBindingFilter(resourceType, name_str, resourcePatternType, principal_str, host_str, aclOperation, aclPermissionType)
+        aclBinding_list = self.adminClient.delete_acls([aclBindingFilter])[aclBindingFilter].result()
+        return [aclBinding_to_dict(aclBinding) for aclBinding in aclBinding_list]
+
+    # Producer
 
     def produce(self, topic_str, key_str, value_str):
         self.producer.produce(topic_str, key=key_str, value=value_str)
@@ -304,7 +508,7 @@ class Cluster:
         #
         self.producer.flush(timeout_float)
 
-# Consumer
+    # Consumer
     
     def subscribe(self, topic_str, group=None, offset_reset="earliest", offsets=None):
         offset_reset_str = offset_reset
