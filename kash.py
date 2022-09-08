@@ -4,8 +4,7 @@ import configparser
 import os
 import time
 
-
-# Helpers.
+# Helpers
 
 def get_millis():
     return int(time.time()*1000)
@@ -15,11 +14,41 @@ def create_unique_group_id():
     return str(get_millis())
 
 
+def count_lines(path_str):
+    def count_generator(reader):
+        bytes = reader(1024 * 1024)
+        while bytes:
+            yield bytes
+            bytes = reader(1024 * 1024)
+    #
+    with open(path_str, "rb") as bufferedReader:
+        c_generator = count_generator(bufferedReader.raw.read)
+        # count each \n
+        count_int = sum(buffer.count(b'\n') for buffer in c_generator)
+    #
+    return count_int
+
+
 def foreach_line(path_str, proc_function, delimiter='\n', bufsize=4096):
+    """Summary line.
+
+    Extended description of the function.
+
+    Args:
+        arg1 (str): Description of arg1
+        arg2 (int): Description of arg2
+
+    Returns:
+        bool: Description of return value
+    """
     delimiter_str = delimiter
     bufsize_int = bufsize
     #
     buf_str = ""
+    #
+    num_lines_int = 0
+    #
+    line_count_int = count_lines(path_str)
     #
     with open(path_str) as textIOWrapper:
         while True:
@@ -27,15 +56,21 @@ def foreach_line(path_str, proc_function, delimiter='\n', bufsize=4096):
             if not newbuf_str:
                 if buf_str:
                     proc_function(buf_str)
+                    num_lines_int = num_lines_int + 1
+                    if num_lines_int % 1000 == 0:
+                        print(num_lines_int)
                 break
             buf_str += newbuf_str
             line_str_list = buf_str.split(delimiter_str)
             for line_str in line_str_list[:-1]:
                 proc_function(line_str)
+                num_lines_int = num_lines_int + 1
+                if num_lines_int % 1000 == 0:
+                    print(f"{num_lines_int}/{line_count_int}")
             buf_str = line_str_list[-1]
 
 
-# Get cluster configurations.
+# Get cluster configurations
 
 def get_config_dict(cluster_str):
     rawConfigParser = configparser.RawConfigParser()
@@ -49,7 +84,7 @@ def get_config_dict(cluster_str):
     return config_dict
 
 
-# Get AdminClient, Producer and Consumer objects from a configuration dictionary.
+# Get AdminClient, Producer and Consumer objects from a configuration dictionary
 
 def get_adminClient(config_dict):
     adminClient = AdminClient(config_dict)
@@ -66,7 +101,7 @@ def get_consumer(config_dict):
     return consumer
 
 
-# Conversion functions from confluent_kafka objects to kash.py basic Python datatypes like strings and dictionaries.
+# Conversion functions from confluent_kafka objects to kash.py basic Python datatypes like strings and dictionaries
 
 def message_to_message_dict(message, key_type="bytes", value_type="bytes"):
     key_type_str = key_type
@@ -265,7 +300,7 @@ def aclBinding_to_dict(aclBinding):
     return dict
 
 
-# Cross-cluster add-ons.
+# Cross-cluster add-ons
 
 def replicate(source_cluster, source_topic_str, target_cluster, target_topic_str, group=None, map=None, keep_timestamps=True):
     group_str = group
@@ -294,7 +329,7 @@ def replicate(source_cluster, source_topic_str, target_cluster, target_topic_str
     source_cluster.unsubscribe()
 
 
-# Main kash.py class.
+# Main kash.py class
 
 class Cluster:
     def __init__(self, cluster_str):
@@ -304,6 +339,7 @@ class Cluster:
         self.adminClient = get_adminClient(self.config_dict)
         #
         self.producer = get_producer(self.config_dict)
+        self.produced_messages_int = 0
 
     def get_config_dict(self, resourceType, resource_str):
         configResource = ConfigResource(resourceType, resource_str)
@@ -338,12 +374,25 @@ class Cluster:
         #
         future.result()
 
-    # AdminClient - topics.
+    # AdminClient - topics
 
-    def topics(self):
+    def topics(self, size=False):
+        size_bool = size
+        #
         topic_str_list = list(self.adminClient.list_topics().topics.keys())
         topic_str_list.sort()
-        return topic_str_list
+        #
+        if size_bool:
+            topic_str_size_int_tuple_list = [(topic_str, self.size(topic_str)) for topic_str in topic_str_list]
+            return topic_str_size_int_tuple_list
+        else:
+            return topic_str_list
+
+    def ls(self):
+        return self.topics()
+
+    def l(self):
+        return self.topics(size=True)
 
     def config(self, topic_str):
         return self.get_config_dict(ResourceType.TOPIC, topic_str)
@@ -351,14 +400,18 @@ class Cluster:
     def set_config(self, topic_str, key_str, value_str, test=False):
         self.set_config_dict(ResourceType.TOPIC, topic_str, {key_str: value_str}, test)
 
-    def create(self, topic_str, partitions=1):
+    def create(self, topic_str, partitions=1, retention_ms=-1):
         partitions_int = partitions
+        retention_ms_int = retention_ms
         #
-        newTopic = NewTopic(topic_str, partitions_int)
+        newTopic = NewTopic(topic_str, partitions_int, config={"retention.ms": retention_ms_int})
         self.adminClient.create_topics([newTopic])
 
     def delete(self, topic_str):
         self.adminClient.delete_topics([topic_str])
+
+    def rm(self, topic_str):
+        self.delete(topic_str)
 
     def describe(self, topic_str):
         topicMetadata = self.adminClient.list_topics(topic=topic_str).topics[topic_str]
@@ -407,7 +460,7 @@ class Cluster:
         offset_int_tuple_dict = {partition_int: consumer.get_watermark_offsets(TopicPartition(topic_str, partition=partition_int)) for partition_int in range(partitions_int)}
         return offset_int_tuple_dict
     
-    # AdminClient - groups.
+    # AdminClient - groups
 
     def groups(self):
         groupMetadata_list = self.adminClient.list_groups()
@@ -423,7 +476,7 @@ class Cluster:
             group_dict = groupMetadata_to_group_dict(groupMetadata)
         return group_dict
 
-    # AdminClient - brokers.
+    # AdminClient - brokers
 
     def brokers(self):
         broker_dict = {broker_int: brokerMetadata.host + ":" + str(brokerMetadata.port) for broker_int, brokerMetadata in self.adminClient.list_topics().brokers.items()}
@@ -435,7 +488,7 @@ class Cluster:
     def set_broker_config(self, broker_int, key_str, value_str, test=False):
         self.set_config_dict(ResourceType.BROKER, str(broker_int), {key_str: value_str}, test)
 
-    # AdminClient - ACLs.
+    # AdminClient - ACLs
 
     def acls(self, restype="any", name=None, resource_pattern_type="any", principal=None, host=None, operation="any", permission_type="any"):
         resourceType = str_to_resourceType(restype)
@@ -479,6 +532,11 @@ class Cluster:
 
     def produce(self, topic_str, key_str, value_str):
         self.producer.produce(topic_str, key=key_str, value=value_str)
+        #
+        self.produced_messages_int = self.produced_messages_int + 1
+        if self.produced_messages_int % 1000:
+            self.producer.flush(1)
+
     
     def upload(self, path_str, topic_str, key_value_separator=None, message_separator="\n"):  
         key_value_separator_str = key_value_separator
@@ -540,16 +598,12 @@ class Cluster:
     def unsubscribe(self):
         self.consumer.unsubscribe()
 
-    def consume(self, num_messages=1, timeout=1.0, key_type="str", value_type="str"):
-        num_messages_int = num_messages
+    def consume(self, timeout=1.0, key_type="str", value_type="str"):
         timeout_float = timeout
         key_type_str = key_type
         value_type_str = value_type
         #
-        if num_messages_int == 1:
-            message_list = [self.consumer.poll(timeout_float)]
-        else:
-            message_list = self.consumer.consume(num_messages=num_messages_int, timeout=timeout_float)
+        message_list = [self.consumer.poll(timeout_float)]
         #
         if message_list and message_list[0]:
             message_dict_list = [message_to_message_dict(message, key_type=key_type_str, value_type=value_type_str) for message in message_list]
@@ -571,7 +625,7 @@ class Cluster:
         #
         self.subscribe(topic_str, group=group_str)
         while True:
-            message_dict_list = self.consume(num_messages=500, timeout=1, key_type=key_type_str, value_type=value_type_str)
+            message_dict_list = self.consume(timeout=1, key_type=key_type_str, value_type=value_type_str)
             if not message_dict_list:
                 break
             for message_dict in message_dict_list:
@@ -589,7 +643,7 @@ class Cluster:
         self.subscribe(topic_str, group=group_str)
         with open(path_str, mode_str) as textIOWrapper:
             while True:
-                message_dict_list = self.consume(num_messages=500, timeout=1)
+                message_dict_list = self.consume(timeout=1)
                 output_str_list = []
                 if not message_dict_list:
                     break
