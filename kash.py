@@ -10,6 +10,10 @@ ALL_MESSAGES=-1
 
 # Helpers
 
+def is_file(str):
+    return str.startswith("./")
+
+
 def get_millis():
     return int(time.time()*1000)
 
@@ -332,6 +336,10 @@ def replicate(source_cluster, source_topic_str, target_cluster, target_topic_str
         target_cluster.flush()
     source_cluster.unsubscribe()
 
+# Shell alias
+def cp(source_cluster, source_topic_str, target_cluster, target_topic_str, group=None, map=None, keep_timestamps=True):
+    replicate(source_cluster, source_topic_str, target_cluster, target_topic_str, group, map, keep_timestamps)
+
 
 # Main kash.py class
 
@@ -620,7 +628,8 @@ class Cluster:
         message_dict_list = []
         for i in range(num_messages_int):
             message = self.consumer.poll(timeout_float)
-            message_dict_list += [message_to_message_dict(message, key_type=key_type_str, value_type=value_type_str)]
+            if message != None:
+                message_dict_list += [message_to_message_dict(message, key_type=key_type_str, value_type=value_type_str)]
         #
         return message_dict_list
 
@@ -678,3 +687,14 @@ class Cluster:
                     output_str_list += [output_str + message_separator_str]
                 textIOWrapper.writelines(output_str_list)
         self.unsubscribe()
+
+    # Shell alias for upload and download
+    def cp(self, source_str, target_str, group=None, key_value_separator=None, message_separator="\n", overwrite=True):
+        if is_file(source_str) and not is_file(target_str):
+            self.upload(source_str, target_str, key_value_separator, message_separator)
+        elif not is_file(source_str) and is_file(target_str):
+            self.download(source_str, target_str, key_value_separator, message_separator)
+        elif not is_file(source_str) and not is_file(target_str):
+            print("Please prefix files with \"./\"; use the global replicate()/cp() function to copy topics.")
+        elif is_file(source_str) and is_file(target_str):
+            print("Please use your shell or file manager to copy files.")
