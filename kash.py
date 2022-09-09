@@ -1,4 +1,4 @@
-from confluent_kafka import Consumer, KafkaError, Producer, TIMESTAMP_CREATE_TIME, TopicPartition
+from confluent_kafka import Consumer, KafkaError, OFFSET_BEGINNING, OFFSET_END, OFFSET_INVALID, OFFSET_STORED, Producer, TIMESTAMP_CREATE_TIME, TopicPartition
 from confluent_kafka.admin import AclBinding, AclBindingFilter, AclOperation, AclPermissionType, AdminClient, ConfigResource, NewPartitions, NewTopic, ResourceType, ResourcePatternType
 import configparser
 import os
@@ -66,7 +66,7 @@ def foreach_line(path_str, proc_function, delimiter='\n', bufsize=4096):
                     proc_function(buf_str)
                     line_counter_int += 1
                     if line_counter_int % 1000 == 0:
-                        print(line_counter_int)
+                        print(f"{line_counter_int}/{file_line_count_int}")
                 break
             buf_str += newbuf_str
             line_str_list = buf_str.split(delimiter_str)
@@ -111,6 +111,21 @@ def get_consumer(config_dict):
 
 # Conversion functions from confluent_kafka objects to kash.py basic Python datatypes like strings and dictionaries
 
+def offset_int_to_int_or_str(offset_int):
+    if offset_int >= 0:
+        return offset_int
+    else:
+        if offset_int == OFFSET_BEGINNING:
+            return "OFFSET_BEGINNING"
+        elif offset_int == OFFSET_END:
+            return "OFFSET_END"
+        elif offset_int == OFFSET_INVALID:
+            return "OFFSET_INVALID"
+        elif offset_int == OFFSET_STORED:
+            return "OFFSET_STORED"
+        else:
+            return offset_int
+
 def message_to_message_dict(message, key_type="str", value_type="str"):
     key_type_str = key_type
     value_type_str = value_type
@@ -139,7 +154,7 @@ def message_to_message_dict(message, key_type="str", value_type="str"):
 
 
 def groupMetadata_to_group_dict(groupMetadata):
-    group_dict = {"id": groupMetadata.id, "error": kafkaError_to_error_dict(groupMetadata.error), "state": groupMetadata.state, "protocol_type": groupMetadata.protocol_type, "protocol": groupMetadata.protocol, "members": groupMetadata.members}
+    group_dict = {"id": groupMetadata.id, "error": kafkaError_to_error_dict(groupMetadata.error), "state": groupMetadata.state, "protocol_type": groupMetadata.protocol_type, "protocol": groupMetadata.protocol, "members": [groupMember_to_dict(groupMember) for groupMember in groupMetadata.members]}
     return group_dict
 
 
@@ -308,16 +323,26 @@ def aclBinding_to_dict(aclBinding):
     return dict
 
 
+def groupMember_to_dict(groupMember):
+    dict = {"id": groupMember.id,
+    "client_id": groupMember.client_id,
+    "client_host": groupMember.client_host,
+    "metadata": groupMember.metadata,
+    "assignment": groupMember.assignment}
+    return dict
+
+
 # Cross-cluster
 
-def replicate(source_cluster, source_topic_str, target_cluster, target_topic_str, group=None, map=None, keep_timestamps=True):
+def replicate(source_cluster, source_topic_str, target_cluster, target_topic_str, group=None, map=None, keep_timestamps=True, timeout=1.0):
     group_str = group
     map_function = map
-    keep_timestamps_bool = keep_timestamps
+    keep_timestamps_bool = keep_timestamps#
+    timeout_float = timeout
     #
     source_cluster.subscribe(source_topic_str, group=group_str)
     while True:
-        message_dict_list = source_cluster.consume(timeout=1, key_type="bytes", value_type="bytes")
+        message_dict_list = source_cluster.consume(timeout=timeout_float, key_type="bytes", value_type="bytes")
         if not message_dict_list:
             break
         for message_dict in message_dict_list:
@@ -352,6 +377,17 @@ class Cluster:
         #
         self.producer = get_producer(self.config_dict)
         self.produced_messages_int = 0
+        #
+        self.subscribed_topic_str = None
+        self.last_consumed_message = None
+        #
+        self.timeout_float = 1.0
+
+    def timeout(self):
+        return self.timeout_float
+
+    def set_timeout(self, timeout_float):
+        self.timeout_float = timeout_float
 
     def get_config_dict(self, resourceType, resource_str):
         configResource = ConfigResource(resourceType, resource_str)
@@ -388,11 +424,18 @@ class Cluster:
 
     # AdminClient - topics
 
-    def topics(self, size=False):
+    def topics(self, topic=None, size=False):
         size_bool = size
+        topic_str = topic
         #
-        topic_str_list = list(self.adminClient.list_topics().topics.keys())
-        topic_str_list.sort()
+        if topic_str != None:
+            if self.exists(topic_str):
+                topic_str_list = [topic_str]
+            else:
+                topic_str_list = []
+        else:
+            topic_str_list = list(self.adminClient.list_topics().topics.keys())
+            topic_str_list.sort()
         #
         if size_bool:
             topic_str_size_int_tuple_list = [(topic_str, self.size(topic_str)) for topic_str in topic_str_list]
@@ -400,16 +443,16 @@ class Cluster:
         else:
             return topic_str_list
 
-    def ls(self):
-        return self.topics()
+    def ls(self, topic=None):
+        return self.topics(topic=topic, size=False)
 
     # Shell alias
-    def l(self):
-        return self.topics(size=True)
+    def l(self, topic=None):
+        return self.topics(topic=topic, size=True)
 
     # Shell alias
-    def ll(self):
-        return self.topics(size=True)
+    def ll(self, topic=None):
+        return self.topics(topic=topic, size=True)
 
     def config(self, topic_str):
         return self.get_config_dict(ResourceType.TOPIC, topic_str)
@@ -556,7 +599,7 @@ class Cluster:
         #
         self.produced_messages_int += 1
         if self.produced_messages_int % 10000:
-            self.producer.flush(1)
+            self.producer.flush(self.timeout_float)
 
     
     def upload(self, path_str, topic_str, key_value_separator=None, message_separator="\n"):  
@@ -582,16 +625,15 @@ class Cluster:
         foreach_line(path_str, proc, delimiter=message_separator_str)
         self.flush()
 
-    def flush(self, timeout=1):
-        timeout_float = timeout
-        #
-        self.producer.flush(timeout_float)
+    def flush(self):
+        self.producer.flush(self.timeout_int)
 
     # Consumer
     
-    def subscribe(self, topic_str, group=None, offset_reset="earliest", offsets=None):
+    def subscribe(self, topic_str, group=None, offset_reset="earliest", offsets=None, auto_commit=True):
         offset_reset_str = offset_reset
         offsets_dict = offsets
+        auto_commit_boolean = auto_commit
         #
         self.topic_str = topic_str
         #
@@ -602,6 +644,7 @@ class Cluster:
         #
         self.config_dict["group.id"] = group_str
         self.config_dict["auto.offset.reset"] = offset_reset_str
+        self.config_dict["enable.auto.commit"] = auto_commit_boolean
         self.consumer = get_consumer(self.config_dict)
         #
         clusterMetaData = self.consumer.list_topics(topic=topic_str)
@@ -615,28 +658,34 @@ class Cluster:
                     topicPartition_list[index_int].offset = offset_int
                 consumer.assign(topicPartition_list)
         self.consumer.subscribe([topic_str], on_assign=on_assign)
+        self.subscribed_topic_str = topic_str
 
     def unsubscribe(self):
         self.consumer.unsubscribe()
+        self.subscribed_topic_str = None
 
-    def consume(self, timeout=1.0, key_type="str", value_type="str", n=1):
-        timeout_float = timeout
+    def consume(self, key_type="str", value_type="str", n=1):
         key_type_str = key_type
         value_type_str = value_type
         num_messages_int = n
         #
         message_dict_list = []
-        for i in range(num_messages_int):
-            message = self.consumer.poll(timeout_float)
+        for _ in range(num_messages_int):
+            message = self.consumer.poll(self.timeout_float)
+            self.last_consumed_message = message
             if message != None:
                 message_dict_list += [message_to_message_dict(message, key_type=key_type_str, value_type=value_type_str)]
         #
         return message_dict_list
 
+    def commit(self):
+        self.consumer.commit(self.last_consumed_message)
+
     def offsets(self):
         topicPartition_list = self.consumer.committed(self.topicPartition_list, timeout=1.0)
-        offsets_dict = {topicPartition.partition: topicPartition.offset for topicPartition in topicPartition_list}
-        return offsets_dict
+        if self.subscribed_topic_str:
+            offsets_dict = {topicPartition.partition: offset_int_to_int_or_str(topicPartition.offset) for topicPartition in topicPartition_list if topicPartition.topic == self.subscribed_topic_str}
+            return offsets_dict
 
     def foreach(self, topic_str, group=None, foreach=print, key_type="str", value_type="str", n=ALL_MESSAGES):
         group_str = group
@@ -648,7 +697,7 @@ class Cluster:
         self.subscribe(topic_str, group=group_str)
         message_counter_int = 0
         while True:
-            message_dict_list = self.consume(timeout=1, key_type=key_type_str, value_type=value_type_str)
+            message_dict_list = self.consume(timeout=self.timeout_int, key_type=key_type_str, value_type=value_type_str)
             if not message_dict_list:
                 break
             foreach_function(message_dict_list[0])
@@ -673,7 +722,7 @@ class Cluster:
         self.subscribe(topic_str, group=group_str)
         with open(path_str, mode_str) as textIOWrapper:
             while True:
-                message_dict_list = self.consume(timeout=1)
+                message_dict_list = self.consume(timeout=self.timeout_int)
                 output_str_list = []
                 if not message_dict_list:
                     break
