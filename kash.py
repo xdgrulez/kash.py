@@ -4,6 +4,10 @@ import configparser
 import os
 import time
 
+# Constants
+
+ALL_MESSAGES=-1
+
 # Helpers
 
 def get_millis():
@@ -46,9 +50,9 @@ def foreach_line(path_str, proc_function, delimiter='\n', bufsize=4096):
     #
     buf_str = ""
     #
-    num_lines_int = 0
+    line_counter_int = 0
     #
-    line_count_int = count_lines(path_str)
+    file_line_count_int = count_lines(path_str)
     #
     with open(path_str) as textIOWrapper:
         while True:
@@ -56,17 +60,17 @@ def foreach_line(path_str, proc_function, delimiter='\n', bufsize=4096):
             if not newbuf_str:
                 if buf_str:
                     proc_function(buf_str)
-                    num_lines_int = num_lines_int + 1
-                    if num_lines_int % 1000 == 0:
-                        print(num_lines_int)
+                    line_counter_int += 1
+                    if line_counter_int % 1000 == 0:
+                        print(line_counter_int)
                 break
             buf_str += newbuf_str
             line_str_list = buf_str.split(delimiter_str)
             for line_str in line_str_list[:-1]:
                 proc_function(line_str)
-                num_lines_int = num_lines_int + 1
-                if num_lines_int % 1000 == 0:
-                    print(f"{num_lines_int}/{line_count_int}")
+                line_counter_int += 1
+                if line_counter_int % 1000 == 0:
+                    print(f"{line_counter_int}/{file_line_count_int}")
             buf_str = line_str_list[-1]
 
 
@@ -103,7 +107,7 @@ def get_consumer(config_dict):
 
 # Conversion functions from confluent_kafka objects to kash.py basic Python datatypes like strings and dictionaries
 
-def message_to_message_dict(message, key_type="bytes", value_type="bytes"):
+def message_to_message_dict(message, key_type="str", value_type="str"):
     key_type_str = key_type
     value_type_str = value_type
     #
@@ -300,7 +304,7 @@ def aclBinding_to_dict(aclBinding):
     return dict
 
 
-# Cross-cluster add-ons
+# Cross-cluster
 
 def replicate(source_cluster, source_topic_str, target_cluster, target_topic_str, group=None, map=None, keep_timestamps=True):
     group_str = group
@@ -309,7 +313,7 @@ def replicate(source_cluster, source_topic_str, target_cluster, target_topic_str
     #
     source_cluster.subscribe(source_topic_str, group=group_str)
     while True:
-        message_dict_list = source_cluster.consume(num_messages=500, timeout=1, key_type="bytes", value_type="bytes")
+        message_dict_list = source_cluster.consume(timeout=1, key_type="bytes", value_type="bytes")
         if not message_dict_list:
             break
         for message_dict in message_dict_list:
@@ -391,7 +395,12 @@ class Cluster:
     def ls(self):
         return self.topics()
 
+    # Shell alias
     def l(self):
+        return self.topics(size=True)
+
+    # Shell alias
+    def ll(self):
         return self.topics(size=True)
 
     def config(self, topic_str):
@@ -407,9 +416,13 @@ class Cluster:
         newTopic = NewTopic(topic_str, partitions_int, config={"retention.ms": retention_ms_int})
         self.adminClient.create_topics([newTopic])
 
+    def touch(self, topic_str, partitions=1, retention_ms=-1):
+        self.create(topic_str, partitions, retention_ms)
+
     def delete(self, topic_str):
         self.adminClient.delete_topics([topic_str])
 
+    # Shell alias
     def rm(self, topic_str):
         self.delete(topic_str)
 
@@ -533,8 +546,8 @@ class Cluster:
     def produce(self, topic_str, key_str, value_str):
         self.producer.produce(topic_str, key=key_str, value=value_str)
         #
-        self.produced_messages_int = self.produced_messages_int + 1
-        if self.produced_messages_int % 1000:
+        self.produced_messages_int += 1
+        if self.produced_messages_int % 10000:
             self.producer.flush(1)
 
     
@@ -598,17 +611,16 @@ class Cluster:
     def unsubscribe(self):
         self.consumer.unsubscribe()
 
-    def consume(self, timeout=1.0, key_type="str", value_type="str"):
+    def consume(self, timeout=1.0, key_type="str", value_type="str", n=1):
         timeout_float = timeout
         key_type_str = key_type
         value_type_str = value_type
+        num_messages_int = n
         #
-        message_list = [self.consumer.poll(timeout_float)]
-        #
-        if message_list and message_list[0]:
-            message_dict_list = [message_to_message_dict(message, key_type=key_type_str, value_type=value_type_str) for message in message_list]
-        else:
-            message_dict_list = []
+        message_dict_list = []
+        for i in range(num_messages_int):
+            message = self.consumer.poll(timeout_float)
+            message_dict_list += [message_to_message_dict(message, key_type=key_type_str, value_type=value_type_str)]
         #
         return message_dict_list
 
@@ -617,20 +629,29 @@ class Cluster:
         offsets_dict = {topicPartition.partition: topicPartition.offset for topicPartition in topicPartition_list}
         return offsets_dict
 
-    def cat(self, topic_str, group=None, foreach=print, key_type="bytes", value_type="bytes"):
+    def foreach(self, topic_str, group=None, foreach=print, key_type="str", value_type="str", n=ALL_MESSAGES):
         group_str = group
         foreach_function = foreach
         key_type_str = key_type
         value_type_str = value_type
+        num_messages_int = n
         #
         self.subscribe(topic_str, group=group_str)
+        message_counter_int = 0
         while True:
             message_dict_list = self.consume(timeout=1, key_type=key_type_str, value_type=value_type_str)
             if not message_dict_list:
                 break
-            for message_dict in message_dict_list:
-                foreach_function(message_dict)
+            foreach_function(message_dict_list[0])
+            if num_messages_int != ALL_MESSAGES:
+                message_counter_int += 1
+                if message_counter_int >= num_messages_int:
+                    break
         self.unsubscribe()
+
+    # Shell alias
+    def cat(self, topic_str, group=None, foreach=print, key_type="str", value_type="str", n=ALL_MESSAGES):
+        self.foreach(topic_str, group, foreach, key_type, value_type, n)
 
     def download(self, topic_str, path_str, group=None, key_value_separator=None, message_separator="\n", overwrite=True):
         group_str = group
