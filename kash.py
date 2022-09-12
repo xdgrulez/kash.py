@@ -342,7 +342,7 @@ def replicate(source_cluster, source_topic_str, target_cluster, target_topic_str
     #
     source_cluster.subscribe(source_topic_str, group=group_str)
     while True:
-        message_dict_list = source_cluster.consume(timeout=timeout_float, key_type="bytes", value_type="bytes")
+        message_dict_list = source_cluster.consume(key_type="bytes", value_type="bytes")
         if not message_dict_list:
             break
         for message_dict in message_dict_list:
@@ -380,14 +380,47 @@ class Cluster:
         #
         self.subscribed_topic_str = None
         self.last_consumed_message = None
-        #
+        # all kinds of timeouts
         self.timeout_float = 1.0
+        # Consumer
+        # auto.offset.reset (earliest or latest (confluent_kafka default: latest))
+        self.auto_offset_reset_str = "earliest"
+        # enable.auto.commit (True or False (confluent_kafka default: True))
+        self.auto_commit_boolean = True
+        # session.timeout.ms (6000-300000 (confluent_kafka default: 30000))
+        self.session_timeout_ms_int = 10000
 
     def timeout(self):
         return self.timeout_float
 
     def set_timeout(self, timeout_float):
         self.timeout_float = timeout_float
+
+    #
+
+    def auto_commit(self):
+        return self.auto_commit_boolean
+
+    def set_auto_commit(self, auto_commit_boolean):
+        self.auto_commit_boolean = auto_commit_boolean
+
+    #
+
+    def session_timeout_ms(self):
+        return self.session_timeout_ms_int
+
+    def set_session_timeout_ms(self, session_timeout_ms_int):
+        self.session_timeout_ms_int = session_timeout_ms_int
+
+    #
+
+    def auto_offset_reset(self):
+        return self.auto_offset_reset_str
+
+    def set_auto_offset_reset(self, auto_offset_reset_str):
+        self.auto_offset_reset_str = auto_offset_reset_str
+
+    #
 
     def get_config_dict(self, resourceType, resource_str):
         configResource = ConfigResource(resourceType, resource_str)
@@ -626,14 +659,13 @@ class Cluster:
         self.flush()
 
     def flush(self):
-        self.producer.flush(self.timeout_int)
+        self.producer.flush(self.timeout_float)
 
     # Consumer
     
-    def subscribe(self, topic_str, group=None, offset_reset="earliest", offsets=None, auto_commit=True):
-        offset_reset_str = offset_reset
+    def subscribe(self, topic_str, group=None, offsets=None, config={}):
         offsets_dict = offsets
-        auto_commit_boolean = auto_commit
+        config_dict = config
         #
         self.topic_str = topic_str
         #
@@ -643,8 +675,11 @@ class Cluster:
             group_str = group
         #
         self.config_dict["group.id"] = group_str
-        self.config_dict["auto.offset.reset"] = offset_reset_str
-        self.config_dict["enable.auto.commit"] = auto_commit_boolean
+        self.config_dict["auto.offset.reset"] = self.auto_offset_reset_str
+        self.config_dict["enable.auto.commit"] = self.auto_commit_boolean
+        self.config_dict["session.timeout.ms"] = self.session_timeout_ms_int
+        for key_str, value in config_dict.items():
+            self.config_dict[key_str] = value
         self.consumer = get_consumer(self.config_dict)
         #
         clusterMetaData = self.consumer.list_topics(topic=topic_str)
@@ -697,7 +732,7 @@ class Cluster:
         self.subscribe(topic_str, group=group_str)
         message_counter_int = 0
         while True:
-            message_dict_list = self.consume(timeout=self.timeout_int, key_type=key_type_str, value_type=value_type_str)
+            message_dict_list = self.consume(key_type=key_type_str, value_type=value_type_str)
             if not message_dict_list:
                 break
             foreach_function(message_dict_list[0])
@@ -722,7 +757,7 @@ class Cluster:
         self.subscribe(topic_str, group=group_str)
         with open(path_str, mode_str) as textIOWrapper:
             while True:
-                message_dict_list = self.consume(timeout=self.timeout_int)
+                message_dict_list = self.consume()
                 output_str_list = []
                 if not message_dict_list:
                     break
