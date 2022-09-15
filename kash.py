@@ -1,7 +1,12 @@
 from confluent_kafka import Consumer, KafkaError, OFFSET_BEGINNING, OFFSET_END, OFFSET_INVALID, OFFSET_STORED, Producer, TIMESTAMP_CREATE_TIME, TopicPartition
 from confluent_kafka.admin import AclBinding, AclBindingFilter, AclOperation, AclPermissionType, AdminClient, ConfigResource, NewPartitions, NewTopic, ResourceType, ResourcePatternType
+from confluent_kafka.schema_registry import SchemaRegistryClient
+from google.protobuf.json_format import MessageToDict, ParseDict
 import configparser
+import importlib
 import os
+import requests
+import sys
 import time
 
 # Constants
@@ -84,12 +89,18 @@ def get_config_dict(cluster_str):
     rawConfigParser = configparser.RawConfigParser()
     if os.path.exists(f"./clusters_secured/{cluster_str}.conf"):
         rawConfigParser.read(f"./clusters_secured/{cluster_str}.conf")
+        cluster_dir_str = "clusters_secured"
     elif os.path.exists(f"./clusters_unsecured/{cluster_str}.conf"):
         rawConfigParser.read(f"./clusters_unsecured/{cluster_str}.conf")
+        cluster_dir_str = "clusters_unsecured"
     else:
         raise Exception(f"No cluster configuration file \"{cluster_str}.conf\" found in \"clusters_secured\" and \"clusters_unsecured\".")
+    #
     config_dict = dict(rawConfigParser.items("kafka"))
-    return config_dict
+    #
+    schema_registry_config_dict = dict(rawConfigParser.items("schema_registry"))
+    #
+    return config_dict, schema_registry_config_dict, cluster_dir_str
 
 
 # Get AdminClient, Producer and Consumer objects from a configuration dictionary
@@ -109,6 +120,12 @@ def get_consumer(config_dict):
     return consumer
 
 
+def get_schemaRegistryClient(config_dict):
+    dict = {"url": config_dict["schema.registry.url"]}
+    schemaRegistryClient = SchemaRegistryClient(dict)
+    return schemaRegistryClient 
+
+
 # Conversion functions from confluent_kafka objects to kash.py basic Python datatypes like strings and dictionaries
 
 def offset_int_to_int_or_str(offset_int):
@@ -125,32 +142,6 @@ def offset_int_to_int_or_str(offset_int):
             return "OFFSET_STORED"
         else:
             return offset_int
-
-def message_to_message_dict(message, key_type="str", value_type="str"):
-    key_type_str = key_type
-    value_type_str = value_type
-    #
-    def bytes_to_str(bytes):
-        if bytes:
-            return bytes.decode("utf-8")
-        else:
-            return bytes
-    #
-    def bytes_to_bytes(bytes):
-        return bytes
-    #
-    if key_type_str == "str":
-        decode_key = bytes_to_str
-    elif key_type_str == "bytes":
-        decode_key = bytes_to_bytes
-    #
-    if value_type_str == "str":
-        decode_value = bytes_to_str
-    elif value_type_str == "bytes":
-        decode_value = bytes_to_bytes
-    #
-    message_dict = {"headers": message.headers(), "partition": message.partition(), "offset": message.offset(), "timestamp": message.timestamp(), "key": decode_key(message.key()), "value": decode_value(message.value())}
-    return message_dict
 
 
 def groupMetadata_to_group_dict(groupMetadata):
@@ -338,7 +329,6 @@ def replicate(source_cluster, source_topic_str, target_cluster, target_topic_str
     group_str = group
     map_function = map
     keep_timestamps_bool = keep_timestamps#
-    timeout_float = timeout
     #
     source_cluster.subscribe(source_topic_str, group=group_str)
     while True:
@@ -371,15 +361,24 @@ def cp(source_cluster, source_topic_str, target_cluster, target_topic_str, group
 class Cluster:
     def __init__(self, cluster_str):
         self.cluster_str = cluster_str
-        self.config_dict = get_config_dict(cluster_str)
+        self.config_dict, self.schema_registry_config_dict, self.cluster_dir_str = get_config_dict(cluster_str)
         #
         self.adminClient = get_adminClient(self.config_dict)
         #
         self.producer = get_producer(self.config_dict)
         self.produced_messages_int = 0
         #
+        if self.schema_registry_config_dict:
+            self.schemaRegistryClient = get_schemaRegistryClient(self.schema_registry_config_dict)
+        else:
+            self.schemaRegistryClient = None
+        #
         self.subscribed_topic_str = None
+        self.subscribed_key_type_str = None
+        self.subscribed_value_type_str = None
         self.last_consumed_message = None
+        #
+        self.schema_id_int_protobuf_message_dict = {}
         # all kinds of timeouts
         self.timeout_float = 1.0
         # Consumer
@@ -419,6 +418,95 @@ class Cluster:
 
     def set_auto_offset_reset(self, auto_offset_reset_str):
         self.auto_offset_reset_str = auto_offset_reset_str
+
+    #
+
+    def post_schema(self, schema_str, schema_type_str, topic_str, key_or_value="value"):
+        key_or_value_str = key_or_value
+        #
+        schema_registry_url_str = self.schema_registry_config_dict["schema.registry.url"]
+        url_str = f"{schema_registry_url_str}/subjects/{topic_str}-{key_or_value_str}/versions?normalize=true"
+        headers_dict = {"Accept": "application/vnd.schemaregistry.v1+json", "Content-Type": "application/vnd.schemaregistry.v1+json"}
+        schema_dict = {"schema": schema_str, "schemaType": schema_type_str}
+        response = requests.post(url_str, headers=headers_dict, json=schema_dict)
+        response_dict = response.json()
+        schema_id_int = response_dict["id"]
+        return schema_id_int
+
+    def schema_str_to_protobuf_message(self, schema_str, topic_str, key_or_value="value"):
+        key_or_value_str = key_or_value
+        #
+        schema_id_int = self.post_schema(schema_str, "PROTOBUF", topic_str, key_or_value=key_or_value_str)
+        #
+        protobuf_message = self.schema_id_int_and_schema_str_to_protobuf_message(schema_id_int, schema_str)
+        return protobuf_message, schema_id_int
+
+    def schema_id_int_to_protobuf_message(self, schema_id_int):
+        schema = self.schemaRegistryClient.get_schema(schema_id_int)
+        schema_str = schema.schema_str
+        #
+        protobuf_message = self.schema_id_int_and_schema_str_to_protobuf_message(schema_id_int, schema_str)
+        return protobuf_message
+
+    def schema_id_int_and_schema_str_to_protobuf_message(self, schema_id_int, schema_str):
+        path_str = f"/tmp/kash.py/{self.cluster_dir_str}/{self.cluster_str}"
+        os.makedirs(path_str, exist_ok=True)
+        file_str = f"schema_{schema_id_int}.proto"
+        file_path_str = f"{path_str}/{file_str}"
+        with open(file_path_str, "w") as textIOWrapper:
+            textIOWrapper.write(schema_str)
+        #
+        import grpc_tools.protoc
+        grpc_tools.protoc.main(["protoc", f"-I{path_str}", f"--python_out={path_str}", f"{file_str}"])
+        #
+        sys.path.insert(1, path_str)
+        schema_module = importlib.import_module(f"schema_{schema_id_int}_pb2")
+        schema_name_str = list(schema_module.DESCRIPTOR.message_types_by_name.keys())[0]
+        protobuf_message = getattr(schema_module, schema_name_str)()
+        return protobuf_message
+
+    def bytes_protobuf_to_dict(self, bytes):
+        schema_id_int = int.from_bytes(bytes[1:5], "big")
+        if schema_id_int in self.schema_id_int_protobuf_message_dict:
+            protobuf_message = self.schema_id_int_protobuf_message_dict[schema_id_int]
+        else:
+            protobuf_message = self.schema_id_int_to_protobuf_message(schema_id_int)
+            self.schema_id_int_protobuf_message_dict[schema_id_int] = protobuf_message
+        #
+        protobuf_bytes = bytes[6:]
+        protobuf_message.ParseFromString(protobuf_bytes)
+        dict = MessageToDict(protobuf_message)
+        return dict
+
+    def message_to_message_dict(self, message, key_type="str", value_type="str"):
+        key_type_str = key_type
+        value_type_str = value_type
+        #
+        def bytes_to_str(bytes):
+            if bytes:
+                return bytes.decode("utf-8")
+            else:
+                return bytes
+        #
+        def bytes_to_bytes(bytes):
+            return bytes
+        #
+        if key_type_str == "str":
+            decode_key = bytes_to_str
+        elif key_type_str == "bytes":
+            decode_key = bytes_to_bytes
+        elif key_type_str == "pb":
+            decode_key = self.bytes_protobuf_to_dict
+        #
+        if value_type_str == "str":
+            decode_value = bytes_to_str
+        elif value_type_str == "bytes":
+            decode_value = bytes_to_bytes
+        elif value_type_str == "pb":
+            decode_value = self.bytes_protobuf_to_dict
+        #
+        message_dict = {"headers": message.headers(), "partition": message.partition(), "offset": message.offset(), "timestamp": message.timestamp(), "key": decode_key(message.key()), "value": decode_value(message.value())}
+        return message_dict
 
     #
 
@@ -627,14 +715,54 @@ class Cluster:
 
     # Producer
 
-    def produce(self, topic_str, key_str, value_str):
-        self.producer.produce(topic_str, key=key_str, value=value_str)
+    def produce(self, topic_str, value, key=None, key_type="str", value_type="str", key_schema=None, value_schema=None):
+        key_type_str = key_type
+        value_type_str = value_type
+        key_schema_str = key_schema
+        value_schema_str = value_schema
+        #
+        def protobuf_message_to_bytes(protobuf_message, schema_id_int):
+            magic_byte_bytes = b"\x00"
+            schema_id_bytes = schema_id_int.to_bytes(4, "big")
+            protobuf_message_bytes = protobuf_message.SerializeToString()
+            #
+            bytes = magic_byte_bytes + schema_id_bytes + b"\x00" + protobuf_message_bytes
+            return bytes
+        #
+        if key_type_str == "pb":
+            protobuf_message, schema_id_int = self.schema_str_to_protobuf_message(key_schema_str, topic_str, "key")
+            ParseDict(key, protobuf_message)
+            value = protobuf_message_to_bytes(protobuf_message, schema_id_int)
+        #
+        if value_type_str == "pb":
+            protobuf_message, schema_id_int = self.schema_str_to_protobuf_message(value_schema_str, topic_str, "value")
+            ParseDict(value, protobuf_message)
+            value = protobuf_message_to_bytes(protobuf_message, schema_id_int)
+        #
+        self.producer.produce(topic_str, value, key)
         #
         self.produced_messages_int += 1
-        if self.produced_messages_int % 10000:
+        if self.produced_messages_int % 10000 == 0:
             self.producer.flush(self.timeout_float)
 
     
+    def produce_str_protobuf(self, topic_str, key_str, value_dict, schema_str):
+        protobuf_message, schema_id_int = self.schema_str_to_protobuf_message(schema_str, topic_str, "value")
+        ParseDict(value_dict, protobuf_message)
+        #
+        magic_byte_bytes = b"\x00"
+        schema_id_bytes = schema_id_int.to_bytes(4, "big")
+        protobuf_message_bytes = protobuf_message.SerializeToString()
+        #
+        bytes = magic_byte_bytes + schema_id_bytes + b"\x00" + protobuf_message_bytes
+        #
+        self.producer.produce(topic_str, key=key_str, value=bytes)
+        #
+        self.produced_messages_int += 1
+        if self.produced_messages_int % 10000 == 0:
+            self.producer.flush(self.timeout_float)
+
+
     def upload(self, path_str, topic_str, key_value_separator=None, message_separator="\n"):  
         key_value_separator_str = key_value_separator
         message_separator_str = message_separator
@@ -662,12 +790,10 @@ class Cluster:
         self.producer.flush(self.timeout_float)
 
     # Consumer
-    
-    def subscribe(self, topic_str, group=None, offsets=None, config={}):
+
+    def subscribe(self, topic_str, group=None, offsets=None, config={}, key_type="str", value_type="str"):
         offsets_dict = offsets
         config_dict = config
-        #
-        self.topic_str = topic_str
         #
         if group == None:
             group_str = create_unique_group_id()
@@ -694,14 +820,20 @@ class Cluster:
                 consumer.assign(topicPartition_list)
         self.consumer.subscribe([topic_str], on_assign=on_assign)
         self.subscribed_topic_str = topic_str
+        self.subscribed_key_type_str = key_type
+        self.subscribed_value_type_str = value_type
 
     def unsubscribe(self):
         self.consumer.unsubscribe()
         self.subscribed_topic_str = None
+        self.subscribed_key_type_str = None
+        self.subscribed_value_type_str = None
 
-    def consume(self, key_type="str", value_type="str", n=1):
-        key_type_str = key_type
-        value_type_str = value_type
+    def consume(self, n=1):
+        if self.subscribed_topic_str == None:
+            print("Please subscribe before you consume.")
+            return
+        #
         num_messages_int = n
         #
         message_dict_list = []
@@ -709,7 +841,7 @@ class Cluster:
             message = self.consumer.poll(self.timeout_float)
             self.last_consumed_message = message
             if message != None:
-                message_dict_list += [message_to_message_dict(message, key_type=key_type_str, value_type=value_type_str)]
+                message_dict_list += [self.message_to_message_dict(message, key_type=self.subscribed_key_type_str, value_type=self.subscribed_value_type_str)]
         #
         return message_dict_list
 
@@ -729,10 +861,10 @@ class Cluster:
         value_type_str = value_type
         num_messages_int = n
         #
-        self.subscribe(topic_str, group=group_str)
+        self.subscribe(topic_str, group=group_str, key_type=key_type_str, value_type=value_type_str)
         message_counter_int = 0
         while True:
-            message_dict_list = self.consume(key_type=key_type_str, value_type=value_type_str)
+            message_dict_list = self.consume()
             if not message_dict_list:
                 break
             foreach_function(message_dict_list[0])
@@ -746,15 +878,17 @@ class Cluster:
     def cat(self, topic_str, group=None, foreach=print, key_type="str", value_type="str", n=ALL_MESSAGES):
         self.foreach(topic_str, group, foreach, key_type, value_type, n)
 
-    def download(self, topic_str, path_str, group=None, key_value_separator=None, message_separator="\n", overwrite=True):
+    def download(self, topic_str, path_str, group=None, key_type="str", value_type="str", key_value_separator=None, message_separator="\n", overwrite=True):
         group_str = group
+        key_type_str = key_type
+        value_type_str = value_type
         key_value_separator_str = key_value_separator
         message_separator_str = message_separator
         overwrite_bool = overwrite
         #
         mode_str = "w" if overwrite_bool else "a"
         #
-        self.subscribe(topic_str, group=group_str)
+        self.subscribe(topic_str, group=group_str, key_type=key_type_str, value_type=value_type_str)
         with open(path_str, mode_str) as textIOWrapper:
             while True:
                 message_dict_list = self.consume()
