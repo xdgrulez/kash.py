@@ -1,6 +1,9 @@
 from confluent_kafka import Consumer, KafkaError, OFFSET_BEGINNING, OFFSET_END, OFFSET_INVALID, OFFSET_STORED, Producer, TIMESTAMP_CREATE_TIME, TopicPartition
 from confluent_kafka.admin import AclBinding, AclBindingFilter, AclOperation, AclPermissionType, AdminClient, ConfigResource, NewPartitions, NewTopic, ResourceType, ResourcePatternType
 from confluent_kafka.schema_registry import SchemaRegistryClient
+from confluent_kafka.schema_registry.avro import AvroDeserializer, AvroSerializer
+from confluent_kafka.schema_registry.json_schema import JSONDeserializer, JSONSerializer
+from confluent_kafka.serialization import MessageField, SerializationContext
 from google.protobuf.json_format import MessageToDict, ParseDict
 import configparser
 import importlib
@@ -379,6 +382,8 @@ class Cluster:
         self.last_consumed_message = None
         #
         self.schema_id_int_protobuf_message_dict = {}
+        self.schema_id_int_avro_schema_str_dict = {}
+        self.schema_id_int_jsonschema_str_dict = {}
         # all kinds of timeouts
         self.timeout_float = 1.0
         # Consumer
@@ -448,6 +453,18 @@ class Cluster:
         protobuf_message = self.schema_id_int_and_schema_str_to_protobuf_message(schema_id_int, schema_str)
         return protobuf_message
 
+    def schema_id_int_to_avro_schema_str(self, schema_id_int):
+        schema = self.schemaRegistryClient.get_schema(schema_id_int)
+        avro_schema_str = schema.schema_str
+        #
+        return avro_schema_str
+
+    def schema_id_int_to_jsonschema_str(self, schema_id_int):
+        schema = self.schemaRegistryClient.get_schema(schema_id_int)
+        jsonschema_str = schema.schema_str
+        #
+        return jsonschema_str
+
     def schema_id_int_and_schema_str_to_protobuf_message(self, schema_id_int, schema_str):
         path_str = f"/tmp/kash.py/{self.cluster_dir_str}/{self.cluster_str}"
         os.makedirs(path_str, exist_ok=True)
@@ -478,6 +495,30 @@ class Cluster:
         dict = MessageToDict(protobuf_message)
         return dict
 
+    def bytes_avro_to_dict(self, bytes):
+        schema_id_int = int.from_bytes(bytes[1:5], "big")
+        if schema_id_int in self.schema_id_int_avro_schema_str_dict:
+            avro_schema_str = self.schema_id_int_avro_schema_str_dict[schema_id_int]
+        else:
+            avro_schema_str = self.schema_id_int_to_avro_schema_str(schema_id_int)
+            self.schema_id_int_avro_schema_str_dict[schema_id_int] = avro_schema_str
+        #
+        avroDeserializer = AvroDeserializer(self.schemaRegistryClient, avro_schema_str)
+        dict = avroDeserializer(bytes, None)
+        return dict
+
+    def bytes_jsonschema_to_dict(self, bytes):
+        schema_id_int = int.from_bytes(bytes[1:5], "big")
+        if schema_id_int in self.schema_id_int_jsonschema_str_dict:
+            jsonschema_str = self.schema_id_int_jsonschema_str_dict[schema_id_int]
+        else:
+            jsonschema_str = self.schema_id_int_to_jsonschema_str(schema_id_int)
+            self.schema_id_int_jsonschema_str_dict[schema_id_int] = jsonschema_str
+        #
+        jsonDeserializer = JSONDeserializer(jsonschema_str)
+        dict = jsonDeserializer(bytes, None)
+        return dict
+
     def message_to_message_dict(self, message, key_type="str", value_type="str"):
         key_type_str = key_type
         value_type_str = value_type
@@ -495,15 +536,23 @@ class Cluster:
             decode_key = bytes_to_str
         elif key_type_str == "bytes":
             decode_key = bytes_to_bytes
-        elif key_type_str == "pb":
+        elif key_type_str in ["pb", "protobuf"]:
             decode_key = self.bytes_protobuf_to_dict
+        elif key_type_str == "avro":
+            decode_key = self.bytes_avro_to_dict
+        elif key_type_str in ["json", "jsonschema"]:
+            decode_key = self.bytes_jsonschema_to_dict
         #
         if value_type_str == "str":
             decode_value = bytes_to_str
         elif value_type_str == "bytes":
             decode_value = bytes_to_bytes
-        elif value_type_str == "pb":
+        elif value_type_str in ["pb", "protobuf"]:
             decode_value = self.bytes_protobuf_to_dict
+        elif value_type_str == "avro":
+            decode_value = self.bytes_avro_to_dict
+        elif value_type_str in ["json", "jsonschema"]:
+            decode_value = self.bytes_jsonschema_to_dict
         #
         message_dict = {"headers": message.headers(), "partition": message.partition(), "offset": message.offset(), "timestamp": message.timestamp(), "key": decode_key(message.key()), "value": decode_value(message.value())}
         return message_dict
@@ -729,15 +778,27 @@ class Cluster:
             bytes = magic_byte_bytes + schema_id_bytes + b"\x00" + protobuf_message_bytes
             return bytes
         #
-        if key_type_str == "pb":
+        if key_type_str in ["pb", "protobuf"]:
             protobuf_message, schema_id_int = self.schema_str_to_protobuf_message(key_schema_str, topic_str, "key")
             ParseDict(key, protobuf_message)
             value = protobuf_message_to_bytes(protobuf_message, schema_id_int)
+        elif key_type_str == "avro":
+            avroSerializer = AvroSerializer(self.schemaRegistryClient, key_schema_str)
+            key = avroSerializer(key, SerializationContext(topic_str, MessageField.KEY))
+        elif key_type_str in ["json", "jsonschema"]:
+            jSONSerializer = JSONSerializer(key_schema_str, self.schemaRegistryClient)
+            key = jSONSerializer(key, SerializationContext(topic_str, MessageField.KEY))
         #
-        if value_type_str == "pb":
+        if value_type_str in ["pb", "protobuf"]:
             protobuf_message, schema_id_int = self.schema_str_to_protobuf_message(value_schema_str, topic_str, "value")
             ParseDict(value, protobuf_message)
             value = protobuf_message_to_bytes(protobuf_message, schema_id_int)
+        elif value_type_str == "avro":
+            avroSerializer = AvroSerializer(self.schemaRegistryClient, value_schema_str)
+            value = avroSerializer(value, SerializationContext(topic_str, MessageField.VALUE))
+        elif value_type_str in ["json", "jsonschema"]:
+            jSONSerializer = JSONSerializer(value_schema_str, self.schemaRegistryClient)
+            value = jSONSerializer(value, SerializationContext(topic_str, MessageField.VALUE))
         #
         self.producer.produce(topic_str, value, key)
         #
@@ -763,7 +824,7 @@ class Cluster:
             self.producer.flush(self.timeout_float)
 
 
-    def upload(self, path_str, topic_str, key_value_separator=None, message_separator="\n"):  
+    def upload(self, path_str, topic_str, key_type="str", value_type="str", key_schema=None, value_schema=None, key_value_separator=None, message_separator="\n"):  
         key_value_separator_str = key_value_separator
         message_separator_str = message_separator
         #
@@ -781,7 +842,7 @@ class Cluster:
                 key_str = None
                 value_str = line_str1
             #
-            self.produce(topic_str, key_str, value_str)
+            self.produce(topic_str, value_str, key=key_str, key_type=key_type, value_type=value_type, key_schema=key_schema, value_schema=value_schema)
         #
         foreach_line(path_str, proc, delimiter=message_separator_str)
         self.flush()
@@ -907,11 +968,11 @@ class Cluster:
         self.unsubscribe()
 
     # Shell alias for upload and download
-    def cp(self, source_str, target_str, group=None, key_value_separator=None, message_separator="\n", overwrite=True):
+    def cp(self, source_str, target_str, group=None, key_type="str", value_type="str", key_schema=None, value_schema=None, key_value_separator=None, message_separator="\n", overwrite=True, ):
         if is_file(source_str) and not is_file(target_str):
-            self.upload(source_str, target_str, key_value_separator, message_separator)
+            self.upload(source_str, target_str, key_type=key_type, value_type=value_type, key_schema=key_schema, value_schema=value_schema, key_value_separator=key_value_separator, message_separator=message_separator)
         elif not is_file(source_str) and is_file(target_str):
-            self.download(source_str, target_str, key_value_separator, message_separator)
+            self.download(source_str, target_str, group=group, key_type=key_type, value_type=value_type, key_value_separator=key_value_separator, message_separator=message_separator, overwrite=overwrite)
         elif not is_file(source_str) and not is_file(target_str):
             print("Please prefix files with \"./\"; use the global replicate()/cp() function to copy topics.")
         elif is_file(source_str) and is_file(target_str):

@@ -1,3 +1,5 @@
 confluent_kafka
 grpcio-tools
 requests
+fastavro
+jsonschema
