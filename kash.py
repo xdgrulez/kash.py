@@ -781,9 +781,9 @@ class Cluster:
         #
         if key_type_str in ["pb", "protobuf"]:
             protobuf_message, schema_id_int = self.schema_str_to_protobuf_message(key_schema_str, topic_str, "key")
-            ParseDict(key, protobuf_message)
             if isinstance(key, str) or isinstance(key, bytes):
                 key = json.loads(key)
+            ParseDict(key, protobuf_message)
             key = protobuf_message_to_bytes(protobuf_message, schema_id_int)
         elif key_type_str == "avro":
             avroSerializer = AvroSerializer(self.schemaRegistryClient, key_schema_str)
@@ -798,9 +798,9 @@ class Cluster:
         #
         if value_type_str in ["pb", "protobuf"]:
             protobuf_message, schema_id_int = self.schema_str_to_protobuf_message(value_schema_str, topic_str, "value")
-            ParseDict(value, protobuf_message)
             if isinstance(value, str) or isinstance(value, bytes):
                 value = json.loads(value)
+            ParseDict(value, protobuf_message)
             value = protobuf_message_to_bytes(protobuf_message, schema_id_int)
         elif value_type_str == "avro":
             avroSerializer = AvroSerializer(self.schemaRegistryClient, value_schema_str)
@@ -968,3 +968,8 @@ class Cluster:
             print("Please prefix files with \"./\"; use the global replicate()/cp() function to copy topics.")
         elif is_file(source_str) and is_file(target_str):
             print("Please use your shell or file manager to copy files.")
+
+c = Cluster("karapace")
+s = 'message Hotel { required string HotelName = 1; required string Description = 2; }'
+c.cp("./hotels.txt", "hotels", value_type="pb", value_schema=s)
+
