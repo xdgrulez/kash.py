@@ -7,6 +7,7 @@ from confluent_kafka.serialization import MessageField, SerializationContext
 from google.protobuf.json_format import MessageToDict, ParseDict
 import configparser
 import importlib
+import json
 import os
 import requests
 import sys
@@ -781,23 +782,35 @@ class Cluster:
         if key_type_str in ["pb", "protobuf"]:
             protobuf_message, schema_id_int = self.schema_str_to_protobuf_message(key_schema_str, topic_str, "key")
             ParseDict(key, protobuf_message)
-            value = protobuf_message_to_bytes(protobuf_message, schema_id_int)
+            if isinstance(key, str) or isinstance(key, bytes):
+                key = json.loads(key)
+            key = protobuf_message_to_bytes(protobuf_message, schema_id_int)
         elif key_type_str == "avro":
             avroSerializer = AvroSerializer(self.schemaRegistryClient, key_schema_str)
+            if isinstance(key, str) or isinstance(key, bytes):
+                key = json.loads(key)
             key = avroSerializer(key, SerializationContext(topic_str, MessageField.KEY))
         elif key_type_str in ["json", "jsonschema"]:
             jSONSerializer = JSONSerializer(key_schema_str, self.schemaRegistryClient)
+            if isinstance(key, str) or isinstance(key, bytes):
+                key = json.loads(key)
             key = jSONSerializer(key, SerializationContext(topic_str, MessageField.KEY))
         #
         if value_type_str in ["pb", "protobuf"]:
             protobuf_message, schema_id_int = self.schema_str_to_protobuf_message(value_schema_str, topic_str, "value")
             ParseDict(value, protobuf_message)
+            if isinstance(value, str) or isinstance(value, bytes):
+                value = json.loads(value)
             value = protobuf_message_to_bytes(protobuf_message, schema_id_int)
         elif value_type_str == "avro":
             avroSerializer = AvroSerializer(self.schemaRegistryClient, value_schema_str)
+            if isinstance(value, str) or isinstance(value, bytes):
+                value = json.loads(value)
             value = avroSerializer(value, SerializationContext(topic_str, MessageField.VALUE))
         elif value_type_str in ["json", "jsonschema"]:
             jSONSerializer = JSONSerializer(value_schema_str, self.schemaRegistryClient)
+            if isinstance(value, str) or isinstance(value, bytes):
+                value = json.loads(value)
             value = jSONSerializer(value, SerializationContext(topic_str, MessageField.VALUE))
         #
         self.producer.produce(topic_str, value, key)
@@ -805,24 +818,6 @@ class Cluster:
         self.produced_messages_int += 1
         if self.produced_messages_int % 10000 == 0:
             self.producer.flush(self.timeout_float)
-
-    
-    def produce_str_protobuf(self, topic_str, key_str, value_dict, schema_str):
-        protobuf_message, schema_id_int = self.schema_str_to_protobuf_message(schema_str, topic_str, "value")
-        ParseDict(value_dict, protobuf_message)
-        #
-        magic_byte_bytes = b"\x00"
-        schema_id_bytes = schema_id_int.to_bytes(4, "big")
-        protobuf_message_bytes = protobuf_message.SerializeToString()
-        #
-        bytes = magic_byte_bytes + schema_id_bytes + b"\x00" + protobuf_message_bytes
-        #
-        self.producer.produce(topic_str, key=key_str, value=bytes)
-        #
-        self.produced_messages_int += 1
-        if self.produced_messages_int % 10000 == 0:
-            self.producer.flush(self.timeout_float)
-
 
     def upload(self, path_str, topic_str, key_type="str", value_type="str", key_schema=None, value_schema=None, key_value_separator=None, message_separator="\n"):  
         key_value_separator_str = key_value_separator
@@ -897,12 +892,8 @@ class Cluster:
         #
         num_messages_int = n
         #
-        message_dict_list = []
-        for _ in range(num_messages_int):
-            message = self.consumer.poll(self.timeout_float)
-            self.last_consumed_message = message
-            if message != None:
-                message_dict_list += [self.message_to_message_dict(message, key_type=self.subscribed_key_type_str, value_type=self.subscribed_value_type_str)]
+        message_list = self.consumer.consume(num_messages_int, self.timeout_float)
+        message_dict_list = [self.message_to_message_dict(message, key_type=self.subscribed_key_type_str, value_type=self.subscribed_value_type_str) for message in message_list]
         #
         return message_dict_list
 
@@ -957,13 +948,13 @@ class Cluster:
                 if not message_dict_list:
                     break
                 for message_dict in message_dict_list:
-                    value_str = message_dict["value"]
+                    value = message_dict["value"]
                     if key_value_separator_str == None:
-                        output_str = value_str
+                        output = value
                     else:
-                        key_str = message_dict["key"]
-                        output_str = f"{key_str}{key_value_separator_str}{value_str}"
-                    output_str_list += [output_str + message_separator_str]
+                        key = message_dict["key"]
+                        output = f"{key}{key_value_separator_str}{value}"
+                    output_str_list += [f"{output}{message_separator_str}"]
                 textIOWrapper.writelines(output_str_list)
         self.unsubscribe()
 
