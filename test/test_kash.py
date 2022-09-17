@@ -1,8 +1,9 @@
-from enum import auto
+import filecmp
 import os
 import sys
 import time
 import unittest
+import warnings
 sys.path.insert(1, "..")
 from kash import *
 
@@ -14,17 +15,29 @@ principal_str = None
 def create_test_topic_name():
     return f"test_topic_{get_millis()}"
 
+
 def create_test_group_name():
     return f"test_group_{get_millis()}"
 
-class TestAdminClient(unittest.TestCase):
+
+class Test(unittest.TestCase):
     def setUp(self):
+        warnings.filterwarnings(action="ignore", message="unclosed", category=ResourceWarning)
+        #
         self.old_home_str = os.environ.get("KASHPY_HOME")
         os.environ["KASHPY_HOME"] = ".."
+        # https://simon-aubury.medium.com/kafka-with-avro-vs-kafka-with-protobuf-vs-kafka-with-json-schema-667494cbb2af
+        with open("./snacks_value.txt", "w") as textIOWrapper:
+            textIOWrapper.writelines(['{"name": "cookie", "calories": 500.0, "colour": "brown"}\n', '{"name": "cake", "calories": 260.0, "colour": "white"}\n', '{"name": "timtam", "calories": 80.0, "colour": "chocolate"}\n'])
+        with open("./snacks_key_value.txt", "w") as textIOWrapper:
+            textIOWrapper.writelines(['{"name": "cookie_key", "calories": 500.0, "colour": "brown"}/{"name": "cookie_value", "calories": 500.0, "colour": "brown"}\n', '{"name": "cake_key", "calories": 260.0, "colour": "white"}/{"name": "cake_value", "calories": 260.0, "colour": "white"}\n', '{"name": "timtam_key", "calories": 80.0, "colour": "chocolate"}/{"name": "timtam_value", "calories": 80.0, "colour": "chocolate"}\n'])
 
     def tearDown(self):
         if self.old_home_str:
             os.environ["KASHPY_HOME"] = self.old_home_str
+        #
+#        os.remove("./snacks_value.txt")
+        os.remove("./snacks_key_value.txt")
 
     def test_create(self):
         cluster = Cluster(cluster_str)
@@ -132,7 +145,6 @@ class TestAdminClient(unittest.TestCase):
     def test_acls(self):
         if principal_str:
             cluster = Cluster(cluster_str)
-            cluster = Cluster(cluster_str)
             topic_str = create_test_topic_name()
             cluster.create(topic_str)
             time.sleep(1)
@@ -144,3 +156,187 @@ class TestAdminClient(unittest.TestCase):
             time.sleep(1)
             self.assertIn({"restype": "topic", "name": topic_str, "resource_pattern_type": "literal", 'principal': principal_str, 'host': '*', 'operation': 'read', 'permission_type': 'allow'}, acl_dict_list)
             cluster.delete(topic_str)
+
+    def test_produce_consume_bytes(self):
+        cluster = Cluster(cluster_str)
+        topic_str = create_test_topic_name()
+        cluster.create(topic_str)
+        time.sleep(1)
+        cluster.cp("./snacks_value.txt", topic_str, value_type="str")
+        self.assertEqual(cluster.size(topic_str)[1], 3)
+        cluster.cp(topic_str, "./snacks_value1.txt", value_type="str")
+        self.assertTrue(filecmp.cmp("./snacks_value.txt", "./snacks_value1.txt"))
+        os.remove("./snacks_value1.txt")
+        cluster.delete(topic_str)
+        #
+        topic_str_key_value = create_test_topic_name()
+        cluster.create(topic_str_key_value)
+        time.sleep(1)
+        cluster.cp("./snacks_key_value.txt", topic_str_key_value, key_type="str", value_type="str", key_value_separator="/")
+        self.assertEqual(cluster.size(topic_str_key_value)[1], 3)
+        cluster.cp(topic_str_key_value, "./snacks_key_value1.txt", key_type="str", value_type="str", key_value_separator="/")
+        self.assertTrue(filecmp.cmp("./snacks_key_value.txt", "./snacks_key_value1.txt"))
+        os.remove("./snacks_key_value1.txt")
+        cluster.delete(topic_str)
+
+    def test_produce_consume_string(self):
+        cluster = Cluster(cluster_str)
+        topic_str = create_test_topic_name()
+        cluster.create(topic_str)
+        time.sleep(1)
+        cluster.cp("./snacks_value.txt", topic_str, value_type="str")
+        self.assertEqual(cluster.size(topic_str)[1], 3)
+        cluster.cp(topic_str, "./snacks_value1.txt", value_type="str")
+        self.assertTrue(filecmp.cmp("./snacks_value.txt", "./snacks_value1.txt"))
+        os.remove("./snacks_value1.txt")
+        cluster.delete(topic_str)
+        #
+        topic_str_key_value = create_test_topic_name()
+        cluster.create(topic_str_key_value)
+        time.sleep(1)
+        cluster.cp("./snacks_key_value.txt", topic_str_key_value, key_type="str", value_type="str", key_value_separator="/")
+        self.assertEqual(cluster.size(topic_str_key_value)[1], 3)
+        cluster.cp(topic_str_key_value, "./snacks_key_value1.txt", key_type="str", value_type="str", key_value_separator="/")
+        self.assertTrue(filecmp.cmp("./snacks_key_value.txt", "./snacks_key_value1.txt"))
+        os.remove("./snacks_key_value1.txt")
+        cluster.delete(topic_str)
+    
+    def test_produce_consume_protobuf(self):
+        schema_str = 'message Snack { required string name = 1; required float calories = 2; optional string colour = 3; }'
+        #
+        cluster = Cluster(cluster_str)
+        topic_str = create_test_topic_name()
+        cluster.create(topic_str)
+        time.sleep(1)
+        cluster.cp("./snacks_value.txt", topic_str, value_type="pb", value_schema=schema_str)
+        self.assertEqual(cluster.size(topic_str)[1], 3)
+        cluster.cp(topic_str, "./snacks_value1.txt", value_type="pb")
+        self.assertTrue(filecmp.cmp("./snacks_value.txt", "./snacks_value1.txt"))
+        os.remove("./snacks_value1.txt")
+        cluster.delete(topic_str)
+        #
+        topic_str_key_value = create_test_topic_name()
+        cluster.create(topic_str_key_value)
+        time.sleep(1)
+        cluster.cp("./snacks_key_value.txt", topic_str_key_value, key_type="pb", value_type="pb", key_schema=schema_str, value_schema=schema_str, key_value_separator="/")
+        self.assertEqual(cluster.size(topic_str_key_value)[1], 3)
+        cluster.cp(topic_str_key_value, "./snacks_key_value1.txt", key_type="pb", value_type="pb", key_value_separator="/")
+        self.assertTrue(filecmp.cmp("./snacks_key_value.txt", "./snacks_key_value1.txt"))
+        os.remove("./snacks_key_value1.txt")
+        #
+        cp(cluster, topic_str_key_value, cluster, f"{topic_str_key_value}_1", map=lambda x: x, keep_timestamps=False)
+        cluster.cp(f"{topic_str_key_value}_1", "./snacks_key_value2.txt", key_type="pb", value_type="pb", key_value_separator="/")
+        self.assertTrue(filecmp.cmp("./snacks_key_value.txt", "./snacks_key_value2.txt"))
+        os.remove("./snacks_key_value2.txt")
+        cluster.delete(topic_str_key_value)
+        cluster.delete(f"{topic_str_key_value}_1")
+
+    def test_produce_consume_avro(self):
+        schema_str = '{ "type": "record", "name": "myrecord", "fields": [{"name": "name",  "type": "string" }, {"name": "calories", "type": "float" }, {"name": "colour", "type": "string" }] }'
+        #
+        cluster = Cluster(cluster_str)
+        topic_str = create_test_topic_name()
+        cluster.create(topic_str)
+        time.sleep(1)
+        cluster.cp("./snacks_value.txt", topic_str, value_type="avro", value_schema=schema_str)
+        self.assertEqual(cluster.size(topic_str)[1], 3)
+        cluster.cp(topic_str, "./snacks_value1.txt", value_type="avro")
+        self.assertTrue(filecmp.cmp("./snacks_value.txt", "./snacks_value1.txt"))
+        os.remove("./snacks_value1.txt")
+        cluster.delete(topic_str)
+        #
+        topic_str_key_value = create_test_topic_name()
+        cluster.create(topic_str_key_value)
+        time.sleep(1)
+        cluster.cp("./snacks_key_value.txt", topic_str_key_value, key_type="avro", value_type="avro", key_schema=schema_str, value_schema=schema_str, key_value_separator="/")
+        self.assertEqual(cluster.size(topic_str_key_value)[1], 3)
+        cluster.cp(topic_str_key_value, "./snacks_key_value1.txt", key_type="avro", value_type="avro", key_value_separator="/")
+        self.assertTrue(filecmp.cmp("./snacks_key_value.txt", "./snacks_key_value1.txt"))
+        os.remove("./snacks_key_value1.txt")
+        #
+        cp(cluster, topic_str_key_value, cluster, f"{topic_str_key_value}_1")
+        cluster.cp(f"{topic_str_key_value}_1", "./snacks_key_value2.txt", key_type="avro", value_type="avro", key_value_separator="/")
+        self.assertTrue(filecmp.cmp("./snacks_key_value.txt", "./snacks_key_value2.txt"))
+        os.remove("./snacks_key_value2.txt")
+        cluster.delete(topic_str_key_value)
+        cluster.delete(f"{topic_str_key_value}_1")
+
+    def test_produce_consume_jsonschema(self):
+        schema_str = '{ "title": "abc", "definitions" : { "record:myrecord" : { "type" : "object", "required" : [ "name", "calories" ], "additionalProperties" : false, "properties" : { "name" : {"type" : "string"}, "calories" : {"type" : "number"}, "colour" : {"type" : "string"} } } }, "$ref" : "#/definitions/record:myrecord" }'
+        #
+        cluster = Cluster(cluster_str)
+        topic_str = create_test_topic_name()
+        cluster.create(topic_str)
+        time.sleep(1)
+        cluster.cp("./snacks_value.txt", topic_str, value_type="json", value_schema=schema_str)
+        self.assertEqual(cluster.size(topic_str)[1], 3)
+        cluster.cp(topic_str, "./snacks_value1.txt", value_type="json")
+        self.assertTrue(filecmp.cmp("./snacks_value.txt", "./snacks_value1.txt"))
+        os.remove("./snacks_value1.txt")
+        cluster.delete(topic_str)
+        #
+        topic_str_key_value = create_test_topic_name()
+        cluster.create(topic_str_key_value)
+        time.sleep(1)
+        cluster.cp("./snacks_key_value.txt", topic_str_key_value, key_type="json", value_type="json", key_schema=schema_str, value_schema=schema_str, key_value_separator="/")
+        self.assertEqual(cluster.size(topic_str_key_value)[1], 3)
+        cluster.cp(topic_str_key_value, "./snacks_key_value1.txt", key_type="json", value_type="json", key_value_separator="/")
+        self.assertTrue(filecmp.cmp("./snacks_key_value.txt", "./snacks_key_value1.txt"))
+        os.remove("./snacks_key_value1.txt")
+        cluster.delete(topic_str_key_value)
+
+    def test_offsets(self):
+        cluster = Cluster(cluster_str)
+        topic_str = create_test_topic_name()
+        cluster.create(topic_str)
+        time.sleep(1)
+        cluster.produce(topic_str, "message 1")
+        cluster.produce(topic_str, "message 2")
+        cluster.produce(topic_str, "message 3")
+        cluster.flush()
+        cluster.cat(topic_str)
+        cluster.subscribe(topic_str, offsets={0: 2})
+        message_dict_list = cluster.consume()
+        self.assertEqual(len(message_dict_list), 1)
+        self.assertEqual(message_dict_list[0]["value"], "message 3")
+        cluster.delete(topic_str)
+
+    def test_commit(self):
+        cluster = Cluster(cluster_str)
+        topic_str = create_test_topic_name()
+        cluster.create(topic_str)
+        time.sleep(1)
+        cluster.produce(topic_str, "message 1")
+        cluster.produce(topic_str, "message 2")
+        cluster.produce(topic_str, "message 3")
+        cluster.flush()
+        cluster.cat(topic_str, n=3)
+        cluster.subscribe(topic_str, config={"enable.auto.commit": False})
+        cluster.consume()
+        time.sleep(1)
+        offsets_dict = cluster.offsets()
+        self.assertEqual(offsets_dict[0], "OFFSET_INVALID")
+        cluster.commit()
+        time.sleep(1)
+        offsets_dict1 = cluster.offsets()
+        self.assertEqual(offsets_dict1[0], 1)
+        cluster.delete(topic_str)
+
+    def test_errors(self):
+        cluster = Cluster(cluster_str)
+        cluster.cp("abc", "abc")
+        cluster.cp("./abc", "./abc")
+        cluster.consume("abc")
+    
+    def test_cluster_settings(self):
+        cluster = Cluster(cluster_str)
+        cluster.set_timeout(1.5)
+        self.assertEqual(cluster.timeout(), 1.5)
+        cluster.set_auto_commit(False)
+        self.assertEqual(cluster.auto_commit(), False)
+        cluster.set_session_timeout_ms(6000)
+        self.assertEqual(cluster.session_timeout_ms(), 6000)
+        cluster.set_auto_offset_reset("latest")
+        self.assertEqual(cluster.auto_offset_reset(), "latest")
+
+

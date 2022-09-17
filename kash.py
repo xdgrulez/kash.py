@@ -12,6 +12,7 @@ import json
 import os
 import requests
 import sys
+import tempfile
 import time
 
 # Constants
@@ -21,7 +22,7 @@ ALL_MESSAGES=-1
 # Helpers
 
 def is_file(str):
-    return str.startswith("./")
+    return "/" in str
 
 
 def get_millis():
@@ -336,14 +337,14 @@ def groupMember_to_dict(groupMember):
 
 # Cross-cluster
 
-def replicate(source_cluster, source_topic_str, target_cluster, target_topic_str, group=None, map=None, keep_timestamps=True, timeout=1.0):
+def replicate(source_cluster, source_topic_str, target_cluster, target_topic_str, group=None, map=None, keep_timestamps=True):
     group_str = group
     map_function = map
-    keep_timestamps_bool = keep_timestamps#
+    keep_timestamps_bool = keep_timestamps
     #
-    source_cluster.subscribe(source_topic_str, group=group_str)
+    source_cluster.subscribe(source_topic_str, group=group_str, key_type="bytes", value_type="bytes")
     while True:
-        message_dict_list = source_cluster.consume(key_type="bytes", value_type="bytes")
+        message_dict_list = source_cluster.consume()
         if not message_dict_list:
             break
         for message_dict in message_dict_list:
@@ -472,7 +473,7 @@ class Cluster:
         return jsonschema_str
 
     def schema_id_int_and_schema_str_to_generalizedProtocolMessageType(self, schema_id_int, schema_str):
-        path_str = f"/tmp/kash.py/{self.cluster_dir_str}/{self.cluster_str}"
+        path_str = f"/{tempfile.gettempdir()}/kash.py/{self.cluster_dir_str}/{self.cluster_str}"
         os.makedirs(path_str, exist_ok=True)
         file_str = f"schema_{schema_id_int}.proto"
         file_path_str = f"{path_str}/{file_str}"
@@ -780,12 +781,6 @@ class Cluster:
         key_schema_str = key_schema
         value_schema_str = value_schema
         #
-        def payload_to_payload_dict(payload):
-            if isinstance(payload, str) or isinstance(payload, bytes):
-                return json.loads(payload)
-            else:
-                return payload
-        #
         def serialize(key_bool):
             type_str = key_type_str if key_bool else value_type_str
             schema_str = key_schema_str if key_bool else value_schema_str
@@ -795,17 +790,17 @@ class Cluster:
             if type_str in ["pb", "protobuf"]:
                 generalizedProtocolMessageType = self.schema_str_to_generalizedProtocolMessageType(schema_str, topic_str, key_bool)
                 protobufSerializer = ProtobufSerializer(generalizedProtocolMessageType, self.schemaRegistryClient, {"use.deprecated.format": False})
-                payload_dict = payload_to_payload_dict(payload)
+                payload_dict = json.loads(payload)
                 protobuf_message = generalizedProtocolMessageType()
                 ParseDict(payload_dict, protobuf_message)
-                payload_bytes = protobufSerializer(protobuf_message, SerializationContext(topic_str, messageField)) 
+                payload_bytes = protobufSerializer(protobuf_message, SerializationContext(topic_str, messageField))
             elif type_str == "avro":
                 avroSerializer = AvroSerializer(self.schemaRegistryClient, schema_str)
-                payload_dict = payload_to_payload_dict(payload)
+                payload_dict = json.loads(payload)
                 payload_bytes = avroSerializer(payload_dict, SerializationContext(topic_str, messageField))
             elif type_str in ["json", "jsonschema"]:
                 jSONSerializer = JSONSerializer(schema_str, self.schemaRegistryClient)
-                payload_dict = payload_to_payload_dict(payload)
+                payload_dict = json.loads(payload)
                 payload_bytes = jSONSerializer(payload_dict, SerializationContext(topic_str, messageField))
             else:
                 payload_bytes = payload
@@ -826,19 +821,20 @@ class Cluster:
         #
         def proc(line_str):
             line_str1 = line_str.strip()
-            if key_value_separator_str != None:
-                split_str_list = line_str1.split(key_value_separator_str)
-                if len(split_str_list) == 2:
-                    key_str = split_str_list[0]
-                    value_str = split_str_list[1]
+            if line_str1:
+                if key_value_separator_str != None:
+                    split_str_list = line_str1.split(key_value_separator_str)
+                    if len(split_str_list) == 2:
+                        key_str = split_str_list[0]
+                        value_str = split_str_list[1]
+                    else:
+                        key_str = None
+                        value_str = line_str1
                 else:
                     key_str = None
                     value_str = line_str1
-            else:
-                key_str = None
-                value_str = line_str1
-            #
-            self.produce(topic_str, value_str, key=key_str, key_type=key_type, value_type=value_type, key_schema=key_schema, value_schema=value_schema)
+                #
+                self.produce(topic_str, value_str, key=key_str, key_type=key_type, value_type=value_type, key_schema=key_schema, value_schema=value_schema)
         #
         foreach_line(path_str, proc, delimiter=message_separator_str)
         self.flush()
@@ -894,6 +890,8 @@ class Cluster:
         num_messages_int = n
         #
         message_list = self.consumer.consume(num_messages_int, self.timeout_float)
+        if message_list:
+            self.last_consumed_message = message_list[-1]
         message_dict_list = [self.message_to_message_dict(message, key_type=self.subscribed_key_type_str, value_type=self.subscribed_value_type_str) for message in message_list]
         #
         return message_dict_list
@@ -950,10 +948,14 @@ class Cluster:
                     break
                 for message_dict in message_dict_list:
                     value = message_dict["value"]
+                    if isinstance(value, dict):
+                        value = json.dumps(value)
                     if key_value_separator_str == None:
                         output = value
                     else:
                         key = message_dict["key"]
+                        if isinstance(key, dict):
+                            key = json.dumps(key)
                         output = f"{key}{key_value_separator_str}{value}"
                     output_str_list += [f"{output}{message_separator_str}"]
                 textIOWrapper.writelines(output_str_list)
