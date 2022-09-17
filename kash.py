@@ -3,6 +3,7 @@ from confluent_kafka.admin import AclBinding, AclBindingFilter, AclOperation, Ac
 from confluent_kafka.schema_registry import SchemaRegistryClient
 from confluent_kafka.schema_registry.avro import AvroDeserializer, AvroSerializer
 from confluent_kafka.schema_registry.json_schema import JSONDeserializer, JSONSerializer
+from confluent_kafka.schema_registry.protobuf import ProtobufDeserializer, ProtobufSerializer
 from confluent_kafka.serialization import MessageField, SerializationContext
 from google.protobuf.json_format import MessageToDict, ParseDict
 import configparser
@@ -382,7 +383,7 @@ class Cluster:
         self.subscribed_value_type_str = None
         self.last_consumed_message = None
         #
-        self.schema_id_int_protobuf_message_dict = {}
+        self.schema_id_int_generalizedProtocolMessageType_dict = {}
         self.schema_id_int_avro_schema_str_dict = {}
         self.schema_id_int_jsonschema_str_dict = {}
         # all kinds of timeouts
@@ -391,7 +392,7 @@ class Cluster:
         # auto.offset.reset (earliest or latest (confluent_kafka default: latest))
         self.auto_offset_reset_str = "earliest"
         # enable.auto.commit (True or False (confluent_kafka default: True))
-        self.auto_commit_boolean = True
+        self.auto_commit_bool = True
         # session.timeout.ms (6000-300000 (confluent_kafka default: 30000))
         self.session_timeout_ms_int = 10000
 
@@ -404,10 +405,10 @@ class Cluster:
     #
 
     def auto_commit(self):
-        return self.auto_commit_boolean
+        return self.auto_commit_bool
 
-    def set_auto_commit(self, auto_commit_boolean):
-        self.auto_commit_boolean = auto_commit_boolean
+    def set_auto_commit(self, auto_commit_bool):
+        self.auto_commit_bool = auto_commit_bool
 
     #
 
@@ -425,10 +426,10 @@ class Cluster:
     def set_auto_offset_reset(self, auto_offset_reset_str):
         self.auto_offset_reset_str = auto_offset_reset_str
 
-    #
+    # Schema Registry helper methods (inside the Cluster class to do caching etc.)
 
-    def post_schema(self, schema_str, schema_type_str, topic_str, key_or_value="value"):
-        key_or_value_str = key_or_value
+    def post_schema(self, schema_str, schema_type_str, topic_str, key_bool):
+        key_or_value_str = "key" if key_bool else "value"
         #
         schema_registry_url_str = self.schema_registry_config_dict["schema.registry.url"]
         url_str = f"{schema_registry_url_str}/subjects/{topic_str}-{key_or_value_str}/versions?normalize=true"
@@ -439,20 +440,18 @@ class Cluster:
         schema_id_int = response_dict["id"]
         return schema_id_int
 
-    def schema_str_to_protobuf_message(self, schema_str, topic_str, key_or_value="value"):
-        key_or_value_str = key_or_value
+    def schema_str_to_generalizedProtocolMessageType(self, schema_str, topic_str, key_bool):
+        schema_id_int = self.post_schema(schema_str, "PROTOBUF", topic_str, key_bool)
         #
-        schema_id_int = self.post_schema(schema_str, "PROTOBUF", topic_str, key_or_value=key_or_value_str)
-        #
-        protobuf_message = self.schema_id_int_and_schema_str_to_protobuf_message(schema_id_int, schema_str)
-        return protobuf_message, schema_id_int
+        generalizedProtocolMessageType = self.schema_id_int_and_schema_str_to_generalizedProtocolMessageType(schema_id_int, schema_str)
+        return generalizedProtocolMessageType
 
-    def schema_id_int_to_protobuf_message(self, schema_id_int):
+    def schema_id_int_to_generalizedProtocolMessageType(self, schema_id_int):
         schema = self.schemaRegistryClient.get_schema(schema_id_int)
         schema_str = schema.schema_str
         #
-        protobuf_message = self.schema_id_int_and_schema_str_to_protobuf_message(schema_id_int, schema_str)
-        return protobuf_message
+        generalizedProtocolMessageType = self.schema_id_int_and_schema_str_to_generalizedProtocolMessageType(schema_id_int, schema_str)
+        return generalizedProtocolMessageType
 
     def schema_id_int_to_avro_schema_str(self, schema_id_int):
         schema = self.schemaRegistryClient.get_schema(schema_id_int)
@@ -466,7 +465,7 @@ class Cluster:
         #
         return jsonschema_str
 
-    def schema_id_int_and_schema_str_to_protobuf_message(self, schema_id_int, schema_str):
+    def schema_id_int_and_schema_str_to_generalizedProtocolMessageType(self, schema_id_int, schema_str):
         path_str = f"/tmp/kash.py/{self.cluster_dir_str}/{self.cluster_str}"
         os.makedirs(path_str, exist_ok=True)
         file_str = f"schema_{schema_id_int}.proto"
@@ -480,19 +479,19 @@ class Cluster:
         sys.path.insert(1, path_str)
         schema_module = importlib.import_module(f"schema_{schema_id_int}_pb2")
         schema_name_str = list(schema_module.DESCRIPTOR.message_types_by_name.keys())[0]
-        protobuf_message = getattr(schema_module, schema_name_str)()
-        return protobuf_message
+        generalizedProtocolMessageType = getattr(schema_module, schema_name_str)
+        return generalizedProtocolMessageType
 
     def bytes_protobuf_to_dict(self, bytes):
         schema_id_int = int.from_bytes(bytes[1:5], "big")
-        if schema_id_int in self.schema_id_int_protobuf_message_dict:
-            protobuf_message = self.schema_id_int_protobuf_message_dict[schema_id_int]
+        if schema_id_int in self.schema_id_int_generalizedProtocolMessageType_dict:
+            generalizedProtocolMessageType = self.schema_id_int_generalizedProtocolMessageType_dict[schema_id_int]
         else:
-            protobuf_message = self.schema_id_int_to_protobuf_message(schema_id_int)
-            self.schema_id_int_protobuf_message_dict[schema_id_int] = protobuf_message
+            generalizedProtocolMessageType = self.schema_id_int_to_generalizedProtocolMessageType(schema_id_int)
+            self.schema_id_int_generalizedProtocolMessageType_dict[schema_id_int] = generalizedProtocolMessageType
         #
-        protobuf_bytes = bytes[6:]
-        protobuf_message.ParseFromString(protobuf_bytes)
+        protobufDeserializer = ProtobufDeserializer(generalizedProtocolMessageType, {"use.deprecated.format": False}) 
+        protobuf_message = protobufDeserializer(bytes, None)
         dict = MessageToDict(protobuf_message)
         return dict
 
@@ -519,6 +518,8 @@ class Cluster:
         jsonDeserializer = JSONDeserializer(jsonschema_str)
         dict = jsonDeserializer(bytes, None)
         return dict
+
+    # Deserialize a message to a message dictionary
 
     def message_to_message_dict(self, message, key_type="str", value_type="str"):
         key_type_str = key_type
@@ -558,7 +559,7 @@ class Cluster:
         message_dict = {"headers": message.headers(), "partition": message.partition(), "offset": message.offset(), "timestamp": message.timestamp(), "key": decode_key(message.key()), "value": decode_value(message.value())}
         return message_dict
 
-    #
+    # Configuration helpers
 
     def get_config_dict(self, resourceType, resource_str):
         configResource = ConfigResource(resourceType, resource_str)
@@ -609,7 +610,7 @@ class Cluster:
             topic_str_list.sort()
         #
         if size_bool:
-            topic_str_size_int_tuple_list = [(topic_str, self.size(topic_str)) for topic_str in topic_str_list]
+            topic_str_size_int_tuple_list = [(topic_str, self.size(topic_str)[1]) for topic_str in topic_str_list]
             return topic_str_size_int_tuple_list
         else:
             return topic_str_list
@@ -631,18 +632,22 @@ class Cluster:
     def set_config(self, topic_str, key_str, value_str, test=False):
         self.set_config_dict(ResourceType.TOPIC, topic_str, {key_str: value_str}, test)
 
-    def create(self, topic_str, partitions=1, retention_ms=-1):
+    def create(self, topic_str, partitions=1, retention_ms=-1, operation_timeout=0):
         partitions_int = partitions
         retention_ms_int = retention_ms
+        operation_timeout_float = operation_timeout
         #
         newTopic = NewTopic(topic_str, partitions_int, config={"retention.ms": retention_ms_int})
-        self.adminClient.create_topics([newTopic])
+        self.adminClient.create_topics([newTopic], operation_timeout=operation_timeout_float)
 
-    def touch(self, topic_str, partitions=1, retention_ms=-1):
+    # Shell alias
+    def mk(self, topic_str, partitions=1, retention_ms=-1):
         self.create(topic_str, partitions, retention_ms)
 
-    def delete(self, topic_str):
-        self.adminClient.delete_topics([topic_str])
+    def delete(self, topic_str, operation_timeout=0):
+        operation_timeout_float = operation_timeout
+        #
+        self.adminClient.delete_topics([topic_str], operation_timeout=operation_timeout_float)
 
     # Shell alias
     def rm(self, topic_str):
@@ -672,19 +677,19 @@ class Cluster:
         newPartitions = NewPartitions(topic_str, new_partitions_int)
         self.adminClient.create_partitions([newPartitions], validate_only=test_bool)
 
-    def size(self, topic_str, verbose=False):
+    def size(self, topic_str, verbose=True):
         verbose_bool = verbose
         #
         watermarks_dict = self.watermarks(topic_str)
-        if verbose_bool:
-            size_dict = {partition_int: watermarks_dict[partition_int][1]-watermarks_dict[partition_int][0] for partition_int in watermarks_dict.keys()}
-            return size_dict
-        else:
-            total_size_int = 0
-            for offset_int_tuple in watermarks_dict.values():
-                partition_size_int = offset_int_tuple[1] - offset_int_tuple[0]
-                total_size_int += partition_size_int
-            return total_size_int
+        #
+        size_dict = {partition_int: watermarks_dict[partition_int][1]-watermarks_dict[partition_int][0] for partition_int in watermarks_dict.keys()}
+        #
+        total_size_int = 0
+        for offset_int_tuple in watermarks_dict.values():
+            partition_size_int = offset_int_tuple[1] - offset_int_tuple[0]               
+            total_size_int += partition_size_int
+        #
+        return size_dict, total_size_int
 
     def watermarks(self, topic_str):
         config_dict = self.config_dict
@@ -771,49 +776,41 @@ class Cluster:
         key_schema_str = key_schema
         value_schema_str = value_schema
         #
-        def protobuf_message_to_bytes(protobuf_message, schema_id_int):
-            magic_byte_bytes = b"\x00"
-            schema_id_bytes = schema_id_int.to_bytes(4, "big")
-            protobuf_message_bytes = protobuf_message.SerializeToString()
+        def payload_to_payload_dict(payload):
+            if isinstance(payload, str) or isinstance(payload, bytes):
+                return json.loads(payload)
+            else:
+                return payload
+        #
+        def serialize(key_bool):
+            type_str = key_type_str if key_bool else value_type_str
+            schema_str = key_schema_str if key_bool else value_schema_str
+            payload = key if key_bool else value
+            messageField = MessageField.KEY if key_bool else MessageField.VALUE
             #
-            bytes = magic_byte_bytes + schema_id_bytes + b"\x00" + protobuf_message_bytes
-            return bytes
+            if type_str in ["pb", "protobuf"]:
+                generalizedProtocolMessageType = self.schema_str_to_generalizedProtocolMessageType(schema_str, topic_str, key_bool)
+                protobufSerializer = ProtobufSerializer(generalizedProtocolMessageType, self.schemaRegistryClient, {"use.deprecated.format": False})
+                payload_dict = payload_to_payload_dict(payload)
+                protobuf_message = generalizedProtocolMessageType()
+                ParseDict(payload_dict, protobuf_message)
+                payload_bytes = protobufSerializer(protobuf_message, SerializationContext(topic_str, messageField)) 
+            elif type_str == "avro":
+                avroSerializer = AvroSerializer(self.schemaRegistryClient, schema_str)
+                payload_dict = payload_to_payload_dict(payload)
+                payload_bytes = avroSerializer(payload_dict, SerializationContext(topic_str, messageField))
+            elif type_str in ["json", "jsonschema"]:
+                jSONSerializer = JSONSerializer(schema_str, self.schemaRegistryClient)
+                payload_dict = payload_to_payload_dict(payload)
+                payload_bytes = jSONSerializer(payload_dict, SerializationContext(topic_str, messageField))
+            else:
+                payload_bytes = payload
+            return payload_bytes
         #
-        if key_type_str in ["pb", "protobuf"]:
-            protobuf_message, schema_id_int = self.schema_str_to_protobuf_message(key_schema_str, topic_str, "key")
-            if isinstance(key, str) or isinstance(key, bytes):
-                key = json.loads(key)
-            ParseDict(key, protobuf_message)
-            key = protobuf_message_to_bytes(protobuf_message, schema_id_int)
-        elif key_type_str == "avro":
-            avroSerializer = AvroSerializer(self.schemaRegistryClient, key_schema_str)
-            if isinstance(key, str) or isinstance(key, bytes):
-                key = json.loads(key)
-            key = avroSerializer(key, SerializationContext(topic_str, MessageField.KEY))
-        elif key_type_str in ["json", "jsonschema"]:
-            jSONSerializer = JSONSerializer(key_schema_str, self.schemaRegistryClient)
-            if isinstance(key, str) or isinstance(key, bytes):
-                key = json.loads(key)
-            key = jSONSerializer(key, SerializationContext(topic_str, MessageField.KEY))
+        key_bytes = serialize(key_bool=True)
+        value_bytes = serialize(key_bool=False)
         #
-        if value_type_str in ["pb", "protobuf"]:
-            protobuf_message, schema_id_int = self.schema_str_to_protobuf_message(value_schema_str, topic_str, "value")
-            if isinstance(value, str) or isinstance(value, bytes):
-                value = json.loads(value)
-            ParseDict(value, protobuf_message)
-            value = protobuf_message_to_bytes(protobuf_message, schema_id_int)
-        elif value_type_str == "avro":
-            avroSerializer = AvroSerializer(self.schemaRegistryClient, value_schema_str)
-            if isinstance(value, str) or isinstance(value, bytes):
-                value = json.loads(value)
-            value = avroSerializer(value, SerializationContext(topic_str, MessageField.VALUE))
-        elif value_type_str in ["json", "jsonschema"]:
-            jSONSerializer = JSONSerializer(value_schema_str, self.schemaRegistryClient)
-            if isinstance(value, str) or isinstance(value, bytes):
-                value = json.loads(value)
-            value = jSONSerializer(value, SerializationContext(topic_str, MessageField.VALUE))
-        #
-        self.producer.produce(topic_str, value, key)
+        self.producer.produce(topic_str, value_bytes, key_bytes)
         #
         self.produced_messages_int += 1
         if self.produced_messages_int % 10000 == 0:
@@ -858,7 +855,7 @@ class Cluster:
         #
         self.config_dict["group.id"] = group_str
         self.config_dict["auto.offset.reset"] = self.auto_offset_reset_str
-        self.config_dict["enable.auto.commit"] = self.auto_commit_boolean
+        self.config_dict["enable.auto.commit"] = self.auto_commit_bool
         self.config_dict["session.timeout.ms"] = self.session_timeout_ms_int
         for key_str, value in config_dict.items():
             self.config_dict[key_str] = value
@@ -968,8 +965,3 @@ class Cluster:
             print("Please prefix files with \"./\"; use the global replicate()/cp() function to copy topics.")
         elif is_file(source_str) and is_file(target_str):
             print("Please use your shell or file manager to copy files.")
-
-c = Cluster("karapace")
-s = 'message Hotel { required string HotelName = 1; required string Description = 2; }'
-c.cp("./hotels.txt", "hotels", value_type="pb", value_schema=s)
-
