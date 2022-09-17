@@ -92,14 +92,17 @@ def foreach_line(path_str, proc_function, delimiter='\n', bufsize=4096):
 
 def get_config_dict(cluster_str):
     rawConfigParser = configparser.RawConfigParser()
-    if os.path.exists(f"./clusters_secured/{cluster_str}.conf"):
-        rawConfigParser.read(f"./clusters_secured/{cluster_str}.conf")
+    home_str = os.environ.get("KASHPY_HOME")
+    if not home_str:
+        home_str = "."
+    if os.path.exists(f"{home_str}/clusters_secured/{cluster_str}.conf"):
+        rawConfigParser.read(f"{home_str}/clusters_secured/{cluster_str}.conf")
         cluster_dir_str = "clusters_secured"
-    elif os.path.exists(f"./clusters_unsecured/{cluster_str}.conf"):
-        rawConfigParser.read(f"./clusters_unsecured/{cluster_str}.conf")
+    elif os.path.exists(f"{home_str}/clusters_unsecured/{cluster_str}.conf"):
+        rawConfigParser.read(f"{home_str}/clusters_unsecured/{cluster_str}.conf")
         cluster_dir_str = "clusters_unsecured"
     else:
-        raise Exception(f"No cluster configuration file \"{cluster_str}.conf\" found in \"clusters_secured\" and \"clusters_unsecured\".")
+        raise Exception(f"No cluster configuration file \"{cluster_str}.conf\" found in \"clusters_secured\" and \"clusters_unsecured\" (from: {home_str}; use KASHPY_HOME environment variable to set kash.py home directory).")
     #
     config_dict = dict(rawConfigParser.items("kafka"))
     #
@@ -610,8 +613,8 @@ class Cluster:
             topic_str_list.sort()
         #
         if size_bool:
-            topic_str_size_int_tuple_list = [(topic_str, self.size(topic_str)[1]) for topic_str in topic_str_list]
-            return topic_str_size_int_tuple_list
+            topic_str_size_int_dict = {topic_str: self.size(topic_str)[1] for topic_str in topic_str_list}
+            return topic_str_size_int_dict
         else:
             return topic_str_list
 
@@ -668,18 +671,16 @@ class Cluster:
         return True
 
     def partitions(self, topic_str):
-        partitions_int = len(self.adminClient.list_topics(topic=topic_str).topics[topic_str].partitions)
-        return partitions_int
+        num_partitions_int = len(self.adminClient.list_topics(topic=topic_str).topics[topic_str].partitions)
+        return num_partitions_int
 
-    def set_partitions(self, topic_str, new_partitions_int, test=False):
+    def set_partitions(self, topic_str, num_partitions_int, test=False):
         test_bool = test
         #
-        newPartitions = NewPartitions(topic_str, new_partitions_int)
+        newPartitions = NewPartitions(topic_str, num_partitions_int)
         self.adminClient.create_partitions([newPartitions], validate_only=test_bool)
 
-    def size(self, topic_str, verbose=True):
-        verbose_bool = verbose
-        #
+    def size(self, topic_str):
         watermarks_dict = self.watermarks(topic_str)
         #
         size_dict = {partition_int: watermarks_dict[partition_int][1]-watermarks_dict[partition_int][0] for partition_int in watermarks_dict.keys()}
