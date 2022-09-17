@@ -1,13 +1,16 @@
+import time
 import unittest
 from kash import *
 
 class TestAdminClient(unittest.TestCase):
-    def runTest(self):
+    def testCreate(self):
         cluster = Cluster("local")
         topic_str = f"test_topic_{get_millis()}"
-        cluster.create(topic_str, operation_timeout=1.0)
+        cluster.create(topic_str)
+        time.sleep(1)
         topic_str_list = cluster.ls()
-        self.assertIn("test_topic", topic_str_list)
-        cluster.delete(topic_str, operation_timeout=1.0)
+        self.assertIn(topic_str, topic_str_list)
+        cluster.delete(topic_str)
+        time.sleep(1)
 
 unittest.main()
