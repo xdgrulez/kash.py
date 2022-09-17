@@ -6,6 +6,10 @@ import unittest
 sys.path.insert(1, "..")
 from kash import *
 
+#cluster_str = "rp-dev"
+#principal_str = "User:admin"
+cluster_str = "local"
+principal_str = None
 
 def create_test_topic_name():
     return f"test_topic_{get_millis()}"
@@ -23,7 +27,7 @@ class TestAdminClient(unittest.TestCase):
             os.environ["KASHPY_HOME"] = self.old_home_str
 
     def test_create(self):
-        cluster = Cluster("local")
+        cluster = Cluster(cluster_str)
         topic_str = create_test_topic_name()
         cluster.create(topic_str)
         time.sleep(1)
@@ -32,7 +36,7 @@ class TestAdminClient(unittest.TestCase):
         cluster.delete(topic_str)
 
     def test_topics(self):
-        cluster = Cluster("local")
+        cluster = Cluster(cluster_str)
         topic_str = create_test_topic_name()
         old_topic_str_list = cluster.topics()
         self.assertNotIn(topic_str, old_topic_str_list)
@@ -52,7 +56,7 @@ class TestAdminClient(unittest.TestCase):
         cluster.delete(topic_str)
 
     def test_config(self):
-        cluster = Cluster("local")
+        cluster = Cluster(cluster_str)
         topic_str = create_test_topic_name()
         cluster.mk(topic_str)
         time.sleep(1)
@@ -62,7 +66,7 @@ class TestAdminClient(unittest.TestCase):
         cluster.rm(topic_str)
 
     def test_describe(self):
-        cluster = Cluster("local")
+        cluster = Cluster(cluster_str)
         topic_str = create_test_topic_name()
         cluster.create(topic_str)
         time.sleep(1)
@@ -72,7 +76,7 @@ class TestAdminClient(unittest.TestCase):
         cluster.delete(topic_str)
 
     def test_exists(self):
-        cluster = Cluster("local")
+        cluster = Cluster(cluster_str)
         broker_dict = cluster.brokers()
         broker_int = list(broker_dict.keys())[0]
         auto_create_topics_enable_str = cluster.broker_config(broker_int)["auto.create.topics.enable"]
@@ -83,7 +87,7 @@ class TestAdminClient(unittest.TestCase):
             self.assertFalse(cluster.exists(topic_str))
 
     def test_partitions(self):
-        cluster = Cluster("local")
+        cluster = Cluster(cluster_str)
         topic_str = create_test_topic_name()
         cluster.create(topic_str)
         time.sleep(1)
@@ -96,7 +100,7 @@ class TestAdminClient(unittest.TestCase):
         cluster.delete(topic_str)
 
     def test_groups(self):
-        cluster = Cluster("local")
+        cluster = Cluster(cluster_str)
         topic_str = create_test_topic_name()
         cluster.create(topic_str)
         time.sleep(1)
@@ -115,7 +119,7 @@ class TestAdminClient(unittest.TestCase):
         cluster.delete(topic_str)
     
     def test_brokers(self):
-        cluster = Cluster("local")
+        cluster = Cluster(cluster_str)
         broker_dict = cluster.brokers()
         broker_int = list(broker_dict.keys())[0]
         old_log_retention_ms_str = cluster.broker_config(broker_int)["log.retention.ms"]
@@ -124,3 +128,19 @@ class TestAdminClient(unittest.TestCase):
         new_log_retention_ms_str = cluster.broker_config(broker_int)["log.retention.ms"]
         self.assertEqual(new_log_retention_ms_str, "4711")
         cluster.set_broker_config(broker_int, "log.retention.ms", old_log_retention_ms_str)        
+
+    def test_acls(self):
+        if principal_str:
+            cluster = Cluster(cluster_str)
+            cluster = Cluster(cluster_str)
+            topic_str = create_test_topic_name()
+            cluster.create(topic_str)
+            time.sleep(1)
+            cluster.create_acl(restype="topic", name=topic_str, resource_pattern_type="literal", principal=principal_str, host="*", operation="read", permission_type="allow")
+            time.sleep(1)
+            acl_dict_list = cluster.acls()
+            self.assertIn({"restype": "topic", "name": topic_str, "resource_pattern_type": "literal", 'principal': principal_str, 'host': '*', 'operation': 'read', 'permission_type': 'allow'}, acl_dict_list)
+            cluster.delete_acl(restype="topic", name=topic_str, resource_pattern_type="literal", principal=principal_str, host="*", operation="read", permission_type="allow")
+            time.sleep(1)
+            self.assertIn({"restype": "topic", "name": topic_str, "resource_pattern_type": "literal", 'principal': principal_str, 'host': '*', 'operation': 'read', 'permission_type': 'allow'}, acl_dict_list)
+            cluster.delete(topic_str)

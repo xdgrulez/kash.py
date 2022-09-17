@@ -106,7 +106,10 @@ def get_config_dict(cluster_str):
     #
     config_dict = dict(rawConfigParser.items("kafka"))
     #
-    schema_registry_config_dict = dict(rawConfigParser.items("schema_registry"))
+    if "schema_registry" in rawConfigParser.sections():
+        schema_registry_config_dict = dict(rawConfigParser.items("schema_registry"))
+    else:
+        schema_registry_config_dict = {}
     #
     return config_dict, schema_registry_config_dict, cluster_dir_str
 
