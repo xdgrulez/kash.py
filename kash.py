@@ -7,6 +7,7 @@ from confluent_kafka.schema_registry.protobuf import ProtobufDeserializer, Proto
 from confluent_kafka.serialization import MessageField, SerializationContext
 from google.protobuf.json_format import MessageToDict, ParseDict
 import configparser
+from fnmatch import fnmatch
 import importlib
 import json
 import os
@@ -18,6 +19,7 @@ import time
 # Constants
 
 ALL_MESSAGES=-1
+RD_KAFKA_PARTITION_UA=-1
 
 # Helpers
 
@@ -337,35 +339,35 @@ def groupMember_to_dict(groupMember):
 
 # Cross-cluster
 
-def replicate(source_cluster, source_topic_str, target_cluster, target_topic_str, group=None, map=None, keep_timestamps=True):
+def replicate(source_cluster, source_topic_str, target_cluster, target_topic_str, group=None, transform=None, key_type="bytes", value_type="bytes", keep_timestamps=True):
     group_str = group
-    map_function = map
+    transform_function = transform
+    key_type_str = key_type
+    value_type_str = value_type
     keep_timestamps_bool = keep_timestamps
     #
-    source_cluster.subscribe(source_topic_str, group=group_str, key_type="bytes", value_type="bytes")
+    source_cluster.subscribe(source_topic_str, group=group_str, key_type=key_type_str, value_type=value_type_str)
     while True:
         message_dict_list = source_cluster.consume()
         if not message_dict_list:
             break
         for message_dict in message_dict_list:
-            if map_function:
-                message_dict = map_function(message_dict)
+            if transform_function:
+                message_dict = transform_function(message_dict)
             #
             if keep_timestamps_bool:
                 timestamp_int_int_tuple = message_dict["timestamp"]
                 if timestamp_int_int_tuple[0] == TIMESTAMP_CREATE_TIME:
                     timestamp_int = timestamp_int_int_tuple[1]
-                    #
-                    target_cluster.producer.produce(target_topic_str, key=message_dict["key"], value=message_dict["value"], partition=message_dict["partition"], timestamp=timestamp_int, headers=message_dict["headers"])
-                    #
-                    continue
-            target_cluster.producer.produce(target_topic_str, key=message_dict["key"], value=message_dict["value"], partition=message_dict["partition"], headers=message_dict["headers"])
+            else:
+                timestamp_int = 0
+            target_cluster.produce(target_topic_str, message_dict["value"], message_dict["key"], key_type=key_type_str, value_type=value_type_str, key_schema=source_cluster.last_consumed_message_key_schema_str, value_schema=source_cluster.last_consumed_message_value_schema_str, partition=message_dict["partition"], timestamp=timestamp_int, headers=message_dict["headers"])
         target_cluster.flush()
     source_cluster.unsubscribe()
 
 # Shell alias
-def cp(source_cluster, source_topic_str, target_cluster, target_topic_str, group=None, map=None, keep_timestamps=True):
-    replicate(source_cluster, source_topic_str, target_cluster, target_topic_str, group, map, keep_timestamps)
+def cp(source_cluster, source_topic_str, target_cluster, target_topic_str, group=None, transform=None, key_type="bytes", value_type="bytes", keep_timestamps=True):
+    replicate(source_cluster, source_topic_str, target_cluster, target_topic_str, group, transform, key_type, value_type, keep_timestamps)
 
 
 # Main kash.py class
@@ -389,8 +391,10 @@ class Cluster:
         self.subscribed_key_type_str = None
         self.subscribed_value_type_str = None
         self.last_consumed_message = None
+        self.last_consumed_message_key_schema_str = None
+        self.last_consumed_message_value_schema_str = None
         #
-        self.schema_id_int_generalizedProtocolMessageType_dict = {}
+        self.schema_id_int_generalizedProtocolMessageType_protobuf_schema_str_tuple_dict = {}
         self.schema_id_int_avro_schema_str_dict = {}
         self.schema_id_int_jsonschema_str_dict = {}
         # all kinds of timeouts
@@ -453,12 +457,12 @@ class Cluster:
         generalizedProtocolMessageType = self.schema_id_int_and_schema_str_to_generalizedProtocolMessageType(schema_id_int, schema_str)
         return generalizedProtocolMessageType
 
-    def schema_id_int_to_generalizedProtocolMessageType(self, schema_id_int):
+    def schema_id_int_to_generalizedProtocolMessageType_protobuf_schema_str_tuple(self, schema_id_int):
         schema = self.schemaRegistryClient.get_schema(schema_id_int)
         schema_str = schema.schema_str
         #
         generalizedProtocolMessageType = self.schema_id_int_and_schema_str_to_generalizedProtocolMessageType(schema_id_int, schema_str)
-        return generalizedProtocolMessageType
+        return generalizedProtocolMessageType, schema_str
 
     def schema_id_int_to_avro_schema_str(self, schema_id_int):
         schema = self.schemaRegistryClient.get_schema(schema_id_int)
@@ -489,20 +493,25 @@ class Cluster:
         generalizedProtocolMessageType = getattr(schema_module, schema_name_str)
         return generalizedProtocolMessageType
 
-    def bytes_protobuf_to_dict(self, bytes):
+    def bytes_protobuf_to_dict(self, bytes, key_bool):
         schema_id_int = int.from_bytes(bytes[1:5], "big")
-        if schema_id_int in self.schema_id_int_generalizedProtocolMessageType_dict:
-            generalizedProtocolMessageType = self.schema_id_int_generalizedProtocolMessageType_dict[schema_id_int]
+        if schema_id_int in self.schema_id_int_generalizedProtocolMessageType_protobuf_schema_str_tuple_dict:
+            generalizedProtocolMessageType, protobuf_schema_str = self.schema_id_int_generalizedProtocolMessageType_protobuf_schema_str_tuple_dict[schema_id_int]
         else:
-            generalizedProtocolMessageType = self.schema_id_int_to_generalizedProtocolMessageType(schema_id_int)
-            self.schema_id_int_generalizedProtocolMessageType_dict[schema_id_int] = generalizedProtocolMessageType
+            generalizedProtocolMessageType, protobuf_schema_str = self.schema_id_int_to_generalizedProtocolMessageType_protobuf_schema_str_tuple(schema_id_int)
+            self.schema_id_int_generalizedProtocolMessageType_protobuf_schema_str_tuple_dict[schema_id_int] = (generalizedProtocolMessageType, protobuf_schema_str)
+        #
+        if key_bool:
+            self.last_consumed_message_key_schema_str = protobuf_schema_str
+        else:
+            self.last_consumed_message_value_schema_str = protobuf_schema_str
         #
         protobufDeserializer = ProtobufDeserializer(generalizedProtocolMessageType, {"use.deprecated.format": False}) 
         protobuf_message = protobufDeserializer(bytes, None)
         dict = MessageToDict(protobuf_message)
         return dict
 
-    def bytes_avro_to_dict(self, bytes):
+    def bytes_avro_to_dict(self, bytes, key_bool):
         schema_id_int = int.from_bytes(bytes[1:5], "big")
         if schema_id_int in self.schema_id_int_avro_schema_str_dict:
             avro_schema_str = self.schema_id_int_avro_schema_str_dict[schema_id_int]
@@ -510,17 +519,27 @@ class Cluster:
             avro_schema_str = self.schema_id_int_to_avro_schema_str(schema_id_int)
             self.schema_id_int_avro_schema_str_dict[schema_id_int] = avro_schema_str
         #
+        if key_bool:
+            self.last_consumed_message_key_schema_str = avro_schema_str
+        else:
+            self.last_consumed_message_value_schema_str = avro_schema_str
+        #
         avroDeserializer = AvroDeserializer(self.schemaRegistryClient, avro_schema_str)
         dict = avroDeserializer(bytes, None)
         return dict
 
-    def bytes_jsonschema_to_dict(self, bytes):
+    def bytes_jsonschema_to_dict(self, bytes, key_bool):
         schema_id_int = int.from_bytes(bytes[1:5], "big")
         if schema_id_int in self.schema_id_int_jsonschema_str_dict:
             jsonschema_str = self.schema_id_int_jsonschema_str_dict[schema_id_int]
         else:
             jsonschema_str = self.schema_id_int_to_jsonschema_str(schema_id_int)
             self.schema_id_int_jsonschema_str_dict[schema_id_int] = jsonschema_str
+        #
+        if key_bool:
+            self.last_consumed_message_key_schema_str = jsonschema_str
+        else:
+            self.last_consumed_message_value_schema_str = jsonschema_str
         #
         jsonDeserializer = JSONDeserializer(jsonschema_str)
         dict = jsonDeserializer(bytes, None)
@@ -546,22 +565,22 @@ class Cluster:
         elif key_type_str == "bytes":
             decode_key = bytes_to_bytes
         elif key_type_str in ["pb", "protobuf"]:
-            decode_key = self.bytes_protobuf_to_dict
+            decode_key = lambda bytes: self.bytes_protobuf_to_dict(bytes, key_bool=True)
         elif key_type_str == "avro":
-            decode_key = self.bytes_avro_to_dict
+            decode_key = lambda bytes: self.bytes_avro_to_dict(bytes, key_bool=True)
         elif key_type_str in ["json", "jsonschema"]:
-            decode_key = self.bytes_jsonschema_to_dict
+            decode_key = lambda bytes: self.bytes_jsonschema_to_dict(bytes, key_bool=True)
         #
         if value_type_str == "str":
             decode_value = bytes_to_str
         elif value_type_str == "bytes":
             decode_value = bytes_to_bytes
         elif value_type_str in ["pb", "protobuf"]:
-            decode_value = self.bytes_protobuf_to_dict
+            decode_value = lambda bytes: self.bytes_protobuf_to_dict(bytes, key_bool=False)
         elif value_type_str == "avro":
-            decode_value = self.bytes_avro_to_dict
+            decode_value = lambda bytes: self.bytes_avro_to_dict(bytes, key_bool=False)
         elif value_type_str in ["json", "jsonschema"]:
-            decode_value = self.bytes_jsonschema_to_dict
+            decode_value = lambda bytes: self.bytes_jsonschema_to_dict(bytes, key_bool=False)
         #
         message_dict = {"headers": message.headers(), "partition": message.partition(), "offset": message.offset(), "timestamp": message.timestamp(), "key": decode_key(message.key()), "value": decode_value(message.value())}
         return message_dict
@@ -603,41 +622,43 @@ class Cluster:
 
     # AdminClient - topics
 
-    def topics(self, topic=None, size=False):
+    def topics(self, pattern=None, size=False):
         size_bool = size
-        topic_str = topic
-        #
-        if topic_str != None:
-            if self.exists(topic_str):
-                topic_str_list = [topic_str]
-            else:
-                topic_str_list = []
-        else:
-            topic_str_list = list(self.adminClient.list_topics().topics.keys())
-            topic_str_list.sort()
+        pattern_str = pattern
         #
         if size_bool:
-            topic_str_size_int_dict = {topic_str: self.size(topic_str)[1] for topic_str in topic_str_list}
+            topic_str_size_dict_total_size_int_tuple_dict = self.size(pattern_str)            
+            topic_str_size_int_dict = {topic_str: topic_str_size_dict_total_size_int_tuple_dict[topic_str][1] for topic_str in topic_str_size_dict_total_size_int_tuple_dict}
             return topic_str_size_int_dict
         else:
+            topic_str_list = list(self.adminClient.list_topics().topics.keys())
+            if pattern_str != None:
+                topic_str_list = [topic_str for topic_str in topic_str_list if fnmatch(topic_str, pattern_str)] 
+            topic_str_list.sort()
             return topic_str_list
 
-    def ls(self, topic=None):
-        return self.topics(topic=topic, size=False)
+    def ls(self, pattern=None):
+        return self.topics(pattern=pattern, size=False)
 
     # Shell alias
-    def l(self, topic=None):
-        return self.topics(topic=topic, size=True)
+    def l(self, pattern=None):
+        return self.topics(pattern=pattern, size=True)
 
     # Shell alias
-    def ll(self, topic=None):
-        return self.topics(topic=topic, size=True)
+    def ll(self, pattern=None):
+        return self.topics(pattern=pattern, size=True)
 
-    def config(self, topic_str):
-        return self.get_config_dict(ResourceType.TOPIC, topic_str)
+    def config(self, pattern_str):
+        topic_str_list = self.topics(pattern_str)
+        #
+        topic_str_config_dict_dict = {topic_str: self.get_config_dict(ResourceType.TOPIC, topic_str) for topic_str in topic_str_list}
+        #
+        return topic_str_config_dict_dict
 
-    def set_config(self, topic_str, key_str, value_str, test=False):
-        self.set_config_dict(ResourceType.TOPIC, topic_str, {key_str: value_str}, test)
+    def set_config(self, pattern_str, key_str, value_str, test=False):
+        topic_str_list = self.topics(pattern_str)
+        for topic_str in topic_str_list:        
+            self.set_config_dict(ResourceType.TOPIC, topic_str, {key_str: value_str}, test)
 
     def create(self, topic_str, partitions=1, retention_ms=-1, operation_timeout=0):
         partitions_int = partitions
@@ -651,59 +672,72 @@ class Cluster:
     def mk(self, topic_str, partitions=1, retention_ms=-1):
         self.create(topic_str, partitions, retention_ms)
 
-    def delete(self, topic_str, operation_timeout=0):
-        operation_timeout_float = operation_timeout
-        #
-        self.adminClient.delete_topics([topic_str], operation_timeout=operation_timeout_float)
+    def delete(self, pattern_str, operation_timeout=0):
+        topic_str_list = self.topics(pattern_str)
+        for topic_str in topic_str_list:        
+            operation_timeout_float = operation_timeout
+            #
+            self.adminClient.delete_topics([topic_str], operation_timeout=operation_timeout_float)
 
     # Shell alias
-    def rm(self, topic_str):
-        self.delete(topic_str)
+    def rm(self, pattern_str):
+        self.delete(pattern_str)
 
-    def describe(self, topic_str):
-        topicMetadata = self.adminClient.list_topics(topic=topic_str).topics[topic_str]
-        topic_dict = {}
-        if topicMetadata:
-            topic_dict = topicMetadata_to_topic_dict(topicMetadata)
-        return topic_dict
+    def describe(self, pattern_str):
+        topic_str_topicMetadata_dict = self.adminClient.list_topics().topics
+        #
+        topic_str_topic_dict_dict = {topic_str: topicMetadata_to_topic_dict(topic_str_topicMetadata_dict[topic_str]) for topic_str in topic_str_topicMetadata_dict if fnmatch(topic_str, pattern_str)}
+        #
+        return topic_str_topic_dict_dict
 
     def exists(self, topic_str):
-        topic_dict = self.describe(topic_str)
-        if topic_dict["error"] != None:
-            if topic_dict["error"]["code"] == KafkaError.UNKNOWN_TOPIC_OR_PART:
-                return False
-        return True
+        if self.topics(topic_str):
+            return True
+        else:
+            return False
 
-    def partitions(self, topic_str):
-        num_partitions_int = len(self.adminClient.list_topics(topic=topic_str).topics[topic_str].partitions)
-        return num_partitions_int
+    def partitions(self, pattern_str):
+        topic_str_topicMetadata_dict = self.adminClient.list_topics().topics
+        #
+        topic_str_num_partitions_int_dict = {topic_str: len(topic_str_topicMetadata_dict[topic_str].partitions) for topic_str in topic_str_topicMetadata_dict if fnmatch(topic_str, pattern_str)}
+        #
+        return topic_str_num_partitions_int_dict
 
-    def set_partitions(self, topic_str, num_partitions_int, test=False):
+    def set_partitions(self, pattern_str, num_partitions_int, test=False):
         test_bool = test
         #
-        newPartitions = NewPartitions(topic_str, num_partitions_int)
-        self.adminClient.create_partitions([newPartitions], validate_only=test_bool)
+        topic_str_list = self.topics(pattern_str)
+        for topic_str in topic_str_list:
+            newPartitions = NewPartitions(topic_str, num_partitions_int)
+            self.adminClient.create_partitions([newPartitions], validate_only=test_bool)
 
-    def size(self, topic_str):
-        watermarks_dict = self.watermarks(topic_str)
+    def size(self, pattern_str):
+        topic_str_partition_int_tuple_dict_dict = self.watermarks(pattern_str)
         #
-        size_dict = {partition_int: watermarks_dict[partition_int][1]-watermarks_dict[partition_int][0] for partition_int in watermarks_dict.keys()}
-        #
-        total_size_int = 0
-        for offset_int_tuple in watermarks_dict.values():
-            partition_size_int = offset_int_tuple[1] - offset_int_tuple[0]               
-            total_size_int += partition_size_int
-        #
-        return size_dict, total_size_int
+        topic_str_size_dict_total_size_int_tuple_dict = {}
+        for topic_str, partition_int_tuple_dict in topic_str_partition_int_tuple_dict_dict.items():
+            size_dict = {partition_int: partition_int_tuple_dict[partition_int][1]-partition_int_tuple_dict[partition_int][0] for partition_int in partition_int_tuple_dict.keys()}
+            #
+            total_size_int = 0
+            for offset_int_tuple in partition_int_tuple_dict.values():
+                partition_size_int = offset_int_tuple[1] - offset_int_tuple[0]               
+                total_size_int += partition_size_int
+            #
+            topic_str_size_dict_total_size_int_tuple_dict[topic_str] = (size_dict, total_size_int)
+        return topic_str_size_dict_total_size_int_tuple_dict
 
-    def watermarks(self, topic_str):
+    def watermarks(self, pattern_str):
         config_dict = self.config_dict
         config_dict["group.id"] = "dummy_group_id"
         consumer = get_consumer(config_dict)
         #
-        partitions_int = self.partitions(topic_str)
-        offset_int_tuple_dict = {partition_int: consumer.get_watermark_offsets(TopicPartition(topic_str, partition=partition_int)) for partition_int in range(partitions_int)}
-        return offset_int_tuple_dict
+        topic_str_list = self.topics(pattern_str)
+        topic_str_partition_int_tuple_dict_dict = {}
+        for topic_str in topic_str_list:
+            partitions_int = self.partitions(topic_str)[topic_str]
+            partition_int_tuple_dict = {partition_int: consumer.get_watermark_offsets(TopicPartition(topic_str, partition=partition_int)) for partition_int in range(partitions_int)}
+            topic_str_partition_int_tuple_dict_dict[topic_str] = partition_int_tuple_dict
+        return topic_str_partition_int_tuple_dict_dict
     
     # AdminClient - groups
 
@@ -713,13 +747,17 @@ class Cluster:
         group_str_list.sort()
         return group_str_list
 
-    def describe_group(self, group_str):
-        groupMetadata_list = self.adminClient.list_groups(group=group_str)
-        group_dict = {}
-        if groupMetadata_list:            
-            groupMetadata = groupMetadata_list[0]
-            group_dict = groupMetadata_to_group_dict(groupMetadata)
-        return group_dict
+    def describe_groups(self, pattern_str):
+        group_str_list = self.groups()
+        group_str_group_dict_dict = {}
+        for group_str in group_str_list:
+            groupMetadata_list = self.adminClient.list_groups(group=group_str)
+            group_dict = {}
+            if groupMetadata_list:            
+                groupMetadata = groupMetadata_list[0]
+                group_dict = groupMetadata_to_group_dict(groupMetadata)
+                group_str_group_dict_dict[group_str] = group_dict
+        return group_str_group_dict_dict
 
     # AdminClient - brokers
 
@@ -775,11 +813,14 @@ class Cluster:
 
     # Producer
 
-    def produce(self, topic_str, value, key=None, key_type="str", value_type="str", key_schema=None, value_schema=None):
+    def produce(self, topic_str, value, key=None, key_type="str", value_type="str", key_schema=None, value_schema=None, partition=RD_KAFKA_PARTITION_UA, timestamp=0, headers=None):
         key_type_str = key_type
         value_type_str = value_type
         key_schema_str = key_schema
         value_schema_str = value_schema
+        partition_int = partition
+        timestamp_int = timestamp
+        headers_dict_or_list = headers
         #
         def serialize(key_bool):
             type_str = key_type_str if key_bool else value_type_str
@@ -787,20 +828,27 @@ class Cluster:
             payload = key if key_bool else value
             messageField = MessageField.KEY if key_bool else MessageField.VALUE
             #
+            def payload_to_payload_dict(payload):
+                if isinstance(payload, str) or isinstance(payload, bytes):
+                    payload_dict = json.loads(payload)
+                else:
+                    payload_dict = payload
+                return payload_dict
+            #
             if type_str in ["pb", "protobuf"]:
                 generalizedProtocolMessageType = self.schema_str_to_generalizedProtocolMessageType(schema_str, topic_str, key_bool)
                 protobufSerializer = ProtobufSerializer(generalizedProtocolMessageType, self.schemaRegistryClient, {"use.deprecated.format": False})
-                payload_dict = json.loads(payload)
+                payload_dict = payload_to_payload_dict(payload)
                 protobuf_message = generalizedProtocolMessageType()
                 ParseDict(payload_dict, protobuf_message)
                 payload_bytes = protobufSerializer(protobuf_message, SerializationContext(topic_str, messageField))
             elif type_str == "avro":
                 avroSerializer = AvroSerializer(self.schemaRegistryClient, schema_str)
-                payload_dict = json.loads(payload)
+                payload_dict = payload_to_payload_dict(payload)
                 payload_bytes = avroSerializer(payload_dict, SerializationContext(topic_str, messageField))
             elif type_str in ["json", "jsonschema"]:
                 jSONSerializer = JSONSerializer(schema_str, self.schemaRegistryClient)
-                payload_dict = json.loads(payload)
+                payload_dict = payload_to_payload_dict(payload)
                 payload_bytes = jSONSerializer(payload_dict, SerializationContext(topic_str, messageField))
             else:
                 payload_bytes = payload
@@ -809,7 +857,7 @@ class Cluster:
         key_bytes = serialize(key_bool=True)
         value_bytes = serialize(key_bool=False)
         #
-        self.producer.produce(topic_str, value_bytes, key_bytes)
+        self.producer.produce(topic_str, value_bytes, key_bytes, partition=partition_int, timestamp=timestamp_int, headers=headers_dict_or_list)
         #
         self.produced_messages_int += 1
         if self.produced_messages_int % 10000 == 0:
