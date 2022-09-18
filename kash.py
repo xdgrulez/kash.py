@@ -1,4 +1,4 @@
-from confluent_kafka import Consumer, KafkaError, OFFSET_BEGINNING, OFFSET_END, OFFSET_INVALID, OFFSET_STORED, Producer, TIMESTAMP_CREATE_TIME, TopicPartition
+from confluent_kafka import Consumer, OFFSET_BEGINNING, OFFSET_END, OFFSET_INVALID, OFFSET_STORED, Producer, TIMESTAMP_CREATE_TIME, TopicPartition
 from confluent_kafka.admin import AclBinding, AclBindingFilter, AclOperation, AclPermissionType, AdminClient, ConfigResource, NewPartitions, NewTopic, ResourceType, ResourcePatternType
 from confluent_kafka.schema_registry import SchemaRegistryClient
 from confluent_kafka.schema_registry.avro import AvroDeserializer, AvroSerializer
@@ -953,29 +953,58 @@ class Cluster:
             offsets_dict = {topicPartition.partition: offset_int_to_int_or_str(topicPartition.offset) for topicPartition in topicPartition_list if topicPartition.topic == self.subscribed_topic_str}
             return offsets_dict
 
-    def foreach(self, topic_str, group=None, foreach=print, key_type="str", value_type="str", n=ALL_MESSAGES):
+    def fold(self, topic_str, fold_function, group=None, key_type="str", value_type="str", n=ALL_MESSAGES):
         group_str = group
-        foreach_function = foreach
         key_type_str = key_type
         value_type_str = value_type
         num_messages_int = n
         #
+        acc_list = []
         self.subscribe(topic_str, group=group_str, key_type=key_type_str, value_type=value_type_str)
         message_counter_int = 0
         while True:
             message_dict_list = self.consume()
             if not message_dict_list:
                 break
-            foreach_function(message_dict_list[0])
+            list = fold_function(message_dict_list[0])
+            acc_list += list
             if num_messages_int != ALL_MESSAGES:
                 message_counter_int += 1
                 if message_counter_int >= num_messages_int:
                     break
         self.unsubscribe()
+        return acc_list
+
+    def foreach(self, topic_str, foreach=print, group=None, key_type="str", value_type="str", n=ALL_MESSAGES):
+        foreach_function = foreach
+        group_str = group
+        key_type_str = key_type
+        value_type_str = value_type
+        n_int = n
+        #     
+        def fold_function(message_dict):
+            foreach_function(message_dict)
+            return []
+        #
+        self.fold(topic_str, fold_function, group_str, key_type_str, value_type_str, n_int)
 
     # Shell alias
-    def cat(self, topic_str, group=None, foreach=print, key_type="str", value_type="str", n=ALL_MESSAGES):
-        self.foreach(topic_str, group, foreach, key_type, value_type, n)
+    def cat(self, topic_str, foreach=print, group=None, key_type="str", value_type="str", n=ALL_MESSAGES):
+        self.foreach(topic_str, foreach, group, key_type, value_type, n)
+
+    def grep(self, topic_str, match_function, group=None, key_type="str", value_type="str", n=ALL_MESSAGES):
+        group_str = group
+        key_type_str = key_type
+        value_type_str = value_type
+        n_int = n
+        #
+        def fold_function(message_dict):
+            if match_function(message_dict):
+                return [message_dict]
+            else:
+                return []
+        #
+        return self.fold(topic_str, fold_function, group_str, key_type_str, value_type_str, n_int)
 
     def download(self, topic_str, path_str, group=None, key_type="str", value_type="str", key_value_separator=None, message_separator="\n", overwrite=True):
         group_str = group

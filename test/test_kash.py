@@ -96,6 +96,11 @@ class Test(unittest.TestCase):
         cluster = Cluster(cluster_str)
         topic_str = create_test_topic_name()
         self.assertFalse(cluster.exists(topic_str))
+        cluster.create(topic_str)
+        time.sleep(1)
+        self.assertTrue(cluster.exists(topic_str))
+        cluster.delete(topic_str)
+        time.sleep(1)
 
     def test_partitions(self):
         cluster = Cluster(cluster_str)
@@ -372,7 +377,7 @@ class Test(unittest.TestCase):
         message_dict_list = cluster.consume(n=3)
         for message_dict in message_dict_list:
             value_dict = json.loads(message_dict["value"])            
-            self.assertRegexpMatches(value_dict["colour"], ".*ish")
+            self.assertRegex(value_dict["colour"], ".*ish")
         #
         cluster.delete(topic_str)
         cluster.delete(f"{topic_str}_1")
@@ -398,8 +403,8 @@ class Test(unittest.TestCase):
         cluster.subscribe(f"{topic_str}_1", key_type="pb", value_type="pb")
         message_dict_list = cluster.consume(n=3)
         for message_dict in message_dict_list:
-            self.assertRegexpMatches(message_dict["key"]["colour"], ".*ishy")
-            self.assertRegexpMatches(message_dict["value"]["colour"], ".*ish")
+            self.assertRegex(message_dict["key"]["colour"], ".*ishy")
+            self.assertRegex(message_dict["value"]["colour"], ".*ish")
         #
         cluster.delete(topic_str)
         cluster.delete(f"{topic_str}_1")
@@ -424,7 +429,7 @@ class Test(unittest.TestCase):
         cluster.subscribe(f"{topic_str}_1", value_type="avro")
         message_dict_list = cluster.consume(n=3)
         for message_dict in message_dict_list:
-            self.assertRegexpMatches(message_dict["value"]["colour"], ".*ish")
+            self.assertRegex(message_dict["value"]["colour"], ".*ish")
         #
         cluster.delete(topic_str)
         cluster.delete(f"{topic_str}_1")
@@ -449,7 +454,7 @@ class Test(unittest.TestCase):
         cluster.subscribe(f"{topic_str}_1", value_type="json")
         message_dict_list = cluster.consume(n=3)
         for message_dict in message_dict_list:
-            self.assertRegexpMatches(message_dict["value"]["colour"], ".*ish")
+            self.assertRegex(message_dict["value"]["colour"], ".*ish")
         #
         cluster.delete(topic_str)
         cluster.delete(f"{topic_str}_1")
@@ -476,6 +481,23 @@ class Test(unittest.TestCase):
         for message_dict in message_dict_list:            
             value_bytes = message_dict["value"]
             self.assertEqual(value_bytes[10], ord("X"))     
+        #
+        cluster.delete(topic_str)
+        cluster.delete(f"{topic_str}_1")
+        time.sleep(1)
+
+    def test_grep(self):
+        schema_str = '{ "type": "record", "name": "myrecord", "fields": [{"name": "name",  "type": "string" }, {"name": "calories", "type": "float" }, {"name": "colour", "type": "string" }] }'
+        #
+        cluster = Cluster(cluster_str)
+        topic_str = create_test_topic_name()
+        cluster.create(topic_str)
+        time.sleep(1)
+        cluster.cp("./snacks_value.txt", topic_str, value_type="avro", value_schema=schema_str)
+        self.assertEqual(cluster.size(topic_str)[topic_str][1], 3)
+        #
+        message_dict_list = cluster.grep(topic_str, lambda message_dict: message_dict["value"]["name"] == "timtam", value_type="avro")
+        self.assertEqual(len(message_dict_list), 1)
         #
         cluster.delete(topic_str)
         cluster.delete(f"{topic_str}_1")
