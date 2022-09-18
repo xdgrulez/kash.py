@@ -51,7 +51,7 @@ def count_lines(path_str):
     return count_int
 
 
-def foreach_line(path_str, proc_function, delimiter='\n', bufsize=4096):
+def foreach_line(path_str, proc_function, delimiter='\n', bufsize=4096, verbose=1, progress_num_lines=1000):
     """Summary line.
 
     Extended description of the function.
@@ -65,6 +65,8 @@ def foreach_line(path_str, proc_function, delimiter='\n', bufsize=4096):
     """
     delimiter_str = delimiter
     bufsize_int = bufsize
+    verbose_int = verbose
+    progress_num_lines_int = progress_num_lines
     #
     buf_str = ""
     #
@@ -79,7 +81,7 @@ def foreach_line(path_str, proc_function, delimiter='\n', bufsize=4096):
                 if buf_str:
                     proc_function(buf_str)
                     line_counter_int += 1
-                    if line_counter_int % 1000 == 0:
+                    if verbose_int > 0 and line_counter_int % progress_num_lines_int == 0:
                         print(f"{line_counter_int}/{file_line_count_int}")
                 break
             buf_str += newbuf_str
@@ -87,7 +89,7 @@ def foreach_line(path_str, proc_function, delimiter='\n', bufsize=4096):
             for line_str in line_str_list[:-1]:
                 proc_function(line_str)
                 line_counter_int += 1
-                if line_counter_int % 1000 == 0:
+                if verbose_int > 0 and line_counter_int % progress_num_lines_int == 0:
                     print(f"{line_counter_int}/{file_line_count_int}")
             buf_str = line_str_list[-1]
 
@@ -340,7 +342,7 @@ def groupMember_to_dict(groupMember):
 
 # Cross-cluster
 
-def replicate(source_cluster, source_topic_str, target_cluster, target_topic_str, group=None, offsets=None, transform=None, key_type="bytes", value_type="bytes", keep_timestamps=True, n=ALL_MESSAGES, batch_size=1):
+def replicate(source_cluster, source_topic_str, target_cluster, target_topic_str, group=None, offsets=None, transform=None, key_type="bytes", value_type="bytes", keep_timestamps=True, n=ALL_MESSAGES, batch_size=1, verbose=1, progress_num_messages=1000):
     group_str = group
     offsets_dict = offsets
     transform_function = transform
@@ -349,6 +351,8 @@ def replicate(source_cluster, source_topic_str, target_cluster, target_topic_str
     keep_timestamps_bool = keep_timestamps
     num_messages_int = n
     batch_size_int = batch_size
+    verbose_int = verbose
+    progress_num_messages_int = progress_num_messages
     #
     source_cluster.subscribe(source_topic_str, group=group_str, offsets=offsets_dict, key_type=key_type_str, value_type=value_type_str)
     message_counter_int = 0
@@ -368,8 +372,10 @@ def replicate(source_cluster, source_topic_str, target_cluster, target_topic_str
                 timestamp_int = 0
             target_cluster.produce(target_topic_str, message_dict["value"], message_dict["key"], key_type=key_type_str, value_type=value_type_str, key_schema=source_cluster.last_consumed_message_key_schema_str, value_schema=source_cluster.last_consumed_message_value_schema_str, partition=message_dict["partition"], timestamp=timestamp_int, headers=message_dict["headers"])
         #
+        message_counter_int += len(message_dict_list)
+        if verbose_int > 0 and message_counter_int % progress_num_messages_int == 0:
+            print(message_counter_int)
         if num_messages_int != ALL_MESSAGES:
-            message_counter_int += len(message_dict_list)
             if message_counter_int >= num_messages_int:
                 break
     #
@@ -377,11 +383,7 @@ def replicate(source_cluster, source_topic_str, target_cluster, target_topic_str
     source_cluster.unsubscribe()
 
 # Shell alias
-
-
-def cp(source_cluster, source_topic_str, target_cluster, target_topic_str, group=None, offsets=None, transform=None, key_type="bytes", value_type="bytes", keep_timestamps=True):
-    replicate(source_cluster, source_topic_str, target_cluster, target_topic_str, group=group, offsets=offsets, transform=transform, key_type=key_type, value_type=value_type, keep_timestamps=keep_timestamps)
-
+cp = replicate
 
 # Main kash.py class
 
@@ -412,6 +414,8 @@ class Cluster:
         self.schema_id_int_jsonschema_str_dict = {}
         # all kinds of timeouts
         self.timeout_float = 1.0
+        # Producer
+        self.flush_num_messages_int = 10000
         # Consumer
         # auto.offset.reset (earliest or latest (confluent_kafka default: latest))
         self.auto_offset_reset_str = "earliest"
@@ -419,12 +423,31 @@ class Cluster:
         self.auto_commit_bool = True
         # session.timeout.ms (6000-300000 (confluent_kafka default: 30000))
         self.session_timeout_ms_int = 10000
+        # Standard output
+        self.verbose_int = 1
+        self.progress_num_messages_int = 1000
 
     def timeout(self):
         return self.timeout_float
 
     def set_timeout(self, timeout_float):
         self.timeout_float = timeout_float
+
+    #
+
+    def flush_num_messages(self):
+        return self.flush_num_messages_int
+
+    def set_flush_num_messages(self, flush_num_messages_int):
+        self.flush_num_messages_int = flush_num_messages_int
+
+    #
+
+    def auto_offset_reset(self):
+        return self.auto_offset_reset_str
+
+    def set_auto_offset_reset(self, auto_offset_reset_str):
+        self.auto_offset_reset_str = auto_offset_reset_str
 
     #
 
@@ -444,11 +467,19 @@ class Cluster:
 
     #
 
-    def auto_offset_reset(self):
-        return self.auto_offset_reset_str
+    def verbose(self):
+        return self.verbose_int
 
-    def set_auto_offset_reset(self, auto_offset_reset_str):
-        self.auto_offset_reset_str = auto_offset_reset_str
+    def set_verbose(self, verbose_int):
+        self.verbose_int = verbose_int
+
+    #
+
+    def progress_num_messages(self):
+        return self.progress_num_messages_int
+
+    def set_progress_num_messages(self, progress_num_messages_int):
+        self.progress_num_messages_int = progress_num_messages_int
 
     # Schema Registry helper methods (inside the Cluster class to do caching etc.)
 
@@ -579,13 +610,15 @@ class Cluster:
             decode_key = bytes_to_str
         elif key_type_str == "bytes":
             decode_key = bytes_to_bytes
+        elif key_type_str == "json":
+            decode_key = json.loads
         elif key_type_str in ["pb", "protobuf"]:
             def decode_key(bytes):
                 return self.bytes_protobuf_to_dict(bytes, key_bool=True)
         elif key_type_str == "avro":
             def decode_key(bytes):
                 return self.bytes_avro_to_dict(bytes, key_bool=True)
-        elif key_type_str in ["json", "jsonschema"]:
+        elif key_type_str == "jsonschema":
             def decode_key(bytes):
                 return self.bytes_jsonschema_to_dict(bytes, key_bool=True)
         #
@@ -593,13 +626,15 @@ class Cluster:
             decode_value = bytes_to_str
         elif value_type_str == "bytes":
             decode_value = bytes_to_bytes
+        elif value_type_str == "json":
+            decode_value = json.loads
         elif value_type_str in ["pb", "protobuf"]:
             def decode_value(bytes):
                 return self.bytes_protobuf_to_dict(bytes, key_bool=False)
         elif value_type_str == "avro":
             def decode_value(bytes):
                 return self.bytes_avro_to_dict(bytes, key_bool=False)
-        elif value_type_str in ["json", "jsonschema"]:
+        elif value_type_str == "jsonschema":
             def decode_value(bytes):
                 return self.bytes_jsonschema_to_dict(bytes, key_bool=False)
         #
@@ -658,16 +693,14 @@ class Cluster:
             topic_str_list.sort()
             return topic_str_list
 
-    def ls(self, pattern=None):
-        return self.topics(pattern=pattern, size=False)
+    # Shell alias
+    ls = topics
+
+    def l(self, pattern=None, size=True):
+        return self.topics(pattern=pattern, size=size)
 
     # Shell alias
-    def l(self, pattern=None):
-        return self.topics(pattern=pattern, size=True)
-
-    # Shell alias
-    def ll(self, pattern=None):
-        return self.topics(pattern=pattern, size=True)
+    ll = l
 
     def config(self, pattern_str):
         topic_str_list = self.topics(pattern_str)
@@ -688,21 +721,24 @@ class Cluster:
         #
         newTopic = NewTopic(topic_str, partitions_int, config={"retention.ms": retention_ms_int})
         self.adminClient.create_topics([newTopic], operation_timeout=operation_timeout_float)
+        #
+        if self.verbose_int > 0:
+            print(f"Topic {topic_str} created.")
 
-    # Shell alias
-    def mk(self, topic_str, partitions=1, retention_ms=-1):
-        self.create(topic_str, partitions, retention_ms)
+    # Shell aliases
+    mk = create
 
     def delete(self, pattern_str, operation_timeout=0):
+        operation_timeout_float = operation_timeout
+        #
         topic_str_list = self.topics(pattern_str)
-        for topic_str in topic_str_list:
-            operation_timeout_float = operation_timeout
-            #
-            self.adminClient.delete_topics([topic_str], operation_timeout=operation_timeout_float)
+        self.adminClient.delete_topics(topic_str_list, operation_timeout=operation_timeout_float)
+        if self.verbose_int > 0:
+            for topic_str in topic_str_list:
+                print(f"Topic {topic_str} deleted.")
 
     # Shell alias
-    def rm(self, pattern_str):
-        self.delete(pattern_str)
+    rm = delete
 
     def offsets_for_times(self, topic_str, partition_int_timestamp_int_dict):
         partition_int_offset_int_dict = {}
@@ -743,9 +779,13 @@ class Cluster:
         test_bool = test
         #
         topic_str_list = self.topics(pattern_str)
-        for topic_str in topic_str_list:
-            newPartitions = NewPartitions(topic_str, num_partitions_int)
-            self.adminClient.create_partitions([newPartitions], validate_only=test_bool)
+        #
+        newPartitions_list = [NewPartitions(topic_str, num_partitions_int) for topic_str in topic_str_list]
+        self.adminClient.create_partitions(newPartitions_list, validate_only=test_bool)
+        #
+        if not test_bool and self.verbose_int > 0:
+            for topic_str in topic_str_list:
+                print(f"Set number of partitions of topic {topic_str} to {num_partitions_int}")
 
     def size(self, pattern_str):
         topic_str_partition_int_tuple_dict_dict = self.watermarks(pattern_str)
@@ -784,15 +824,10 @@ class Cluster:
         return group_str_list
 
     def describe_groups(self, pattern_str):
-        group_str_list = self.groups()
-        group_str_group_dict_dict = {}
-        for group_str in group_str_list:
-            groupMetadata_list = self.adminClient.list_groups(group=group_str)
-            group_dict = {}
-            if groupMetadata_list:
-                groupMetadata = groupMetadata_list[0]
-                group_dict = groupMetadata_to_group_dict(groupMetadata)
-                group_str_group_dict_dict[group_str] = group_dict
+        groupMetadata_list = self.adminClient.list_groups()
+        #
+        group_str_group_dict_dict = {groupMetadata.id: groupMetadata_to_group_dict(groupMetadata) for groupMetadata in groupMetadata_list if fnmatch(groupMetadata.id, pattern_str)}
+        #
         return group_str_group_dict_dict
 
     # AdminClient - brokers
@@ -806,6 +841,9 @@ class Cluster:
 
     def set_broker_config(self, broker_int, key_str, value_str, test=False):
         self.set_config_dict(ResourceType.BROKER, str(broker_int), {key_str: value_str}, test)
+        #
+        if not test and self.verbose_int > 0:
+            print(f"Set broker {broker_int} config {key_str} to {value_str}")
 
     # AdminClient - ACLs
 
@@ -873,32 +911,37 @@ class Cluster:
                     payload_dict = payload
                 return payload_dict
             #
-            if type_str in ["pb", "protobuf"]:
+            if type_str == "json":
+                if isinstance(payload, dict):
+                    payload_str_or_bytes = json.dumps(payload)
+                else:
+                    payload_str_or_bytes = payload
+            elif type_str in ["pb", "protobuf"]:
                 generalizedProtocolMessageType = self.schema_str_to_generalizedProtocolMessageType(schema_str, topic_str, key_bool)
                 protobufSerializer = ProtobufSerializer(generalizedProtocolMessageType, self.schemaRegistryClient, {"use.deprecated.format": False})
                 payload_dict = payload_to_payload_dict(payload)
                 protobuf_message = generalizedProtocolMessageType()
                 ParseDict(payload_dict, protobuf_message)
-                payload_bytes = protobufSerializer(protobuf_message, SerializationContext(topic_str, messageField))
+                payload_str_or_bytes = protobufSerializer(protobuf_message, SerializationContext(topic_str, messageField))
             elif type_str == "avro":
                 avroSerializer = AvroSerializer(self.schemaRegistryClient, schema_str)
                 payload_dict = payload_to_payload_dict(payload)
-                payload_bytes = avroSerializer(payload_dict, SerializationContext(topic_str, messageField))
-            elif type_str in ["json", "jsonschema"]:
+                payload_str_or_bytes = avroSerializer(payload_dict, SerializationContext(topic_str, messageField))
+            elif type_str == "jsonschema":
                 jSONSerializer = JSONSerializer(schema_str, self.schemaRegistryClient)
                 payload_dict = payload_to_payload_dict(payload)
-                payload_bytes = jSONSerializer(payload_dict, SerializationContext(topic_str, messageField))
+                payload_str_or_bytes = jSONSerializer(payload_dict, SerializationContext(topic_str, messageField))
             else:
-                payload_bytes = payload
-            return payload_bytes
+                payload_str_or_bytes = payload
+            return payload_str_or_bytes
         #
-        key_bytes = serialize(key_bool=True)
-        value_bytes = serialize(key_bool=False)
+        key_str_or_bytes = serialize(key_bool=True)
+        value_str_or_bytes = serialize(key_bool=False)
         #
-        self.producer.produce(topic_str, value_bytes, key_bytes, partition=partition_int, timestamp=timestamp_int, headers=headers_dict_or_list)
+        self.producer.produce(topic_str, value_str_or_bytes, key_str_or_bytes, partition=partition_int, timestamp=timestamp_int, headers=headers_dict_or_list)
         #
         self.produced_messages_int += 1
-        if self.produced_messages_int % 10000 == 0:
+        if self.produced_messages_int % self.flush_num_messages_int == 0:
             self.producer.flush(self.timeout_float)
 
     def upload(self, path_str, topic_str, key_type="str", value_type="str", key_schema=None, value_schema=None, key_value_separator=None, message_separator="\n"):
@@ -923,7 +966,7 @@ class Cluster:
                 #
                 self.produce(topic_str, value_str, key=key_str, key_type=key_type, value_type=value_type, key_schema=key_schema, value_schema=value_schema)
         #
-        foreach_line(path_str, proc, delimiter=message_separator_str)
+        foreach_line(path_str, proc, delimiter=message_separator_str, verbose=self.verbose_int, progress_num_lines=self.progress_num_messages_int)
         self.flush()
 
     def flush(self):
@@ -1011,8 +1054,10 @@ class Cluster:
             acc_list1 = []
             [acc_list1 := acc_list1 + fold_function(message_dict) for message_dict in message_dict_list]
             acc_list += acc_list1
+            message_counter_int += len(message_dict_list)
+            if self.verbose_int > 0 and message_counter_int % self.progress_num_messages_int == 0:
+                print(message_counter_int)
             if num_messages_int != ALL_MESSAGES:
-                message_counter_int += len(message_dict_list)
                 if message_counter_int >= num_messages_int:
                     break
         self.unsubscribe()
@@ -1035,8 +1080,7 @@ class Cluster:
         self.fold(topic_str, fold_function, group=group_str, offsets=offsets_dict, key_type=key_type_str, value_type=value_type_str, n=num_messages_int, batch_size=batch_size_int)
 
     # Shell alias
-    def cat(self, topic_str, foreach=print, group=None, offsets=None, key_type="str", value_type="str", n=ALL_MESSAGES, batch_size=1):
-        self.foreach(topic_str, foreach, group=group, offsets=offsets, key_type=key_type, value_type=value_type, n=n, batch_size=batch_size)
+    cat = foreach
 
     def grep(self, topic_str, match_function, group=None, offsets=None, key_type="str", value_type="str", n=ALL_MESSAGES, batch_size=1):
         group_str = group
@@ -1092,8 +1136,10 @@ class Cluster:
                     output_str_list += [output_str]
                 textIOWrapper.writelines(output_str_list)
                 #
+                message_counter_int += len(message_dict_list)
+                if self.verbose_int > 0 and message_counter_int % self.progress_num_messages_int == 0:
+                    print(message_counter_int)
                 if num_messages_int != ALL_MESSAGES:
-                    message_counter_int += len(message_dict_list)
                     if message_counter_int >= num_messages_int:
                         break
         self.unsubscribe()
