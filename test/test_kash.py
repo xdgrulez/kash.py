@@ -496,9 +496,36 @@ class Test(unittest.TestCase):
         cluster.cp("./snacks_value.txt", topic_str, value_type="avro", value_schema=schema_str)
         self.assertEqual(cluster.size(topic_str)[topic_str][1], 3)
         #
-        message_dict_list = cluster.grep(topic_str, lambda message_dict: message_dict["value"]["name"] == "timtam", value_type="avro")
+        message_dict_list = cluster.grep(topic_str, lambda message_dict: message_dict["value"]["name"] == "cake", value_type="avro")
         self.assertEqual(len(message_dict_list), 1)
+        #
+        message_dict_list = cluster.grep(topic_str, lambda message_dict: message_dict["value"]["name"] == "cake", value_type="avro", offsets={0: 2})
+        self.assertEqual(len(message_dict_list), 0)
         #
         cluster.delete(topic_str)
         cluster.delete(f"{topic_str}_1")
         time.sleep(1)
+
+    def test_offsets_for_times(self):
+        cluster = Cluster(cluster_str)
+        topic_str = create_test_topic_name()
+        cluster.create(topic_str)
+        time.sleep(1)
+        cluster.produce(topic_str, "message 1")
+        time.sleep(1)
+        cluster.produce(topic_str, "message 2")
+        cluster.flush()
+        self.assertEqual(cluster.size(topic_str)[topic_str][1], 2)
+        #
+        cluster.subscribe(topic_str)
+        message_dict_list = cluster.consume(n=2)
+        message1_timestamp_int = message_dict_list[1]["timestamp"][1]
+        message1_offset_int = message_dict_list[1]["offset"]
+        #
+        partition_int_offset_int_dict = cluster.offsets_for_times(topic_str, {0: message1_timestamp_int})
+        found_message1_offset_int = partition_int_offset_int_dict[0]
+        self.assertEqual(message1_offset_int, found_message1_offset_int)
+        #
+        cluster.delete(topic_str)
+        time.sleep(1)
+    
