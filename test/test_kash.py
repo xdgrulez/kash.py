@@ -170,7 +170,7 @@ class Test(unittest.TestCase):
         time.sleep(1)
         cluster.cp("./snacks_value.txt", topic_str, value_type="str")
         self.assertEqual(cluster.size(topic_str)[topic_str][1], 3)
-        cluster.cp(topic_str, "./snacks_value1.txt", value_type="str")
+        cluster.cp(topic_str, "./snacks_value1.txt", value_type="str", batch_size=3)
         self.assertTrue(filecmp.cmp("./snacks_value.txt", "./snacks_value1.txt"))
         os.remove("./snacks_value1.txt")
         cluster.delete(topic_str)

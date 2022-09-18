@@ -340,17 +340,20 @@ def groupMember_to_dict(groupMember):
 
 # Cross-cluster
 
-def replicate(source_cluster, source_topic_str, target_cluster, target_topic_str, group=None, offsets=None, transform=None, key_type="bytes", value_type="bytes", keep_timestamps=True):
+def replicate(source_cluster, source_topic_str, target_cluster, target_topic_str, group=None, offsets=None, transform=None, key_type="bytes", value_type="bytes", keep_timestamps=True, n=ALL_MESSAGES, batch_size=1):
     group_str = group
     offsets_dict = offsets
     transform_function = transform
     key_type_str = key_type
     value_type_str = value_type
     keep_timestamps_bool = keep_timestamps
+    num_messages_int = n
+    batch_size_int = batch_size
     #
     source_cluster.subscribe(source_topic_str, group=group_str, offsets=offsets_dict, key_type=key_type_str, value_type=value_type_str)
+    message_counter_int = 0
     while True:
-        message_dict_list = source_cluster.consume()
+        message_dict_list = source_cluster.consume(n=batch_size_int)
         if not message_dict_list:
             break
         for message_dict in message_dict_list:
@@ -364,7 +367,13 @@ def replicate(source_cluster, source_topic_str, target_cluster, target_topic_str
             else:
                 timestamp_int = 0
             target_cluster.produce(target_topic_str, message_dict["value"], message_dict["key"], key_type=key_type_str, value_type=value_type_str, key_schema=source_cluster.last_consumed_message_key_schema_str, value_schema=source_cluster.last_consumed_message_value_schema_str, partition=message_dict["partition"], timestamp=timestamp_int, headers=message_dict["headers"])
-        target_cluster.flush()
+        #
+        if num_messages_int != ALL_MESSAGES:
+            message_counter_int += len(message_dict_list)
+            if message_counter_int >= num_messages_int:
+                break
+    #
+    target_cluster.flush()
     source_cluster.unsubscribe()
 
 # Shell alias
@@ -979,59 +988,63 @@ class Cluster:
         self.consumer.commit(self.last_consumed_message)
 
     def offsets(self):
-        topicPartition_list = self.consumer.committed(self.topicPartition_list, timeout=1.0)
+        topicPartition_list = self.consumer.committed(self.topicPartition_list, timeout=self.timeout_float)
         if self.subscribed_topic_str:
             offsets_dict = {topicPartition.partition: offset_int_to_int_or_str(topicPartition.offset) for topicPartition in topicPartition_list if topicPartition.topic == self.subscribed_topic_str}
             return offsets_dict
 
-    def fold(self, topic_str, fold_function, group=None, offsets=None, key_type="str", value_type="str", n=ALL_MESSAGES):
+    def fold(self, topic_str, fold_function, group=None, offsets=None, key_type="str", value_type="str", n=ALL_MESSAGES, batch_size=1):
         group_str = group
         offsets_dict = offsets
         key_type_str = key_type
         value_type_str = value_type
         num_messages_int = n
+        batch_size_int = batch_size
         #
         acc_list = []
         self.subscribe(topic_str, group=group_str, offsets=offsets_dict, key_type=key_type_str, value_type=value_type_str)
         message_counter_int = 0
         while True:
-            message_dict_list = self.consume()
+            message_dict_list = self.consume(n=batch_size_int)
             if not message_dict_list:
                 break
-            list = fold_function(message_dict_list[0])
-            acc_list += list
+            acc_list1 = []
+            [acc_list1 := acc_list1 + fold_function(message_dict) for message_dict in message_dict_list]
+            acc_list += acc_list1
             if num_messages_int != ALL_MESSAGES:
-                message_counter_int += 1
+                message_counter_int += len(message_dict_list)
                 if message_counter_int >= num_messages_int:
                     break
         self.unsubscribe()
         return acc_list
 
-    def foreach(self, topic_str, foreach=print, group=None, offsets=None, key_type="str", value_type="str", n=ALL_MESSAGES):
+    def foreach(self, topic_str, foreach=print, group=None, offsets=None, key_type="str", value_type="str", n=ALL_MESSAGES, batch_size=1):
         foreach_function = foreach
         group_str = group
         offsets_dict = offsets
         key_type_str = key_type
         value_type_str = value_type
         num_messages_int = n
+        batch_size_int = batch_size
         #
 
         def fold_function(message_dict):
             foreach_function(message_dict)
             return []
         #
-        self.fold(topic_str, fold_function, group=group_str, offsets=offsets_dict, key_type=key_type_str, value_type=value_type_str, n=num_messages_int)
+        self.fold(topic_str, fold_function, group=group_str, offsets=offsets_dict, key_type=key_type_str, value_type=value_type_str, n=num_messages_int, batch_size=batch_size_int)
 
     # Shell alias
-    def cat(self, topic_str, foreach=print, group=None, offsets=None, key_type="str", value_type="str", n=ALL_MESSAGES):
-        self.foreach(topic_str, foreach, group=group, offsets=offsets, key_type=key_type, value_type=value_type, n=n)
+    def cat(self, topic_str, foreach=print, group=None, offsets=None, key_type="str", value_type="str", n=ALL_MESSAGES, batch_size=1):
+        self.foreach(topic_str, foreach, group=group, offsets=offsets, key_type=key_type, value_type=value_type, n=n, batch_size=batch_size)
 
-    def grep(self, topic_str, match_function, group=None, offsets=None, key_type="str", value_type="str", n=ALL_MESSAGES):
+    def grep(self, topic_str, match_function, group=None, offsets=None, key_type="str", value_type="str", n=ALL_MESSAGES, batch_size=1):
         group_str = group
         offsets_dict = offsets
         key_type_str = key_type
         value_type_str = value_type
         num_messages_int = n
+        batch_size_int = batch_size
         #
 
         def fold_function(message_dict):
@@ -1040,9 +1053,9 @@ class Cluster:
             else:
                 return []
         #
-        return self.fold(topic_str, fold_function, group=group_str, offsets=offsets_dict, key_type=key_type_str, value_type=value_type_str, n=num_messages_int)
+        return self.fold(topic_str, fold_function, group=group_str, offsets=offsets_dict, key_type=key_type_str, value_type=value_type_str, n=num_messages_int, batch_size=batch_size_int)
 
-    def download(self, topic_str, path_str, group=None, offsets=None, key_type="str", value_type="str", key_value_separator=None, message_separator="\n", overwrite=True, n=ALL_MESSAGES):
+    def download(self, topic_str, path_str, group=None, offsets=None, key_type="str", value_type="str", key_value_separator=None, message_separator="\n", overwrite=True, n=ALL_MESSAGES, batch_size=1):
         group_str = group
         offsets_dict = offsets
         key_type_str = key_type
@@ -1051,6 +1064,7 @@ class Cluster:
         message_separator_str = message_separator
         overwrite_bool = overwrite
         num_messages_int = n
+        batch_size_int = batch_size
         #
         mode_str = "w" if overwrite_bool else "a"
         #
@@ -1058,37 +1072,38 @@ class Cluster:
         with open(path_str, mode_str) as textIOWrapper:
             message_counter_int = 0
             while True:
-                message_dict_list = self.consume()
+                message_dict_list = self.consume(n=batch_size_int)
                 if not message_dict_list:
                     break
-                message_dict = message_dict_list[0]
-                #
-                value = message_dict["value"]
-                if isinstance(value, dict):
-                    value = json.dumps(value)
-                if key_value_separator_str is None:
-                    output = value
-                else:
-                    key = message_dict["key"]
-                    if isinstance(key, dict):
-                        key = json.dumps(key)
-                    output = f"{key}{key_value_separator_str}{value}"
-                #
-                output_str = f"{output}{message_separator_str}"
-                textIOWrapper.write(output_str)
+                output_str_list = []
+                for message_dict in message_dict_list:
+                    value = message_dict["value"]
+                    if isinstance(value, dict):
+                        value = json.dumps(value)
+                    if key_value_separator_str is None:
+                        output = value
+                    else:
+                        key = message_dict["key"]
+                        if isinstance(key, dict):
+                            key = json.dumps(key)
+                        output = f"{key}{key_value_separator_str}{value}"
+                    #
+                    output_str = f"{output}{message_separator_str}"
+                    output_str_list += [output_str]
+                textIOWrapper.writelines(output_str_list)
                 #
                 if num_messages_int != ALL_MESSAGES:
-                    message_counter_int += 1
+                    message_counter_int += len(message_dict_list)
                     if message_counter_int >= num_messages_int:
                         break
         self.unsubscribe()
 
     # Shell alias for upload and download
-    def cp(self, source_str, target_str, group=None, offsets=None, key_type="str", value_type="str", key_schema=None, value_schema=None, key_value_separator=None, message_separator="\n", overwrite=True, n=ALL_MESSAGES):
+    def cp(self, source_str, target_str, group=None, offsets=None, key_type="str", value_type="str", key_schema=None, value_schema=None, key_value_separator=None, message_separator="\n", overwrite=True, n=ALL_MESSAGES, batch_size=1):
         if is_file(source_str) and not is_file(target_str):
             self.upload(source_str, target_str, key_type=key_type, value_type=value_type, key_schema=key_schema, value_schema=value_schema, key_value_separator=key_value_separator, message_separator=message_separator)
         elif not is_file(source_str) and is_file(target_str):
-            self.download(source_str, target_str, group=group, offsets=offsets, key_type=key_type, value_type=value_type, key_value_separator=key_value_separator, message_separator=message_separator, overwrite=overwrite, n=n)
+            self.download(source_str, target_str, group=group, offsets=offsets, key_type=key_type, value_type=value_type, key_value_separator=key_value_separator, message_separator=message_separator, overwrite=overwrite, n=n, batch_size=batch_size)
         elif not is_file(source_str) and not is_file(target_str):
             print("Please prefix files with \"./\"; use the global replicate()/cp() function to copy topics.")
         elif is_file(source_str) and is_file(target_str):
