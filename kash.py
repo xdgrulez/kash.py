@@ -52,17 +52,6 @@ def count_lines(path_str):
 
 
 def foreach_line(path_str, proc_function, delimiter='\n', bufsize=4096, verbose=1, progress_num_lines=1000):
-    """Summary line.
-
-    Extended description of the function.
-
-    Args:
-        arg1 (str): Description of arg1
-        arg2 (int): Description of arg2
-
-    Returns:
-        bool: Description of return value
-    """
     delimiter_str = delimiter
     bufsize_int = bufsize
     verbose_int = verbose
@@ -343,6 +332,17 @@ def groupMember_to_dict(groupMember):
 # Cross-cluster
 
 def replicate(source_cluster, source_topic_str, target_cluster, target_topic_str, group=None, offsets=None, transform=None, source_key_type="bytes", source_value_type="bytes", target_key_type=None, target_value_type=None, target_key_schema=None, target_value_schema=None, keep_timestamps=True, n=ALL_MESSAGES, batch_size=1, verbose=1, progress_num_messages=1000):
+    """Replicate a topic.
+
+    Replicate (parts of) a topic (source_topic_str) on one cluster (source_cluster) to another topic (target_topic_str) on another (or the same) cluster (target_cluster). Each replicated message can be transformed into another message using a single message transform (transform). The source and target topics can have different message key and value types; e.g. the source topic can have value type Avro whereas the target topic will be written with value type Protobuf.
+
+    Args:
+        arg1 (str): Description of arg1
+        arg2 (int): Description of arg2
+
+    Returns:
+        bool: Description of return value
+    """
     group_str = group
     offsets_dict = offsets
     transform_function = transform
