@@ -404,11 +404,11 @@ class Cluster:
         self.schema_id_int_generalizedProtocolMessageType_protobuf_schema_str_tuple_dict = {}
         self.schema_id_int_avro_schema_str_dict = {}
         self.schema_id_int_jsonschema_str_dict = {}
-        # all kinds of timeouts
-        self.timeout_float = 1.0
         # Producer
         self.flush_num_messages_int = 10000
+        self.flush_timeout_float = 2.0
         # Consumer
+        self.consume_timeout_float = 1.0
         # auto.offset.reset (earliest or latest (confluent_kafka default: latest))
         self.auto_offset_reset_str = "earliest"
         # enable.auto.commit (True or False (confluent_kafka default: True))
@@ -419,19 +419,27 @@ class Cluster:
         self.verbose_int = 1
         self.progress_num_messages_int = 1000
 
-    def timeout(self):
-        return self.timeout_float
-
-    def set_timeout(self, timeout_float):
-        self.timeout_float = timeout_float
-
-    #
-
     def flush_num_messages(self):
         return self.flush_num_messages_int
 
     def set_flush_num_messages(self, flush_num_messages_int):
         self.flush_num_messages_int = flush_num_messages_int
+
+    #
+
+    def flush_timeout(self):
+        return self.flush_timeout_float
+
+    def set_flush_timeout(self, flush_timeout_float):
+        self.flush_timeout_float = flush_timeout_float
+
+    #
+
+    def consume_timeout(self):
+        return self.consume_timeout_float
+
+    def set_consume_timeout(self, consume_timeout_float):
+        self.consume_timeout_float = consume_timeout_float
 
     #
 
@@ -712,25 +720,22 @@ class Cluster:
         topic_str_key_str_value_str_tuple_dict = {topic_str: (key_str, value_str) for topic_str in topic_str_list}
         return topic_str_key_str_value_str_tuple_dict
         
-    def create(self, topic_str, partitions=1, retention_ms=-1, operation_timeout=0):
+    def create(self, topic_str, partitions=1, retention_ms=-1):
         partitions_int = partitions
         retention_ms_int = retention_ms
-        operation_timeout_float = operation_timeout
         #
         newTopic = NewTopic(topic_str, partitions_int, config={"retention.ms": retention_ms_int})
-        self.adminClient.create_topics([newTopic], operation_timeout=operation_timeout_float)
+        self.adminClient.create_topics([newTopic])
         #
         return topic_str
 
     # Shell aliases
     mk = create
 
-    def delete(self, pattern_str, operation_timeout=0):
-        operation_timeout_float = operation_timeout
-        #
+    def delete(self, pattern_str):
         topic_str_list = self.topics(pattern_str)
         if topic_str_list:
-            self.adminClient.delete_topics(topic_str_list, operation_timeout=operation_timeout_float)
+            self.adminClient.delete_topics(topic_str_list)
             return topic_str_list
         else:
             return []
@@ -738,15 +743,16 @@ class Cluster:
     # Shell alias
     rm = delete
 
-    def offsets_for_times(self, topic_str, partition_int_timestamp_int_dict):
+    def offsets_for_times(self, topic_str, partition_int_timestamp_int_dict, timeout=-1):
         partition_int_offset_int_dict = {}
+        timeout_float = timeout
         #
         topicPartition_list = [TopicPartition(topic_str, partition_int, timestamp_int) for partition_int, timestamp_int in partition_int_timestamp_int_dict.items()]
         if topicPartition_list:
             config_dict = self.config_dict
             config_dict["group.id"] = "dummy_group_id"
             consumer = get_consumer(config_dict)
-            topicPartition_list1 = consumer.offsets_for_times(topicPartition_list)
+            topicPartition_list1 = consumer.offsets_for_times(topicPartition_list, timeout=timeout_float)
             #
             for topicPartition in topicPartition_list1:
                 partition_int_offset_int_dict[topicPartition.partition] = topicPartition.offset
@@ -802,7 +808,9 @@ class Cluster:
             topic_str_size_dict_total_size_int_tuple_dict[topic_str] = (size_dict, total_size_int)
         return topic_str_size_dict_total_size_int_tuple_dict
 
-    def watermarks(self, pattern_str):
+    def watermarks(self, pattern_str, timeout=-1):
+        timeout_float = timeout
+        #
         config_dict = self.config_dict
         config_dict["group.id"] = "dummy_group_id"
         consumer = get_consumer(config_dict)
@@ -811,7 +819,7 @@ class Cluster:
         topic_str_partition_int_tuple_dict_dict = {}
         for topic_str in topic_str_list:
             partitions_int = self.partitions(topic_str)[topic_str]
-            partition_int_tuple_dict = {partition_int: consumer.get_watermark_offsets(TopicPartition(topic_str, partition=partition_int)) for partition_int in range(partitions_int)}
+            partition_int_tuple_dict = {partition_int: consumer.get_watermark_offsets(TopicPartition(topic_str, partition=partition_int), timeout_float) for partition_int in range(partitions_int)}
             topic_str_partition_int_tuple_dict_dict[topic_str] = partition_int_tuple_dict
         return topic_str_partition_int_tuple_dict_dict
 
@@ -963,7 +971,7 @@ class Cluster:
         #
         self.produced_messages_int += 1
         if self.produced_messages_int % self.flush_num_messages_int == 0:
-            self.producer.flush(self.timeout_float)
+            self.producer.flush(self.flush_timeout_float)
         #
         return key_str_or_bytes, value_str_or_bytes 
 
@@ -1001,7 +1009,7 @@ class Cluster:
         return self.produced_messages_int
 
     def flush(self):
-        self.producer.flush(self.timeout_float)
+        self.producer.flush(self.flush_timeout_float)
 
     # Consumer
 
@@ -1047,13 +1055,13 @@ class Cluster:
         self.subscribed_value_type_str = None
 
     def consume(self, n=1):
+        num_messages_int = n
+        #
         if self.subscribed_topic_str is None:
             print("Please subscribe to a topic before you consume.")
             return
         #
-        num_messages_int = n
-        #
-        message_list = self.consumer.consume(num_messages_int, self.timeout_float)
+        message_list = self.consumer.consume(num_messages_int, self.consume_timeout_float)
         if message_list:
             self.last_consumed_message = message_list[-1]
         message_dict_list = [self.message_to_message_dict(message, key_type=self.subscribed_key_type_str, value_type=self.subscribed_value_type_str) for message in message_list]
@@ -1065,8 +1073,10 @@ class Cluster:
         #
         return self.last_consumed_message
 
-    def offsets(self):
-        topicPartition_list = self.consumer.committed(self.topicPartition_list, timeout=self.timeout_float)
+    def offsets(self, timeout=-1):
+        timeout_float = timeout
+        #
+        topicPartition_list = self.consumer.committed(self.topicPartition_list, timeout=timeout_float)
         if self.subscribed_topic_str:
             offsets_dict = {topicPartition.partition: offset_int_to_int_or_str(topicPartition.offset) for topicPartition in topicPartition_list if topicPartition.topic == self.subscribed_topic_str}
             return offsets_dict

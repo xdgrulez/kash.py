@@ -376,8 +376,8 @@ class Test(unittest.TestCase):
     
     def test_cluster_settings(self):
         cluster = Cluster(cluster_str)
-        cluster.set_timeout(1.5)
-        self.assertEqual(cluster.timeout(), 1.5)
+        cluster.set_flush_timeout(1.5)
+        self.assertEqual(cluster.flush_timeout(), 1.5)
         cluster.set_flush_num_messages(10001)
         self.assertEqual(cluster.flush_num_messages(), 10001)
         cluster.set_auto_offset_reset("latest")
@@ -607,3 +607,21 @@ class Test(unittest.TestCase):
         cluster.delete(topic_str)
         cluster.delete(f"{topic_str}_1")
         time.sleep(1)
+
+    def test_flush_timeout_bug(self):
+        cluster = Cluster(cluster_str)
+        topic_str = create_test_topic_name()
+        cluster.create(topic_str)
+        time.sleep(1)
+        #
+        for i in range(3):
+            print(i)
+            cluster.cp("./snacks_value.txt", topic_str, target_value_type="str")
+            self.assertEqual(cluster.size(topic_str)[topic_str][1], 3)
+            cluster.cp(topic_str, "./snacks_value1.txt", source_value_type="str")
+            cluster.cp("./snacks_value1.txt", f"{topic_str}_1", target_value_type="str")
+            self.assertEqual(cluster.size(f"{topic_str}_1")[f"{topic_str}_1"][1], 3)
+            #
+            cluster.delete(topic_str)
+            cluster.delete(f"{topic_str}_1")
+            time.sleep(1)
