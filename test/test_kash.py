@@ -378,8 +378,10 @@ class Test(unittest.TestCase):
         cluster = Cluster(cluster_str)
         cluster.set_flush_timeout(1.5)
         self.assertEqual(cluster.flush_timeout(), 1.5)
-        cluster.set_flush_num_messages(10001)
-        self.assertEqual(cluster.flush_num_messages(), 10001)
+        cluster.set_flush_every_num_messages(10001)
+        self.assertEqual(cluster.flush_every_num_messages(), 10001)
+        cluster.set_consume_timeout(1.7)
+        self.assertEqual(cluster.consume_timeout(), 1.7)
         cluster.set_auto_offset_reset("latest")
         self.assertEqual(cluster.auto_offset_reset(), "latest")
         cluster.set_auto_commit(False)
@@ -423,8 +425,8 @@ class Test(unittest.TestCase):
         topic_str = create_test_topic_name()
         cluster.create(topic_str)
         time.sleep(1)
-        cluster.cp("./snacks_value.txt", topic_str, target_value_type="json")
-        self.assertEqual(cluster.size(topic_str)[topic_str][1], 3)
+        cluster.cp("./snacks_value.txt", topic_str, target_value_type="json", n=2)
+        self.assertEqual(cluster.size(topic_str)[topic_str][1], 2)
         #
         def transform(message_dict):
             message_dict["value"]["colour"] += "ish"
@@ -433,7 +435,7 @@ class Test(unittest.TestCase):
         cp(cluster, topic_str, cluster, f"{topic_str}_1", source_value_type="json", transform=transform)
         #
         cluster.subscribe(f"{topic_str}_1", value_type="json")
-        message_dict_list = cluster.consume(n=3)
+        message_dict_list = cluster.consume(n=2)
         for message_dict in message_dict_list:
             self.assertRegex(message_dict["value"]["colour"], ".*ish")
         #

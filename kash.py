@@ -24,6 +24,10 @@ RD_KAFKA_PARTITION_UA = -1
 # Helpers
 
 
+def is_interactive():
+    return hasattr(sys, 'ps1')
+
+
 def is_file(str):
     return "/" in str
 
@@ -47,9 +51,6 @@ def foreach_line(path_str, proc_function, delimiter='\n', bufsize=4096, n=ALL_ME
     #
     with open(path_str) as textIOWrapper:
         while True:
-            if num_lines_int != ALL_MESSAGES:
-                if line_counter_int >= num_lines_int:
-                    break
             newbuf_str = textIOWrapper.read(bufsize_int)
             if not newbuf_str:
                 if buf_str:
@@ -61,6 +62,9 @@ def foreach_line(path_str, proc_function, delimiter='\n', bufsize=4096, n=ALL_ME
             for line_str in line_str_list[:-1]:
                 proc_function(line_str)
                 line_counter_int += 1
+                if num_lines_int != ALL_MESSAGES:
+                    if line_counter_int >= num_lines_int:
+                        break
             buf_str = line_str_list[-1]
 
 
@@ -312,7 +316,7 @@ def groupMember_to_dict(groupMember):
 
 # Cross-cluster
 
-def replicate(source_cluster, source_topic_str, target_cluster, target_topic_str, group=None, offsets=None, transform=None, source_key_type="bytes", source_value_type="bytes", target_key_type=None, target_value_type=None, target_key_schema=None, target_value_schema=None, keep_timestamps=True, n=ALL_MESSAGES, batch_size=1, verbose=1, progress_num_messages=1000):
+def replicate(source_cluster, source_topic_str, target_cluster, target_topic_str, group=None, offsets=None, transform=None, source_key_type="bytes", source_value_type="bytes", target_key_type=None, target_value_type=None, target_key_schema=None, target_value_schema=None, keep_timestamps=True, n=ALL_MESSAGES, batch_size=1):
     """Replicate a topic.
 
     Replicate (parts of) a topic (source_topic_str) on one cluster (source_cluster) to another topic (target_topic_str) on another (or the same) cluster (target_cluster). Each replicated message can be transformed into another message using a single message transform (transform). The source and target topics can have different message key and value types; e.g. the source topic can have value type Avro whereas the target topic will be written with value type Protobuf.
@@ -336,11 +340,10 @@ def replicate(source_cluster, source_topic_str, target_cluster, target_topic_str
     keep_timestamps_bool = keep_timestamps
     num_messages_int = n
     batch_size_int = batch_size
-    verbose_int = verbose
-    progress_num_messages_int = progress_num_messages
     #
     source_cluster.subscribe(source_topic_str, group=group_str, offsets=offsets_dict, key_type=source_key_type_str, value_type=source_value_type_str)
-    message_counter_int = 0
+    #
+    target_cluster.produced_messages_counter_int = 0
     while True:
         message_dict_list = source_cluster.consume(n=batch_size_int)
         if not message_dict_list:
@@ -353,6 +356,8 @@ def replicate(source_cluster, source_topic_str, target_cluster, target_topic_str
                 timestamp_int_int_tuple = message_dict["timestamp"]
                 if timestamp_int_int_tuple[0] == TIMESTAMP_CREATE_TIME:
                     timestamp_int = timestamp_int_int_tuple[1]
+                else:
+                    timestamp_int = 0
             else:
                 timestamp_int = 0
             #
@@ -363,16 +368,19 @@ def replicate(source_cluster, source_topic_str, target_cluster, target_topic_str
             #
             target_cluster.produce(target_topic_str, message_dict["value"], message_dict["key"], key_type=key_type_str, value_type=value_type_str, key_schema=key_schema_str, value_schema=value_schema_str, partition=message_dict["partition"], timestamp=timestamp_int, headers=message_dict["headers"])
         #
-        message_counter_int += len(message_dict_list)
-        if verbose_int > 0 and message_counter_int % progress_num_messages_int == 0:
-            print(message_counter_int)
+        if target_cluster.verbose_int > 0 and target_cluster.produced_messages_counter_int % target_cluster.progress_num_messages_int == 0:
+            print(target_cluster.produced_messages_counter_int)
         if num_messages_int != ALL_MESSAGES:
-            if message_counter_int >= num_messages_int:
+            if target_cluster.produced_messages_counter_int >= num_messages_int:
                 break
+        #
+        if target_cluster.produced_messages_counter_int % target_cluster.flush_every_num_messages_int == 0:
+            target_cluster.flush()
+
     #
     target_cluster.flush()
     source_cluster.unsubscribe()
-    return message_counter_int
+    return target_cluster.produced_messages_counter_int
 
 # Shell alias
 cp = replicate
@@ -387,7 +395,6 @@ class Cluster:
         self.adminClient = get_adminClient(self.config_dict)
         #
         self.producer = get_producer(self.config_dict)
-        self.produced_messages_int = 0
         #
         if self.schema_registry_config_dict:
             self.schemaRegistryClient = get_schemaRegistryClient(self.schema_registry_config_dict)
@@ -405,8 +412,9 @@ class Cluster:
         self.schema_id_int_avro_schema_str_dict = {}
         self.schema_id_int_jsonschema_str_dict = {}
         # Producer
-        self.flush_num_messages_int = 10000
-        self.flush_timeout_float = 2.0
+        self.produced_messages_counter_int = 0
+        self.flush_every_num_messages_int = 10000
+        self.flush_timeout_float = -1
         # Consumer
         self.consume_timeout_float = 1.0
         # auto.offset.reset (earliest or latest (confluent_kafka default: latest))
@@ -416,14 +424,14 @@ class Cluster:
         # session.timeout.ms (6000-300000 (confluent_kafka default: 30000))
         self.session_timeout_ms_int = 10000
         # Standard output
-        self.verbose_int = 1
+        self.verbose_int = 1 if is_interactive() else 0
         self.progress_num_messages_int = 1000
 
-    def flush_num_messages(self):
-        return self.flush_num_messages_int
+    def flush_every_num_messages(self):
+        return self.flush_every_num_messages_int
 
-    def set_flush_num_messages(self, flush_num_messages_int):
-        self.flush_num_messages_int = flush_num_messages_int
+    def set_flush_every_num_messages(self, flush_every_num_messages_int):
+        self.flush_every_num_messages_int = flush_every_num_messages_int
 
     #
 
@@ -969,9 +977,7 @@ class Cluster:
         #
         self.producer.produce(topic_str, value_str_or_bytes, key_str_or_bytes, partition=partition_int, timestamp=timestamp_int, headers=headers_dict_or_list)
         #
-        self.produced_messages_int += 1
-        if self.produced_messages_int % self.flush_num_messages_int == 0:
-            self.producer.flush(self.flush_timeout_float)
+        self.produced_messages_counter_int += 1
         #
         return key_str_or_bytes, value_str_or_bytes 
 
@@ -998,15 +1004,18 @@ class Cluster:
                 #
                 self.produce(topic_str, value_str, key=key_str, key_type=key_type, value_type=value_type, key_schema=key_schema, value_schema=value_schema)
                 #
-                if self.verbose_int > 0 and self.produced_messages_int % self.progress_num_messages_int == 0:
-                    print(self.produced_messages_int)
+                if self.produced_messages_counter_int % self.flush_every_num_messages_int == 0:
+                    self.flush()
+                #
+                if self.verbose_int > 0 and self.produced_messages_counter_int % self.progress_num_messages_int == 0:
+                    print(self.produced_messages_counter_int)
         #
-        self.produced_messages_int = 0
+        self.produced_messages_counter_int = 0
         #
         foreach_line(path_str, proc, delimiter=message_separator_str, n=num_messages_int)
         self.flush()
         #
-        return self.produced_messages_int
+        return self.produced_messages_counter_int
 
     def flush(self):
         self.producer.flush(self.flush_timeout_float)
@@ -1204,6 +1213,6 @@ class Cluster:
         elif not is_file(source_str) and is_file(target_str):
             return self.download(source_str, target_str, group=group, offsets=offsets, key_type=source_key_type, value_type=source_value_type, key_value_separator=key_value_separator, message_separator=message_separator, overwrite=overwrite, n=n, batch_size=batch_size)
         elif (not is_file(source_str)) and (not is_file(target_str)):
-            return replicate(self, source_str, self, target_str, group=group, offsets=offsets, transform=transform, source_key_type=source_key_type, source_value_type=source_value_type, target_key_type=target_key_type, target_value_type=target_value_type, target_key_schema=target_key_schema, target_value_schema=target_value_schema, keep_timestamps=keep_timestamps, n=n, batch_size=batch_size, verbose=self.verbose_int, progress_num_messages=self.progress_num_messages_int)
+            return replicate(self, source_str, self, target_str, group=group, offsets=offsets, transform=transform, source_key_type=source_key_type, source_value_type=source_value_type, target_key_type=target_key_type, target_value_type=target_value_type, target_key_schema=target_key_schema, target_value_schema=target_value_schema, keep_timestamps=keep_timestamps, n=n, batch_size=batch_size)
         elif is_file(source_str) and is_file(target_str):
             print("Please use your shell or file manager to copy files.")
