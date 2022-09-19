@@ -36,7 +36,7 @@ class Test(unittest.TestCase):
         if self.old_home_str:
             os.environ["KASHPY_HOME"] = self.old_home_str
         #
-#        os.remove("./snacks_value.txt")
+        os.remove("./snacks_value.txt")
         os.remove("./snacks_key_value.txt")
 
     def test_create(self):
