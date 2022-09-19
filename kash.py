@@ -36,50 +36,31 @@ def create_unique_group_id():
     return str(get_millis())
 
 
-def count_lines(path_str):
-    def count_generator(reader):
-        bytes = reader(1024 * 1024)
-        while bytes:
-            yield bytes
-            bytes = reader(1024 * 1024)
-    #
-    with open(path_str, "rb") as bufferedReader:
-        c_generator = count_generator(bufferedReader.raw.read)
-        # count each \n
-        count_int = sum(buffer.count(b'\n') for buffer in c_generator)
-    #
-    return count_int
-
-
-def foreach_line(path_str, proc_function, delimiter='\n', bufsize=4096, verbose=1, progress_num_lines=1000):
+def foreach_line(path_str, proc_function, delimiter='\n', bufsize=4096, n=ALL_MESSAGES):
     delimiter_str = delimiter
     bufsize_int = bufsize
-    verbose_int = verbose
-    progress_num_lines_int = progress_num_lines
+    num_lines_int = n
     #
     buf_str = ""
     #
     line_counter_int = 0
     #
-    file_line_count_int = count_lines(path_str)
-    #
     with open(path_str) as textIOWrapper:
         while True:
+            if num_lines_int != ALL_MESSAGES:
+                if line_counter_int >= num_lines_int:
+                    break
             newbuf_str = textIOWrapper.read(bufsize_int)
             if not newbuf_str:
                 if buf_str:
                     proc_function(buf_str)
                     line_counter_int += 1
-                    if verbose_int > 0 and line_counter_int % progress_num_lines_int == 0:
-                        print(f"{line_counter_int}/{file_line_count_int}")
                 break
             buf_str += newbuf_str
             line_str_list = buf_str.split(delimiter_str)
             for line_str in line_str_list[:-1]:
                 proc_function(line_str)
                 line_counter_int += 1
-                if verbose_int > 0 and line_counter_int % progress_num_lines_int == 0:
-                    print(f"{line_counter_int}/{file_line_count_int}")
             buf_str = line_str_list[-1]
 
 
@@ -391,6 +372,7 @@ def replicate(source_cluster, source_topic_str, target_cluster, target_topic_str
     #
     target_cluster.flush()
     source_cluster.unsubscribe()
+    return message_counter_int
 
 # Shell alias
 cp = replicate
@@ -982,10 +964,13 @@ class Cluster:
         self.produced_messages_int += 1
         if self.produced_messages_int % self.flush_num_messages_int == 0:
             self.producer.flush(self.timeout_float)
+        #
+        return key_str_or_bytes, value_str_or_bytes 
 
-    def upload(self, path_str, topic_str, key_type="str", value_type="str", key_schema=None, value_schema=None, key_value_separator=None, message_separator="\n"):
+    def upload(self, path_str, topic_str, key_type="str", value_type="str", key_schema=None, value_schema=None, key_value_separator=None, message_separator="\n", n=ALL_MESSAGES):
         key_value_separator_str = key_value_separator
         message_separator_str = message_separator
+        num_messages_int = n
         #
 
         def proc(line_str):
@@ -1004,9 +989,16 @@ class Cluster:
                     value_str = line_str1
                 #
                 self.produce(topic_str, value_str, key=key_str, key_type=key_type, value_type=value_type, key_schema=key_schema, value_schema=value_schema)
+                #
+                if self.verbose_int > 0 and self.produced_messages_int % self.progress_num_messages_int == 0:
+                    print(self.produced_messages_int)
         #
-        foreach_line(path_str, proc, delimiter=message_separator_str, verbose=self.verbose_int, progress_num_lines=self.progress_num_messages_int)
+        self.produced_messages_int = 0
+        #
+        foreach_line(path_str, proc, delimiter=message_separator_str, n=num_messages_int)
         self.flush()
+        #
+        return self.produced_messages_int
 
     def flush(self):
         self.producer.flush(self.timeout_float)
@@ -1045,6 +1037,8 @@ class Cluster:
         self.subscribed_topic_str = topic_str
         self.subscribed_key_type_str = key_type
         self.subscribed_value_type_str = value_type
+        #
+        return topic_str, group_str
 
     def unsubscribe(self):
         self.consumer.unsubscribe()
@@ -1068,12 +1062,16 @@ class Cluster:
 
     def commit(self):
         self.consumer.commit(self.last_consumed_message)
+        #
+        return self.last_consumed_message
 
     def offsets(self):
         topicPartition_list = self.consumer.committed(self.topicPartition_list, timeout=self.timeout_float)
         if self.subscribed_topic_str:
             offsets_dict = {topicPartition.partition: offset_int_to_int_or_str(topicPartition.offset) for topicPartition in topicPartition_list if topicPartition.topic == self.subscribed_topic_str}
             return offsets_dict
+        else:
+            return {}
 
     def fold(self, topic_str, fold_function, group=None, offsets=None, key_type="str", value_type="str", n=ALL_MESSAGES, batch_size=1):
         group_str = group
@@ -1186,14 +1184,16 @@ class Cluster:
                     if message_counter_int >= num_messages_int:
                         break
         self.unsubscribe()
+        #
+        return message_counter_int
 
     # Shell alias for upload and download
     def cp(self, source_str, target_str, group=None, offsets=None, transform=None, source_key_type="str", source_value_type="str", target_key_type="str", target_value_type="str", target_key_schema=None, target_value_schema=None, key_value_separator=None, message_separator="\n", overwrite=True, keep_timestamps=True, n=ALL_MESSAGES, batch_size=1):
         if is_file(source_str) and not is_file(target_str):
-            self.upload(source_str, target_str, key_type=target_key_type, value_type=target_value_type, key_schema=target_key_schema, value_schema=target_value_schema, key_value_separator=key_value_separator, message_separator=message_separator)
+            return self.upload(source_str, target_str, key_type=target_key_type, value_type=target_value_type, key_schema=target_key_schema, value_schema=target_value_schema, key_value_separator=key_value_separator, message_separator=message_separator, n=n)
         elif not is_file(source_str) and is_file(target_str):
-            self.download(source_str, target_str, group=group, offsets=offsets, key_type=source_key_type, value_type=source_value_type, key_value_separator=key_value_separator, message_separator=message_separator, overwrite=overwrite, n=n, batch_size=batch_size)
-        elif not is_file(source_str) and not is_file(target_str):
-            replicate(self, source_str, self, target_str, group=group, offsets=offsets, transform=transform, source_key_type=source_key_type, source_value_type=source_value_type, target_key_type=target_key_type, target_value_type=target_value_type, target_key_schema=target_key_schema, target_value_schema=target_value_schema, keep_timestamps=keep_timestamps, n=n, batch_size=batch_size, verbose=self.verbose_int, progress_num_messages=self.progress_num_messages_int)
+            return self.download(source_str, target_str, group=group, offsets=offsets, key_type=source_key_type, value_type=source_value_type, key_value_separator=key_value_separator, message_separator=message_separator, overwrite=overwrite, n=n, batch_size=batch_size)
+        elif (not is_file(source_str)) and (not is_file(target_str)):
+            return replicate(self, source_str, self, target_str, group=group, offsets=offsets, transform=transform, source_key_type=source_key_type, source_value_type=source_value_type, target_key_type=target_key_type, target_value_type=target_value_type, target_key_schema=target_key_schema, target_value_schema=target_value_schema, keep_timestamps=keep_timestamps, n=n, batch_size=batch_size, verbose=self.verbose_int, progress_num_messages=self.progress_num_messages_int)
         elif is_file(source_str) and is_file(target_str):
             print("Please use your shell or file manager to copy files.")
