@@ -13,6 +13,10 @@ from kash import *
 cluster_str = "local"
 cluster_str_without_kash = "local_without_kash"
 principal_str = None
+#cluster_str = "ccloud"
+#cluster_str_without_kash = "ccloud_without_kash"
+#principal_str = "User:admin"
+
 
 def create_test_topic_name():
     return f"test_topic_{get_millis()}"
@@ -124,13 +128,14 @@ class Test(unittest.TestCase):
     
     def test_brokers(self):
         cluster = Cluster(cluster_str)
-        broker_dict = cluster.brokers()
-        broker_int = list(broker_dict.keys())[0]
-        old_background_threads_str = cluster.broker_config(broker_int)[broker_int]["background.threads"]
-        cluster.set_broker_config(broker_int, "background.threads", 5)
-        new_background_threads_str = cluster.broker_config(broker_int)[broker_int]["background.threads"]
-        self.assertEqual(new_background_threads_str, "5")
-        cluster.set_broker_config(broker_int, "background.threads", old_background_threads_str)
+        if "confluent.cloud" not in cluster.config_dict["bootstrap.servers"]:
+            broker_dict = cluster.brokers()
+            broker_int = list(broker_dict.keys())[0]
+            old_background_threads_str = cluster.broker_config(broker_int)[broker_int]["background.threads"]
+            cluster.set_broker_config(broker_int, "background.threads", 5)
+            new_background_threads_str = cluster.broker_config(broker_int)[broker_int]["background.threads"]
+            self.assertEqual(new_background_threads_str, "5")
+            cluster.set_broker_config(broker_int, "background.threads", old_background_threads_str)
 
     def test_acls(self):
         if principal_str:
@@ -150,7 +155,7 @@ class Test(unittest.TestCase):
         cluster.create(topic_str)
         cluster.cp("./snacks_value.txt", topic_str, target_value_type="str")
         self.assertEqual(cluster.size(topic_str)[topic_str][1], 3)
-        cluster.cp(topic_str, "./snacks_value1.txt", source_value_type="str", batch_size=3)
+        cluster.cp(topic_str, "./snacks_value1.txt", source_value_type="str", batch_size=3, n=3)
         self.assertTrue(filecmp.cmp("./snacks_value.txt", "./snacks_value1.txt"))
         os.remove("./snacks_value1.txt")
         cluster.delete(topic_str)
@@ -159,7 +164,7 @@ class Test(unittest.TestCase):
         cluster.create(topic_str_key_value)
         cluster.cp("./snacks_key_value.txt", topic_str_key_value, target_key_type="str", target_value_type="str", key_value_separator="/")
         self.assertEqual(cluster.size(topic_str_key_value)[topic_str_key_value][1], 3)
-        cluster.cp(topic_str_key_value, "./snacks_key_value1.txt", source_key_type="str", source_value_type="str", key_value_separator="/")
+        cluster.cp(topic_str_key_value, "./snacks_key_value1.txt", source_key_type="str", source_value_type="str", key_value_separator="/", n=3)
         self.assertTrue(filecmp.cmp("./snacks_key_value.txt", "./snacks_key_value1.txt"))
         os.remove("./snacks_key_value1.txt")
         cluster.delete(topic_str_key_value)
@@ -170,7 +175,7 @@ class Test(unittest.TestCase):
         cluster.create(topic_str)
         cluster.cp("./snacks_value.txt", topic_str, target_value_type="str")
         self.assertEqual(cluster.size(topic_str)[topic_str][1], 3)
-        cluster.cp(topic_str, "./snacks_value1.txt", source_value_type="str")
+        cluster.cp(topic_str, "./snacks_value1.txt", source_value_type="str", n=3)
         self.assertTrue(filecmp.cmp("./snacks_value.txt", "./snacks_value1.txt"))
         os.remove("./snacks_value1.txt")
         cluster.delete(topic_str)
@@ -179,7 +184,7 @@ class Test(unittest.TestCase):
         cluster.create(topic_str_key_value)
         cluster.cp("./snacks_key_value.txt", topic_str_key_value, target_key_type="str", target_value_type="str", key_value_separator="/")
         self.assertEqual(cluster.size(topic_str_key_value)[topic_str_key_value][1], 3)
-        cluster.cp(topic_str_key_value, "./snacks_key_value1.txt", source_key_type="str", source_value_type="str", key_value_separator="/")
+        cluster.cp(topic_str_key_value, "./snacks_key_value1.txt", source_key_type="str", source_value_type="str", key_value_separator="/", n=3)
         self.assertTrue(filecmp.cmp("./snacks_key_value.txt", "./snacks_key_value1.txt"))
         os.remove("./snacks_key_value1.txt")
         cluster.delete(topic_str_key_value)
@@ -190,7 +195,7 @@ class Test(unittest.TestCase):
         cluster.create(topic_str)
         cluster.cp("./snacks_value.txt", topic_str, target_value_type="json")
         self.assertEqual(cluster.size(topic_str)[topic_str][1], 3)
-        cluster.cp(topic_str, "./snacks_value1.txt", source_value_type="json")
+        cluster.cp(topic_str, "./snacks_value1.txt", source_value_type="json", n=3)
         self.assertTrue(filecmp.cmp("./snacks_value.txt", "./snacks_value1.txt"))
         os.remove("./snacks_value1.txt")
         cluster.delete(topic_str)
@@ -199,7 +204,7 @@ class Test(unittest.TestCase):
         cluster.create(topic_str_key_value)
         cluster.cp("./snacks_key_value.txt", topic_str_key_value, target_key_type="json", target_value_type="json", key_value_separator="/")
         self.assertEqual(cluster.size(topic_str_key_value)[topic_str_key_value][1], 3)
-        cluster.cp(topic_str_key_value, "./snacks_key_value1.txt", source_key_type="json", source_value_type="json", key_value_separator="/")
+        cluster.cp(topic_str_key_value, "./snacks_key_value1.txt", source_key_type="json", source_value_type="json", key_value_separator="/", n=3)
         self.assertTrue(filecmp.cmp("./snacks_key_value.txt", "./snacks_key_value1.txt"))
         os.remove("./snacks_key_value1.txt")
         cluster.delete(topic_str_key_value)
@@ -212,7 +217,7 @@ class Test(unittest.TestCase):
         cluster.create(topic_str)
         cluster.cp("./snacks_value.txt", topic_str, target_value_type="pb", target_value_schema=schema_str)
         self.assertEqual(cluster.size(topic_str)[topic_str][1], 3)
-        cluster.cp(topic_str, "./snacks_value1.txt", source_value_type="pb")
+        cluster.cp(topic_str, "./snacks_value1.txt", source_value_type="pb", n=3)
         self.assertTrue(filecmp.cmp("./snacks_value.txt", "./snacks_value1.txt"))
         os.remove("./snacks_value1.txt")
         cluster.delete(topic_str)
@@ -221,13 +226,13 @@ class Test(unittest.TestCase):
         cluster.create(topic_str_key_value)
         cluster.cp("./snacks_key_value.txt", topic_str_key_value, target_key_type="pb", target_value_type="pb", target_key_schema=schema_str, target_value_schema=schema_str, key_value_separator="/")
         self.assertEqual(cluster.size(topic_str_key_value)[topic_str_key_value][1], 3)
-        cluster.cp(topic_str_key_value, "./snacks_key_value1.txt", source_key_type="pb", source_value_type="pb", key_value_separator="/")
+        cluster.cp(topic_str_key_value, "./snacks_key_value1.txt", source_key_type="pb", source_value_type="pb", key_value_separator="/", n=3)
         self.assertTrue(filecmp.cmp("./snacks_key_value.txt", "./snacks_key_value1.txt"))
         os.remove("./snacks_key_value1.txt")
         #
         cluster.create(f"{topic_str_key_value}_1")
         cp(cluster, topic_str_key_value, cluster, f"{topic_str_key_value}_1", transform=lambda x: x, keep_timestamps=False)
-        cluster.cp(f"{topic_str_key_value}_1", "./snacks_key_value2.txt", source_key_type="pb", source_value_type="pb", key_value_separator="/")
+        cluster.cp(f"{topic_str_key_value}_1", "./snacks_key_value2.txt", source_key_type="pb", source_value_type="pb", key_value_separator="/", n=3)
         self.assertTrue(filecmp.cmp("./snacks_key_value.txt", "./snacks_key_value2.txt"))
         os.remove("./snacks_key_value2.txt")
         cluster.delete(topic_str_key_value)
@@ -242,7 +247,7 @@ class Test(unittest.TestCase):
         num_messages_int = cluster.cp("./snacks_value.txt", topic_str, target_value_type="avro", target_value_schema=schema_str)
         self.assertEqual(num_messages_int, 3)
         self.assertEqual(cluster.size(topic_str)[topic_str][1], 3)
-        num_messages_int = cluster.cp(topic_str, "./snacks_value1.txt", source_value_type="avro")
+        num_messages_int = cluster.cp(topic_str, "./snacks_value1.txt", source_value_type="avro", n=3)
         self.assertEqual(num_messages_int, 3)
         self.assertTrue(filecmp.cmp("./snacks_value.txt", "./snacks_value1.txt"))
         os.remove("./snacks_value1.txt")
@@ -252,14 +257,14 @@ class Test(unittest.TestCase):
         cluster.create(topic_str_key_value)
         cluster.cp("./snacks_key_value.txt", topic_str_key_value, target_key_type="avro", target_value_type="avro", target_key_schema=schema_str, target_value_schema=schema_str, key_value_separator="/")
         self.assertEqual(cluster.size(topic_str_key_value)[topic_str_key_value][1], 3)
-        cluster.cp(topic_str_key_value, "./snacks_key_value1.txt", source_key_type="avro", source_value_type="avro", key_value_separator="/")
+        cluster.cp(topic_str_key_value, "./snacks_key_value1.txt", source_key_type="avro", source_value_type="avro", key_value_separator="/", n=3)
         self.assertTrue(filecmp.cmp("./snacks_key_value.txt", "./snacks_key_value1.txt"))
         os.remove("./snacks_key_value1.txt")
         #
         cluster.create(f"{topic_str_key_value}_1")
         message_counter_int = cp(cluster, topic_str_key_value, cluster, f"{topic_str_key_value}_1")
         self.assertEqual(message_counter_int, 3)
-        cluster.cp(f"{topic_str_key_value}_1", "./snacks_key_value2.txt", source_key_type="avro", source_value_type="avro", key_value_separator="/")
+        cluster.cp(f"{topic_str_key_value}_1", "./snacks_key_value2.txt", source_key_type="avro", source_value_type="avro", key_value_separator="/", n=3)
         self.assertTrue(filecmp.cmp("./snacks_key_value.txt", "./snacks_key_value2.txt"))
         os.remove("./snacks_key_value2.txt")
         cluster.delete(topic_str_key_value)
@@ -273,7 +278,7 @@ class Test(unittest.TestCase):
         cluster.create(topic_str)
         cluster.cp("./snacks_value.txt", topic_str, target_value_type="jsonschema", target_value_schema=schema_str)
         self.assertEqual(cluster.size(topic_str)[topic_str][1], 3)
-        cluster.cp(topic_str, "./snacks_value1.txt", source_value_type="jsonschema")
+        cluster.cp(topic_str, "./snacks_value1.txt", source_value_type="jsonschema", n=3)
         self.assertTrue(filecmp.cmp("./snacks_value.txt", "./snacks_value1.txt"))
         os.remove("./snacks_value1.txt")
         cluster.delete(topic_str)
@@ -282,7 +287,7 @@ class Test(unittest.TestCase):
         cluster.create(topic_str_key_value)
         cluster.cp("./snacks_key_value.txt", topic_str_key_value, target_key_type="jsonschema", target_value_type="jsonschema", target_key_schema=schema_str, target_value_schema=schema_str, key_value_separator="/")
         self.assertEqual(cluster.size(topic_str_key_value)[topic_str_key_value][1], 3)
-        cluster.cp(topic_str_key_value, "./snacks_key_value1.txt", source_key_type="jsonschema", source_value_type="jsonschema", key_value_separator="/")
+        cluster.cp(topic_str_key_value, "./snacks_key_value1.txt", source_key_type="jsonschema", source_value_type="jsonschema", key_value_separator="/", n=3)
         self.assertTrue(filecmp.cmp("./snacks_key_value.txt", "./snacks_key_value1.txt"))
         os.remove("./snacks_key_value1.txt")
         cluster.delete(topic_str_key_value)
@@ -367,7 +372,7 @@ class Test(unittest.TestCase):
             message_dict["value"]["colour"] += "ish"
             return message_dict
         cluster.create(f"{topic_str}_1")
-        cp(cluster, topic_str, cluster, f"{topic_str}_1", source_value_type="json", transform=transform)
+        cp(cluster, topic_str, cluster, f"{topic_str}_1", source_value_type="json", transform=transform, n=3)
         #
         cluster.subscribe(f"{topic_str}_1", value_type="json")
         message_dict_list = cluster.consume(n=2)
@@ -391,7 +396,7 @@ class Test(unittest.TestCase):
             message_dict["value"]["colour"] += "ish"
             return message_dict
         cluster.create(f"{topic_str}_1")
-        cp(cluster, topic_str, cluster, f"{topic_str}_1", source_key_type="pb", source_value_type="pb", transform=transform)
+        cp(cluster, topic_str, cluster, f"{topic_str}_1", source_key_type="pb", source_value_type="pb", transform=transform, n=3)
         #
         cluster.subscribe(f"{topic_str}_1", key_type="pb", value_type="pb")
         message_dict_list = cluster.consume(n=3)
@@ -415,7 +420,7 @@ class Test(unittest.TestCase):
             message_dict["value"]["colour"] += "ish"
             return message_dict
         cluster.create(f"{topic_str}_1")
-        cp(cluster, topic_str, cluster, f"{topic_str}_1", source_value_type="avro", transform=transform)
+        cp(cluster, topic_str, cluster, f"{topic_str}_1", source_value_type="avro", transform=transform, n=3)
         #
         cluster.subscribe(f"{topic_str}_1", value_type="avro")
         message_dict_list = cluster.consume(n=3)
@@ -438,7 +443,7 @@ class Test(unittest.TestCase):
             message_dict["value"]["colour"] += "ish"
             return message_dict
         cluster.create(f"{topic_str}_1")
-        cp(cluster, topic_str, cluster, f"{topic_str}_1", source_value_type="jsonschema", transform=transform)
+        cp(cluster, topic_str, cluster, f"{topic_str}_1", source_value_type="jsonschema", transform=transform, n=3)
         #
         cluster.subscribe(f"{topic_str}_1", value_type="jsonschema")
         message_dict_list = cluster.consume(n=3)
@@ -461,7 +466,7 @@ class Test(unittest.TestCase):
             message_dict["value"] = bytes(value_bytearray)
             return message_dict
         cluster.create(f"{topic_str}_1")
-        cp(cluster, topic_str, cluster, f"{topic_str}_1", source_value_type="bytes", transform=transform)
+        cp(cluster, topic_str, cluster, f"{topic_str}_1", source_value_type="bytes", transform=transform, n=3)
         #
         cluster.subscribe(f"{topic_str}_1", value_type="bytes")
         message_dict_list = cluster.consume(n=3)
@@ -476,6 +481,7 @@ class Test(unittest.TestCase):
         schema_str = '{ "type": "record", "name": "myrecord", "fields": [{"name": "name",  "type": "string" }, {"name": "calories", "type": "float" }, {"name": "colour", "type": "string" }] }'
         #
         cluster = Cluster(cluster_str)
+        cluster.set_verbose(1)
         topic_str = create_test_topic_name()
         cluster.create(topic_str)
         cluster.cp("./snacks_value.txt", topic_str, target_value_type="avro", target_value_schema=schema_str)
@@ -491,6 +497,7 @@ class Test(unittest.TestCase):
 
     def test_offsets_for_times(self):
         cluster = Cluster(cluster_str)
+        cluster.set_verbose(1)
         topic_str = create_test_topic_name()
         cluster.create(topic_str)
         cluster.produce(topic_str, "message 1")
@@ -521,9 +528,9 @@ class Test(unittest.TestCase):
         #
         protobuf_schema_str = 'message Snack { required string name = 1; required float calories = 2; optional string colour = 3; }'
         cluster.create(f"{topic_str}_1")
-        cluster.cp(topic_str, f"{topic_str}_1", source_value_type="avro", target_value_type="pb", target_value_schema=protobuf_schema_str)
+        cluster.cp(topic_str, f"{topic_str}_1", source_value_type="avro", target_value_type="pb", target_value_schema=protobuf_schema_str, n=3)
         #
-        cluster.cp(f"{topic_str}_1", "./snacks_value1.txt", source_value_type="pb")
+        cluster.cp(f"{topic_str}_1", "./snacks_value1.txt", source_value_type="pb", n=3)
         self.assertTrue(filecmp.cmp("./snacks_value.txt", "./snacks_value1.txt"))
         os.remove("./snacks_value1.txt")
         #
@@ -532,14 +539,16 @@ class Test(unittest.TestCase):
 
     def test_flush_timeout_bug(self):
         cluster = Cluster(cluster_str)
-        topic_str = create_test_topic_name()
-        cluster.create(topic_str)
         #
         for i in range(3):
             print(i)
+            topic_str = create_test_topic_name()
+            cluster.create(topic_str)
+            cluster.create(f"{topic_str}_1")
+            #
             cluster.cp("./snacks_value.txt", topic_str, target_value_type="str")
             self.assertEqual(cluster.size(topic_str)[topic_str][1], 3)
-            cluster.cp(topic_str, "./snacks_value1.txt", source_value_type="str")
+            cluster.cp(topic_str, "./snacks_value1.txt", source_value_type="str", n=3)
             cluster.cp("./snacks_value1.txt", f"{topic_str}_1", target_value_type="str")
             self.assertEqual(cluster.size(f"{topic_str}_1")[f"{topic_str}_1"][1], 3)
             #
@@ -556,7 +565,7 @@ class Test(unittest.TestCase):
         for i in range(3):
             print(i)
             cluster.recreate(topic_str)
-            cluster.cp(topic_str, "./snacks_value1.txt", source_value_type="str", batch_size=3)
+            cluster.cp(topic_str, "./snacks_value1.txt", source_value_type="str", batch_size=3, n=3)
             self.assertTrue(filecmp.cmp("./snacks_value.txt", "./snacks_value1.txt"))
             os.remove("./snacks_value1.txt")
         #

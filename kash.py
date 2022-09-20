@@ -124,7 +124,12 @@ def get_consumer(config_dict):
 
 
 def get_schemaRegistryClient(config_dict):
-    dict = {"url": config_dict["schema.registry.url"]}
+    dict = {}
+    #
+    dict["url"] = config_dict["schema.registry.url"]
+    if "basic.auth.user.info" in config_dict:
+        dict["basic.auth.user.info"] = config_dict["basic.auth.user.info"]
+    #
     schemaRegistryClient = SchemaRegistryClient(dict)
     return schemaRegistryClient
 
@@ -492,8 +497,13 @@ class Cluster:
         schema_registry_url_str = self.schema_registry_config_dict["schema.registry.url"]
         url_str = f"{schema_registry_url_str}/subjects/{topic_str}-{key_or_value_str}/versions?normalize=true"
         headers_dict = {"Accept": "application/vnd.schemaregistry.v1+json", "Content-Type": "application/vnd.schemaregistry.v1+json"}
+        if "basic.auth.user.info" in self.schema_registry_config_dict:
+            user_password_str = self.schema_registry_config_dict["basic.auth.user.info"]
+            user_str_password_str_tuple = tuple(user_password_str.split(":"))
+        else:
+            user_str_password_str_tuple = None
         schema_dict = {"schema": schema_str, "schemaType": schema_type_str}
-        response = requests.post(url_str, headers=headers_dict, json=schema_dict)
+        response = requests.post(url_str, headers=headers_dict, json=schema_dict, auth=user_str_password_str_tuple)
         response_dict = response.json()
         schema_id_int = response_dict["id"]
         return schema_id_int
