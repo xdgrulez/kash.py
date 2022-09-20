@@ -8,8 +8,10 @@ sys.path.insert(1, "..")
 from kash import *
 
 #cluster_str = "rp-dev"
+#cluster_str_without_kash = "rp-dev_without_kash"
 #principal_str = "User:admin"
 cluster_str = "local"
+cluster_str_without_kash = "local_without_kash"
 principal_str = None
 
 def create_test_topic_name():
@@ -43,11 +45,9 @@ class Test(unittest.TestCase):
         cluster = Cluster(cluster_str)
         topic_str = create_test_topic_name()
         cluster.create(topic_str)
-        time.sleep(1)
         topic_str_list = cluster.ls()
         self.assertIn(topic_str, topic_str_list)
         cluster.delete(topic_str)
-        time.sleep(1)
 
     def test_topics(self):
         cluster = Cluster(cluster_str)
@@ -55,7 +55,6 @@ class Test(unittest.TestCase):
         old_topic_str_list = cluster.topics()
         self.assertNotIn(topic_str, old_topic_str_list)
         cluster.create(topic_str)
-        time.sleep(1)
         new_topic_str_list = cluster.ls()
         self.assertIn(topic_str, new_topic_str_list)
         cluster.produce(topic_str, "message 1")
@@ -68,59 +67,48 @@ class Test(unittest.TestCase):
         size_int = topic_str_size_int_dict_l[topic_str]
         self.assertEqual(size_int, 3)
         cluster.delete(topic_str)
-        time.sleep(1)
 
     def test_config(self):
         cluster = Cluster(cluster_str)
         topic_str = create_test_topic_name()
         cluster.mk(topic_str)
-        time.sleep(1)
         cluster.set_config(topic_str, "retention.ms", 4711)
         new_retention_ms_str = cluster.config(topic_str)[topic_str]["retention.ms"]
         self.assertEqual(new_retention_ms_str, "4711")
         cluster.rm(topic_str)
-        time.sleep(1)
 
     def test_describe(self):
         cluster = Cluster(cluster_str)
         topic_str = create_test_topic_name()
         cluster.create(topic_str)
-        time.sleep(1)
         topic_dict = cluster.describe(topic_str)[topic_str]
         self.assertEqual(topic_dict["topic"], topic_str)
         self.assertEqual(topic_dict["partitions"][0]["id"], 0)
         cluster.delete(topic_str)
-        time.sleep(1)
 
     def test_exists(self):
         cluster = Cluster(cluster_str)
         topic_str = create_test_topic_name()
         self.assertFalse(cluster.exists(topic_str))
         cluster.create(topic_str)
-        time.sleep(1)
         self.assertTrue(cluster.exists(topic_str))
         cluster.delete(topic_str)
-        time.sleep(1)
 
     def test_partitions(self):
         cluster = Cluster(cluster_str)
         topic_str = create_test_topic_name()
         cluster.create(topic_str)
-        time.sleep(1)
         num_partitions_int_1 = cluster.partitions(topic_str)[topic_str]
         self.assertEqual(num_partitions_int_1, 1)
         cluster.set_partitions(topic_str, 2)
-        time.sleep(1)
         num_partitions_int_2 = cluster.partitions(topic_str)[topic_str]
         self.assertEqual(num_partitions_int_2, 2)
         cluster.delete(topic_str)
-        time.sleep(1)
 
     def test_groups(self):
         cluster = Cluster(cluster_str)
         topic_str = create_test_topic_name()
         cluster.create(topic_str)
-        time.sleep(1)
         cluster.produce(topic_str, "message 1")
         cluster.produce(topic_str, "message 2")
         cluster.produce(topic_str, "message 3")
@@ -128,112 +116,93 @@ class Test(unittest.TestCase):
         group_str = create_test_group_name()
         cluster.subscribe(topic_str, group_str)
         cluster.consume()
-        time.sleep(1)
         group_str_list = cluster.groups()
         self.assertIn(group_str, group_str_list)
         group_dict = cluster.describe_groups(group_str)[group_str]
         self.assertEqual(group_dict["id"], group_str)
         cluster.delete(topic_str)
-        time.sleep(1)
     
     def test_brokers(self):
         cluster = Cluster(cluster_str)
         broker_dict = cluster.brokers()
         broker_int = list(broker_dict.keys())[0]
-        old_log_retention_ms_str = cluster.broker_config(broker_int)[broker_int]["log.retention.ms"]
-        cluster.set_broker_config(broker_int, "log.retention.ms", 4711)
-        time.sleep(1)
-        new_log_retention_ms_str = cluster.broker_config(broker_int)[broker_int]["log.retention.ms"]
-        self.assertEqual(new_log_retention_ms_str, "4711")
-        cluster.set_broker_config(broker_int, "log.retention.ms", old_log_retention_ms_str)        
+        old_background_threads_str = cluster.broker_config(broker_int)[broker_int]["background.threads"]
+        cluster.set_broker_config(broker_int, "background.threads", 5)
+        new_background_threads_str = cluster.broker_config(broker_int)[broker_int]["background.threads"]
+        self.assertEqual(new_background_threads_str, "5")
+        cluster.set_broker_config(broker_int, "background.threads", old_background_threads_str)
 
     def test_acls(self):
         if principal_str:
             cluster = Cluster(cluster_str)
             topic_str = create_test_topic_name()
             cluster.create(topic_str)
-            time.sleep(1)
             cluster.create_acl(restype="topic", name=topic_str, resource_pattern_type="literal", principal=principal_str, host="*", operation="read", permission_type="allow")
-            time.sleep(1)
             acl_dict_list = cluster.acls()
             self.assertIn({"restype": "topic", "name": topic_str, "resource_pattern_type": "literal", 'principal': principal_str, 'host': '*', 'operation': 'read', 'permission_type': 'allow'}, acl_dict_list)
             cluster.delete_acl(restype="topic", name=topic_str, resource_pattern_type="literal", principal=principal_str, host="*", operation="read", permission_type="allow")
-            time.sleep(1)
             self.assertIn({"restype": "topic", "name": topic_str, "resource_pattern_type": "literal", 'principal': principal_str, 'host': '*', 'operation': 'read', 'permission_type': 'allow'}, acl_dict_list)
             cluster.delete(topic_str)
-            time.sleep(1)
-
+    
     def test_produce_consume_bytes(self):
         cluster = Cluster(cluster_str)
         topic_str = create_test_topic_name()
         cluster.create(topic_str)
-        time.sleep(1)
         cluster.cp("./snacks_value.txt", topic_str, target_value_type="str")
         self.assertEqual(cluster.size(topic_str)[topic_str][1], 3)
         cluster.cp(topic_str, "./snacks_value1.txt", source_value_type="str", batch_size=3)
         self.assertTrue(filecmp.cmp("./snacks_value.txt", "./snacks_value1.txt"))
         os.remove("./snacks_value1.txt")
         cluster.delete(topic_str)
-        time.sleep(1)
         #
         topic_str_key_value = create_test_topic_name()
         cluster.create(topic_str_key_value)
-        time.sleep(1)
         cluster.cp("./snacks_key_value.txt", topic_str_key_value, target_key_type="str", target_value_type="str", key_value_separator="/")
         self.assertEqual(cluster.size(topic_str_key_value)[topic_str_key_value][1], 3)
         cluster.cp(topic_str_key_value, "./snacks_key_value1.txt", source_key_type="str", source_value_type="str", key_value_separator="/")
         self.assertTrue(filecmp.cmp("./snacks_key_value.txt", "./snacks_key_value1.txt"))
         os.remove("./snacks_key_value1.txt")
         cluster.delete(topic_str_key_value)
-        time.sleep(1)
 
     def test_produce_consume_string(self):
         cluster = Cluster(cluster_str)
         topic_str = create_test_topic_name()
         cluster.create(topic_str)
-        time.sleep(1)
         cluster.cp("./snacks_value.txt", topic_str, target_value_type="str")
         self.assertEqual(cluster.size(topic_str)[topic_str][1], 3)
         cluster.cp(topic_str, "./snacks_value1.txt", source_value_type="str")
         self.assertTrue(filecmp.cmp("./snacks_value.txt", "./snacks_value1.txt"))
         os.remove("./snacks_value1.txt")
         cluster.delete(topic_str)
-        time.sleep(1)
         #
         topic_str_key_value = create_test_topic_name()
         cluster.create(topic_str_key_value)
-        time.sleep(1)
         cluster.cp("./snacks_key_value.txt", topic_str_key_value, target_key_type="str", target_value_type="str", key_value_separator="/")
         self.assertEqual(cluster.size(topic_str_key_value)[topic_str_key_value][1], 3)
         cluster.cp(topic_str_key_value, "./snacks_key_value1.txt", source_key_type="str", source_value_type="str", key_value_separator="/")
         self.assertTrue(filecmp.cmp("./snacks_key_value.txt", "./snacks_key_value1.txt"))
         os.remove("./snacks_key_value1.txt")
         cluster.delete(topic_str_key_value)
-        time.sleep(1)
     
     def test_produce_consume_json(self):
         cluster = Cluster(cluster_str)
         topic_str = create_test_topic_name()
         cluster.create(topic_str)
-        time.sleep(1)
         cluster.cp("./snacks_value.txt", topic_str, target_value_type="json")
         self.assertEqual(cluster.size(topic_str)[topic_str][1], 3)
         cluster.cp(topic_str, "./snacks_value1.txt", source_value_type="json")
         self.assertTrue(filecmp.cmp("./snacks_value.txt", "./snacks_value1.txt"))
         os.remove("./snacks_value1.txt")
         cluster.delete(topic_str)
-        time.sleep(1)
         #
         topic_str_key_value = create_test_topic_name()
         cluster.create(topic_str_key_value)
-        time.sleep(1)
         cluster.cp("./snacks_key_value.txt", topic_str_key_value, target_key_type="json", target_value_type="json", key_value_separator="/")
         self.assertEqual(cluster.size(topic_str_key_value)[topic_str_key_value][1], 3)
         cluster.cp(topic_str_key_value, "./snacks_key_value1.txt", source_key_type="json", source_value_type="json", key_value_separator="/")
         self.assertTrue(filecmp.cmp("./snacks_key_value.txt", "./snacks_key_value1.txt"))
         os.remove("./snacks_key_value1.txt")
         cluster.delete(topic_str_key_value)
-        time.sleep(1)
 
     def test_produce_consume_protobuf(self):
         schema_str = 'message Snack { required string name = 1; required float calories = 2; optional string colour = 3; }'
@@ -241,18 +210,15 @@ class Test(unittest.TestCase):
         cluster = Cluster(cluster_str)
         topic_str = create_test_topic_name()
         cluster.create(topic_str)
-        time.sleep(1)
         cluster.cp("./snacks_value.txt", topic_str, target_value_type="pb", target_value_schema=schema_str)
         self.assertEqual(cluster.size(topic_str)[topic_str][1], 3)
         cluster.cp(topic_str, "./snacks_value1.txt", source_value_type="pb")
         self.assertTrue(filecmp.cmp("./snacks_value.txt", "./snacks_value1.txt"))
         os.remove("./snacks_value1.txt")
         cluster.delete(topic_str)
-        time.sleep(1)
         #
         topic_str_key_value = create_test_topic_name()
         cluster.create(topic_str_key_value)
-        time.sleep(1)
         cluster.cp("./snacks_key_value.txt", topic_str_key_value, target_key_type="pb", target_value_type="pb", target_key_schema=schema_str, target_value_schema=schema_str, key_value_separator="/")
         self.assertEqual(cluster.size(topic_str_key_value)[topic_str_key_value][1], 3)
         cluster.cp(topic_str_key_value, "./snacks_key_value1.txt", source_key_type="pb", source_value_type="pb", key_value_separator="/")
@@ -266,7 +232,6 @@ class Test(unittest.TestCase):
         os.remove("./snacks_key_value2.txt")
         cluster.delete(topic_str_key_value)
         cluster.delete(f"{topic_str_key_value}_1")
-        time.sleep(1)
 
     def test_produce_consume_avro(self):
         schema_str = '{ "type": "record", "name": "myrecord", "fields": [{"name": "name",  "type": "string" }, {"name": "calories", "type": "float" }, {"name": "colour", "type": "string" }] }'
@@ -274,7 +239,6 @@ class Test(unittest.TestCase):
         cluster = Cluster(cluster_str)
         topic_str = create_test_topic_name()
         cluster.create(topic_str)
-        time.sleep(1)
         num_messages_int = cluster.cp("./snacks_value.txt", topic_str, target_value_type="avro", target_value_schema=schema_str)
         self.assertEqual(num_messages_int, 3)
         self.assertEqual(cluster.size(topic_str)[topic_str][1], 3)
@@ -283,11 +247,9 @@ class Test(unittest.TestCase):
         self.assertTrue(filecmp.cmp("./snacks_value.txt", "./snacks_value1.txt"))
         os.remove("./snacks_value1.txt")
         cluster.delete(topic_str)
-        time.sleep(1)
         #
         topic_str_key_value = create_test_topic_name()
         cluster.create(topic_str_key_value)
-        time.sleep(1)
         cluster.cp("./snacks_key_value.txt", topic_str_key_value, target_key_type="avro", target_value_type="avro", target_key_schema=schema_str, target_value_schema=schema_str, key_value_separator="/")
         self.assertEqual(cluster.size(topic_str_key_value)[topic_str_key_value][1], 3)
         cluster.cp(topic_str_key_value, "./snacks_key_value1.txt", source_key_type="avro", source_value_type="avro", key_value_separator="/")
@@ -302,7 +264,6 @@ class Test(unittest.TestCase):
         os.remove("./snacks_key_value2.txt")
         cluster.delete(topic_str_key_value)
         cluster.delete(f"{topic_str_key_value}_1")
-        time.sleep(1)
 
     def test_produce_consume_jsonschema(self):
         schema_str = '{ "title": "abc", "definitions" : { "record:myrecord" : { "type" : "object", "required" : [ "name", "calories" ], "additionalProperties" : false, "properties" : { "name" : {"type" : "string"}, "calories" : {"type" : "number"}, "colour" : {"type" : "string"} } } }, "$ref" : "#/definitions/record:myrecord" }'
@@ -310,31 +271,26 @@ class Test(unittest.TestCase):
         cluster = Cluster(cluster_str)
         topic_str = create_test_topic_name()
         cluster.create(topic_str)
-        time.sleep(1)
         cluster.cp("./snacks_value.txt", topic_str, target_value_type="jsonschema", target_value_schema=schema_str)
         self.assertEqual(cluster.size(topic_str)[topic_str][1], 3)
         cluster.cp(topic_str, "./snacks_value1.txt", source_value_type="jsonschema")
         self.assertTrue(filecmp.cmp("./snacks_value.txt", "./snacks_value1.txt"))
         os.remove("./snacks_value1.txt")
         cluster.delete(topic_str)
-        time.sleep(1)
         #
         topic_str_key_value = create_test_topic_name()
         cluster.create(topic_str_key_value)
-        time.sleep(1)
         cluster.cp("./snacks_key_value.txt", topic_str_key_value, target_key_type="jsonschema", target_value_type="jsonschema", target_key_schema=schema_str, target_value_schema=schema_str, key_value_separator="/")
         self.assertEqual(cluster.size(topic_str_key_value)[topic_str_key_value][1], 3)
         cluster.cp(topic_str_key_value, "./snacks_key_value1.txt", source_key_type="jsonschema", source_value_type="jsonschema", key_value_separator="/")
         self.assertTrue(filecmp.cmp("./snacks_key_value.txt", "./snacks_key_value1.txt"))
         os.remove("./snacks_key_value1.txt")
         cluster.delete(topic_str_key_value)
-        time.sleep(1)
 
     def test_offsets(self):
         cluster = Cluster(cluster_str)
         topic_str = create_test_topic_name()
         cluster.create(topic_str)
-        time.sleep(1)
         cluster.produce(topic_str, "message 1")
         cluster.produce(topic_str, "message 2")
         cluster.produce(topic_str, "message 3")
@@ -345,13 +301,11 @@ class Test(unittest.TestCase):
         self.assertEqual(len(message_dict_list), 1)
         self.assertEqual(message_dict_list[0]["value"], "message 3")
         cluster.delete(topic_str)
-        time.sleep(1)
 
     def test_commit(self):
         cluster = Cluster(cluster_str)
         topic_str = create_test_topic_name()
         cluster.create(topic_str)
-        time.sleep(1)
         cluster.produce(topic_str, "message 1")
         cluster.produce(topic_str, "message 2")
         cluster.produce(topic_str, "message 3")
@@ -359,15 +313,12 @@ class Test(unittest.TestCase):
         cluster.cat(topic_str, n=3)
         cluster.subscribe(topic_str, config={"enable.auto.commit": False})
         cluster.consume()
-        time.sleep(1)
         offsets_dict = cluster.offsets()
         self.assertEqual(offsets_dict[0], "OFFSET_INVALID")
         cluster.commit()
-        time.sleep(1)
         offsets_dict1 = cluster.offsets()
         self.assertEqual(offsets_dict1[0], 1)
         cluster.delete(topic_str)
-        time.sleep(1)
 
     def test_errors(self):
         cluster = Cluster(cluster_str)
@@ -376,28 +327,13 @@ class Test(unittest.TestCase):
     
     def test_cluster_settings(self):
         cluster = Cluster(cluster_str)
-        cluster.set_flush_timeout(1.5)
-        self.assertEqual(cluster.flush_timeout(), 1.5)
-        cluster.set_flush_every_num_messages(10001)
-        self.assertEqual(cluster.flush_every_num_messages(), 10001)
-        cluster.set_consume_timeout(1.7)
-        self.assertEqual(cluster.consume_timeout(), 1.7)
-        cluster.set_auto_offset_reset("latest")
-        self.assertEqual(cluster.auto_offset_reset(), "latest")
-        cluster.set_auto_commit(False)
-        self.assertEqual(cluster.auto_commit(), False)
-        cluster.set_session_timeout_ms(6000)
-        self.assertEqual(cluster.session_timeout_ms(), 6000)
         cluster.set_verbose(0)
         self.assertEqual(cluster.verbose(), 0)
-        cluster.set_progress_num_messages(1001)
-        self.assertEqual(cluster.progress_num_messages(), 1001)
 
     def test_transforms_string(self):
         cluster = Cluster(cluster_str)
         topic_str = create_test_topic_name()
         cluster.create(topic_str)
-        time.sleep(1)
         cluster.cp("./snacks_value.txt", topic_str, target_value_type="str")
         self.assertEqual(cluster.size(topic_str)[topic_str][1], 3)
         #
@@ -408,23 +344,22 @@ class Test(unittest.TestCase):
             message_dict["value"] = value_str
             return message_dict
         cluster.create(f"{topic_str}_1")
-        cp(cluster, topic_str, cluster, f"{topic_str}_1", source_value_type="str", transform=transform)
+        cp(cluster, topic_str, cluster, f"{topic_str}_1", source_value_type="str", transform=transform, n=2)
+        self.assertEqual(cluster.size(f"{topic_str}_1")[f"{topic_str}_1"][1], 2)
         #
         cluster.subscribe(f"{topic_str}_1", value_type="str")
-        message_dict_list = cluster.consume(n=3)
+        message_dict_list = cluster.consume(n=2)
         for message_dict in message_dict_list:
             value_dict = json.loads(message_dict["value"])            
             self.assertRegex(value_dict["colour"], ".*ish")
         #
         cluster.delete(topic_str)
         cluster.delete(f"{topic_str}_1")
-        time.sleep(1)
 
     def test_transforms_json(self):
         cluster = Cluster(cluster_str)
         topic_str = create_test_topic_name()
         cluster.create(topic_str)
-        time.sleep(1)
         cluster.cp("./snacks_value.txt", topic_str, target_value_type="json", n=2)
         self.assertEqual(cluster.size(topic_str)[topic_str][1], 2)
         #
@@ -441,7 +376,6 @@ class Test(unittest.TestCase):
         #
         cluster.delete(topic_str)
         cluster.delete(f"{topic_str}_1")
-        time.sleep(1)
 
     def test_transforms_protobuf(self):
         schema_str = 'message Snack { required string name = 1; required float calories = 2; optional string colour = 3; }'
@@ -449,7 +383,6 @@ class Test(unittest.TestCase):
         cluster = Cluster(cluster_str)
         topic_str = create_test_topic_name()
         cluster.create(topic_str)
-        time.sleep(1)
         cluster.cp("./snacks_key_value.txt", topic_str, target_key_type="pb", target_value_type="pb", target_key_schema=schema_str, target_value_schema=schema_str, key_value_separator="/")
         self.assertEqual(cluster.size(topic_str)[topic_str][1], 3)
         #
@@ -468,7 +401,6 @@ class Test(unittest.TestCase):
         #
         cluster.delete(topic_str)
         cluster.delete(f"{topic_str}_1")
-        time.sleep(1)
 
     def test_transforms_avro(self):
         schema_str = '{ "type": "record", "name": "myrecord", "fields": [{"name": "name",  "type": "string" }, {"name": "calories", "type": "float" }, {"name": "colour", "type": "string" }] }'
@@ -476,7 +408,6 @@ class Test(unittest.TestCase):
         cluster = Cluster(cluster_str)
         topic_str = create_test_topic_name()
         cluster.create(topic_str)
-        time.sleep(1)
         cluster.cp("./snacks_value.txt", topic_str, target_value_type="avro", target_value_schema=schema_str)
         self.assertEqual(cluster.size(topic_str)[topic_str][1], 3)
         #
@@ -493,7 +424,6 @@ class Test(unittest.TestCase):
         #
         cluster.delete(topic_str)
         cluster.delete(f"{topic_str}_1")
-        time.sleep(1)
 
     def test_transforms_jsonschema(self):
         schema_str = '{ "title": "abc", "definitions" : { "record:myrecord" : { "type" : "object", "required" : [ "name", "calories" ], "additionalProperties" : false, "properties" : { "name" : {"type" : "string"}, "calories" : {"type" : "number"}, "colour" : {"type" : "string"} } } }, "$ref" : "#/definitions/record:myrecord" }'
@@ -501,7 +431,6 @@ class Test(unittest.TestCase):
         cluster = Cluster(cluster_str)
         topic_str = create_test_topic_name()
         cluster.create(topic_str)
-        time.sleep(1)
         cluster.cp("./snacks_value.txt", topic_str, target_value_type="jsonschema", target_value_schema=schema_str)
         self.assertEqual(cluster.size(topic_str)[topic_str][1], 3)
         #
@@ -518,13 +447,11 @@ class Test(unittest.TestCase):
         #
         cluster.delete(topic_str)
         cluster.delete(f"{topic_str}_1")
-        time.sleep(1)
 
     def test_transforms_bytes(self):
         cluster = Cluster(cluster_str)
         topic_str = create_test_topic_name()
         cluster.create(topic_str)
-        time.sleep(1)
         cluster.cp("./snacks_value.txt", topic_str, target_value_type="str")
         self.assertEqual(cluster.size(topic_str)[topic_str][1], 3)
         #
@@ -544,7 +471,6 @@ class Test(unittest.TestCase):
         #
         cluster.delete(topic_str)
         cluster.delete(f"{topic_str}_1")
-        time.sleep(1)
 
     def test_grep(self):
         schema_str = '{ "type": "record", "name": "myrecord", "fields": [{"name": "name",  "type": "string" }, {"name": "calories", "type": "float" }, {"name": "colour", "type": "string" }] }'
@@ -552,7 +478,6 @@ class Test(unittest.TestCase):
         cluster = Cluster(cluster_str)
         topic_str = create_test_topic_name()
         cluster.create(topic_str)
-        time.sleep(1)
         cluster.cp("./snacks_value.txt", topic_str, target_value_type="avro", target_value_schema=schema_str)
         self.assertEqual(cluster.size(topic_str)[topic_str][1], 3)
         #
@@ -563,13 +488,11 @@ class Test(unittest.TestCase):
         self.assertEqual(len(message_dict_list), 0)
         #
         cluster.delete(topic_str)
-        time.sleep(1)
 
     def test_offsets_for_times(self):
         cluster = Cluster(cluster_str)
         topic_str = create_test_topic_name()
         cluster.create(topic_str)
-        time.sleep(1)
         cluster.produce(topic_str, "message 1")
         time.sleep(1)
         cluster.produce(topic_str, "message 2")
@@ -586,7 +509,6 @@ class Test(unittest.TestCase):
         self.assertEqual(message1_offset_int, found_message1_offset_int)
         #
         cluster.delete(topic_str)
-        time.sleep(1)
     
     def test_replicate_change_schema(self):
         avro_schema_str = '{ "type": "record", "name": "myrecord", "fields": [{"name": "name",  "type": "string" }, {"name": "calories", "type": "float" }, {"name": "colour", "type": "string" }] }'
@@ -594,7 +516,6 @@ class Test(unittest.TestCase):
         cluster = Cluster(cluster_str)
         topic_str = create_test_topic_name()
         cluster.create(topic_str)
-        time.sleep(1)
         cluster.cp("./snacks_value.txt", topic_str, target_value_type="avro", target_value_schema=avro_schema_str)
         self.assertEqual(cluster.size(topic_str)[topic_str][1], 3)
         #
@@ -608,13 +529,11 @@ class Test(unittest.TestCase):
         #
         cluster.delete(topic_str)
         cluster.delete(f"{topic_str}_1")
-        time.sleep(1)
 
     def test_flush_timeout_bug(self):
         cluster = Cluster(cluster_str)
         topic_str = create_test_topic_name()
         cluster.create(topic_str)
-        time.sleep(1)
         #
         for i in range(3):
             print(i)
@@ -626,4 +545,19 @@ class Test(unittest.TestCase):
             #
             cluster.delete(topic_str)
             cluster.delete(f"{topic_str}_1")
-            time.sleep(1)
+    
+    def test_recreate(self):
+        cluster = Cluster(cluster_str_without_kash)
+        topic_str = create_test_topic_name()
+        cluster.create(topic_str)
+        cluster.cp("./snacks_value.txt", topic_str, target_value_type="str")
+        self.assertEqual(cluster.size(topic_str)[topic_str][1], 3)
+        #
+        for i in range(3):
+            print(i)
+            cluster.recreate(topic_str)
+            cluster.cp(topic_str, "./snacks_value1.txt", source_value_type="str", batch_size=3)
+            self.assertTrue(filecmp.cmp("./snacks_value.txt", "./snacks_value1.txt"))
+            os.remove("./snacks_value1.txt")
+        #
+        cluster.delete(topic_str)

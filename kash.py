@@ -24,6 +24,13 @@ RD_KAFKA_PARTITION_UA = -1
 # Helpers
 
 
+def str_to_bool(str):
+    if str.lower() == "false":
+        return False
+    else:
+        return True
+
+
 def is_interactive():
     return hasattr(sys, 'ps1')
 
@@ -91,7 +98,12 @@ def get_config_dict(cluster_str):
     else:
         schema_registry_config_dict = {}
     #
-    return config_dict, schema_registry_config_dict, cluster_dir_str
+    if "kash" in rawConfigParser.sections():
+        kash_dict = dict(rawConfigParser.items("kash"))
+    else:
+        kash_dict = {}
+    #
+    return config_dict, schema_registry_config_dict, kash_dict, cluster_dir_str
 
 
 # Get AdminClient, Producer and Consumer objects from a configuration dictionary
@@ -341,6 +353,11 @@ def replicate(source_cluster, source_topic_str, target_cluster, target_topic_str
     num_messages_int = n
     batch_size_int = batch_size
     #
+    if not target_cluster.exists(target_topic_str):
+        source_num_partitions_int = source_cluster.partitions(source_topic_str)[source_topic_str]
+        source_config_dict = source_cluster.config(source_topic_str)[source_topic_str]
+        target_cluster.create(target_topic_str, partitions=source_num_partitions_int, config=source_config_dict)
+    #
     source_cluster.subscribe(source_topic_str, group=group_str, offsets=offsets_dict, key_type=source_key_type_str, value_type=source_value_type_str)
     #
     target_cluster.produced_messages_counter_int = 0
@@ -368,13 +385,13 @@ def replicate(source_cluster, source_topic_str, target_cluster, target_topic_str
             #
             target_cluster.produce(target_topic_str, message_dict["value"], message_dict["key"], key_type=key_type_str, value_type=value_type_str, key_schema=key_schema_str, value_schema=value_schema_str, partition=message_dict["partition"], timestamp=timestamp_int, headers=message_dict["headers"])
         #
-        if target_cluster.verbose_int > 0 and target_cluster.produced_messages_counter_int % target_cluster.progress_num_messages_int == 0:
+        if target_cluster.verbose_int > 0 and target_cluster.produced_messages_counter_int % target_cluster.kash_dict["progress.num.messages"] == 0:
             print(target_cluster.produced_messages_counter_int)
         if num_messages_int != ALL_MESSAGES:
             if target_cluster.produced_messages_counter_int >= num_messages_int:
                 break
         #
-        if target_cluster.produced_messages_counter_int % target_cluster.flush_every_num_messages_int == 0:
+        if target_cluster.produced_messages_counter_int % target_cluster.kash_dict["flush.num.messages"] == 0:
             target_cluster.flush()
 
     #
@@ -390,7 +407,7 @@ cp = replicate
 class Cluster:
     def __init__(self, cluster_str):
         self.cluster_str = cluster_str
-        self.config_dict, self.schema_registry_config_dict, self.cluster_dir_str = get_config_dict(cluster_str)
+        self.config_dict, self.schema_registry_config_dict, self.kash_dict, self.cluster_dir_str = get_config_dict(cluster_str)
         #
         self.adminClient = get_adminClient(self.config_dict)
         #
@@ -411,83 +428,61 @@ class Cluster:
         self.schema_id_int_generalizedProtocolMessageType_protobuf_schema_str_tuple_dict = {}
         self.schema_id_int_avro_schema_str_dict = {}
         self.schema_id_int_jsonschema_str_dict = {}
-        # Producer
+        #
         self.produced_messages_counter_int = 0
-        self.flush_every_num_messages_int = 10000
-        self.flush_timeout_float = -1
-        # Consumer
-        self.consume_timeout_float = 1.0
-        # auto.offset.reset (earliest or latest (confluent_kafka default: latest))
-        self.auto_offset_reset_str = "earliest"
-        # enable.auto.commit (True or False (confluent_kafka default: True))
-        self.auto_commit_bool = True
-        # session.timeout.ms (6000-300000 (confluent_kafka default: 30000))
-        self.session_timeout_ms_int = 10000
-        # Standard output
+        #
         self.verbose_int = 1 if is_interactive() else 0
-        self.progress_num_messages_int = 1000
-
-    def flush_every_num_messages(self):
-        return self.flush_every_num_messages_int
-
-    def set_flush_every_num_messages(self, flush_every_num_messages_int):
-        self.flush_every_num_messages_int = flush_every_num_messages_int
-
-    #
-
-    def flush_timeout(self):
-        return self.flush_timeout_float
-
-    def set_flush_timeout(self, flush_timeout_float):
-        self.flush_timeout_float = flush_timeout_float
-
-    #
-
-    def consume_timeout(self):
-        return self.consume_timeout_float
-
-    def set_consume_timeout(self, consume_timeout_float):
-        self.consume_timeout_float = consume_timeout_float
-
-    #
-
-    def auto_offset_reset(self):
-        return self.auto_offset_reset_str
-
-    def set_auto_offset_reset(self, auto_offset_reset_str):
-        self.auto_offset_reset_str = auto_offset_reset_str
-
-    #
-
-    def auto_commit(self):
-        return self.auto_commit_bool
-
-    def set_auto_commit(self, auto_commit_bool):
-        self.auto_commit_bool = auto_commit_bool
-
-    #
-
-    def session_timeout_ms(self):
-        return self.session_timeout_ms_int
-
-    def set_session_timeout_ms(self, session_timeout_ms_int):
-        self.session_timeout_ms_int = session_timeout_ms_int
+        #
+        # Kash cluster config
+        # Producer
+        if "flush.num.messages" not in self.kash_dict:
+            self.kash_dict["flush.num.messages"] = 10000
+        else:
+            self.kash_dict["flush.num.messages"] = int(self.kash_dict["flush.num.messages"])
+        if "flush.timeout" not in self.kash_dict:
+            self.kash_dict["flush.timeout"] = -1
+        else:
+            self.kash_dict["flush.timeout"] = float(self.kash_dict["flush.timeout"])
+        # Consumer
+        if "consume.timeout" not in self.kash_dict:
+            self.kash_dict["consume.timeout"] = 3.0
+        else:
+            self.kash_dict["consume.timeout"] = float(self.kash_dict["consume.timeout"])
+        #
+        if "auto.offset.reset" not in self.kash_dict:
+            self.kash_dict["auto.offset.reset"] = "earliest"
+        else:
+            self.kash_dict["auto.offset.reset"] = str(self.kash_dict["auto.offset.reset"])
+        if "enable.auto.commit" not in self.kash_dict:
+            self.kash_dict["enable.auto.commit"] = True
+        else:
+            self.kash_dict["enable.auto.commit"] = str_to_bool(self.kash_dict["enable.auto.commit"])
+        if "session.timeout.ms" not in self.kash_dict:
+            self.kash_dict["session.timeout.ms"] = 10000
+        else:
+            self.kash_dict["session.timeout.ms"] = int(self.kash_dict["session.timeout.ms"])
+        # Standard output
+        if "progress.num.messages" not in self.kash_dict:
+            self.kash_dict["progress.num.messages"] = 1000
+        else:
+            self.kash_dict["progress.num.messages"] = int(self.kash_dict["progress.num.messages"])
+        # Await
+        if "await.num.retries" not in self.kash_dict:
+            self.kash_dict["await.num.retries"] = 50
+        else:
+            self.kash_dict["await.num.retries"] = int(self.kash_dict["await.num.retries"])
+        if "await.interval" not in self.kash_dict:
+            self.kash_dict["await.interval"] = 0.1
+        else:
+            self.kash_dict["await.interval"] = float(self.kash_dict["await.interval"])
 
     #
-
-    def verbose(self):
-        return self.verbose_int
 
     def set_verbose(self, verbose_int):
         self.verbose_int = verbose_int
 
-    #
-
-    def progress_num_messages(self):
-        return self.progress_num_messages_int
-
-    def set_progress_num_messages(self, progress_num_messages_int):
-        self.progress_num_messages_int = progress_num_messages_int
+    def verbose(self):
+        return self.verbose_int
 
     # Schema Registry helper methods (inside the Cluster class to do caching etc.)
 
@@ -728,25 +723,34 @@ class Cluster:
         topic_str_key_str_value_str_tuple_dict = {topic_str: (key_str, value_str) for topic_str in topic_str_list}
         return topic_str_key_str_value_str_tuple_dict
         
-    def create(self, topic_str, partitions=1, retention_ms=-1):
+    def create(self, topic_str, partitions=1, config={"retention.ms": -1}, block=True):
         partitions_int = partitions
-        retention_ms_int = retention_ms
+        config_dict = config
+        block_bool = block
         #
-        newTopic = NewTopic(topic_str, partitions_int, config={"retention.ms": retention_ms_int})
+        newTopic = NewTopic(topic_str, partitions_int, config=config_dict)
         self.adminClient.create_topics([newTopic])
+        #
+        if block_bool:
+            self.await_topic(topic_str, exists=True)
         #
         return topic_str
 
     # Shell aliases
     mk = create
 
-    def delete(self, pattern_str):
+    def delete(self, pattern_str, block=True):
+        block_bool = block
+        #
         topic_str_list = self.topics(pattern_str)
+        #
         if topic_str_list:
             self.adminClient.delete_topics(topic_str_list)
-            return topic_str_list
-        else:
-            return []
+            if block_bool:
+                for topic_str in topic_str_list:
+                    self.await_topic(topic_str, exists=False)
+        #    
+        return topic_str_list
 
     # Shell alias
     rm = delete
@@ -1004,10 +1008,10 @@ class Cluster:
                 #
                 self.produce(topic_str, value_str, key=key_str, key_type=key_type, value_type=value_type, key_schema=key_schema, value_schema=value_schema)
                 #
-                if self.produced_messages_counter_int % self.flush_every_num_messages_int == 0:
+                if self.produced_messages_counter_int % self.kash_dict["flush.num.messages"] == 0:
                     self.flush()
                 #
-                if self.verbose_int > 0 and self.produced_messages_counter_int % self.progress_num_messages_int == 0:
+                if self.verbose_int > 0 and self.produced_messages_counter_int % self.kash_dict["progress.num.messages"] == 0:
                     print(self.produced_messages_counter_int)
         #
         self.produced_messages_counter_int = 0
@@ -1018,7 +1022,7 @@ class Cluster:
         return self.produced_messages_counter_int
 
     def flush(self):
-        self.producer.flush(self.flush_timeout_float)
+        self.producer.flush(self.kash_dict["flush.timeout"])
 
     # Consumer
 
@@ -1032,9 +1036,9 @@ class Cluster:
             group_str = group
         #
         self.config_dict["group.id"] = group_str
-        self.config_dict["auto.offset.reset"] = self.auto_offset_reset_str
-        self.config_dict["enable.auto.commit"] = self.auto_commit_bool
-        self.config_dict["session.timeout.ms"] = self.session_timeout_ms_int
+        self.config_dict["auto.offset.reset"] = self.kash_dict["auto.offset.reset"]
+        self.config_dict["enable.auto.commit"] = self.kash_dict["enable.auto.commit"]
+        self.config_dict["session.timeout.ms"] = self.kash_dict["session.timeout.ms"]
         for key_str, value in config_dict.items():
             self.config_dict[key_str] = value
         self.consumer = get_consumer(self.config_dict)
@@ -1070,7 +1074,7 @@ class Cluster:
             print("Please subscribe to a topic before you consume.")
             return
         #
-        message_list = self.consumer.consume(num_messages_int, self.consume_timeout_float)
+        message_list = self.consumer.consume(num_messages_int, self.kash_dict["consume.timeout"])
         if message_list:
             self.last_consumed_message = message_list[-1]
         message_dict_list = [self.message_to_message_dict(message, key_type=self.subscribed_key_type_str, value_type=self.subscribed_value_type_str) for message in message_list]
@@ -1111,7 +1115,7 @@ class Cluster:
             [acc_list1 := acc_list1 + fold_function(message_dict) for message_dict in message_dict_list]
             acc_list += acc_list1
             message_counter_int += len(message_dict_list)
-            if self.verbose_int > 0 and message_counter_int % self.progress_num_messages_int == 0:
+            if self.verbose_int > 0 and message_counter_int % self.kash_dict["progress.num.messages"] == 0:
                 print(message_counter_int)
             if num_messages_int != ALL_MESSAGES:
                 if message_counter_int >= num_messages_int:
@@ -1197,7 +1201,7 @@ class Cluster:
                 textIOWrapper.writelines(output_str_list)
                 #
                 message_counter_int += len(message_dict_list)
-                if self.verbose_int > 0 and message_counter_int % self.progress_num_messages_int == 0:
+                if self.verbose_int > 0 and message_counter_int % self.kash_dict["progress.num.messages"] == 0:
                     print(message_counter_int)
                 if num_messages_int != ALL_MESSAGES:
                     if message_counter_int >= num_messages_int:
@@ -1216,3 +1220,34 @@ class Cluster:
             return replicate(self, source_str, self, target_str, group=group, offsets=offsets, transform=transform, source_key_type=source_key_type, source_value_type=source_value_type, target_key_type=target_key_type, target_value_type=target_value_type, target_key_schema=target_key_schema, target_value_schema=target_value_schema, keep_timestamps=keep_timestamps, n=n, batch_size=batch_size)
         elif is_file(source_str) and is_file(target_str):
             print("Please use your shell or file manager to copy files.")
+
+    def recreate(self, topic_str):
+        temp_topic_str = f"{topic_str}_{get_millis()}"
+        replicate(self, topic_str, self, temp_topic_str)
+        #
+        produced_messages_int = 0
+        if self.size(temp_topic_str)[temp_topic_str][1] == self.size(topic_str)[topic_str][1]:
+            self.delete(topic_str)
+            produced_messages_int = replicate(self, temp_topic_str, self, topic_str)
+            if self.size(topic_str)[topic_str][1] == self.size(temp_topic_str)[temp_topic_str][1]:
+                self.delete(temp_topic_str)
+        #
+        return produced_messages_int
+
+    def await_topic(self, topic_str, exists=True):
+        exists_bool = exists
+        #
+        num_retries_int = 0
+        while True:
+            if exists_bool:
+                if self.exists(topic_str):
+                    return True
+            else:
+                if not self.exists(topic_str):
+                    return True
+            #
+            num_retries_int += 1
+            if num_retries_int >= self.kash_dict["await.num.retries"]:
+                break
+            time.sleep(self.kash_dict["await.interval"])
+        return False
