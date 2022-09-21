@@ -11,6 +11,7 @@ from fnmatch import fnmatch
 import importlib
 import json
 import os
+import re
 import requests
 import sys
 import tempfile
@@ -407,6 +408,70 @@ def replicate(source_cluster, source_topic_str, target_cluster, target_topic_str
 # Shell alias
 cp = replicate
 
+
+def diff_fun(cluster1, topic_str1, cluster2, topic_str2, diff_function, group1=None, group2=None, offsets1=None, offsets2=None, key_type1="bytes", value_type1="bytes", key_type2="bytes", value_type2="bytes", n=ALL_MESSAGES, batch_size=1):
+    group_str1 = group1
+    group_str2 = group2
+    offsets_dict1 = offsets1
+    offsets_dict2 = offsets2
+    key_type_str1 = key_type1
+    value_type_str1 = value_type1
+    key_type_str2 = key_type2
+    value_type_str2 = value_type2
+    num_messages_int = n
+    batch_size_int = batch_size
+    #
+    cluster1.subscribe(topic_str1, group=group_str1, offsets=offsets_dict1, key_type=key_type_str1, value_type=value_type_str1)
+    cluster2.subscribe(topic_str2, group=group_str2, offsets=offsets_dict2, key_type=key_type_str2, value_type=value_type_str2)
+    #
+    message_counter_int = 0
+    differing_message_dict_tuple_list = []
+    while True:
+        message_dict_list1 = []
+        while True:
+            message_dict_list1 += cluster1.consume(n=batch_size_int)
+            if not message_dict_list1 or len(message_dict_list1) == batch_size_int:
+                break
+        if not message_dict_list1:
+            break
+        #
+        message_dict_list2 = []
+        while True:
+            message_dict_list2 += cluster2.consume(n=batch_size_int)
+            if not message_dict_list2 or len(message_dict_list2) == batch_size_int:
+                break
+        if not message_dict_list2:
+            break
+        #
+        for message_dict1, message_dict2 in zip(message_dict_list1, message_dict_list2):
+            if diff_function(message_dict1, message_dict2):
+                differing_message_dict_tuple_list += [(message_dict1, message_dict2)]
+                #
+                if cluster1.verbose_int > 0:
+                    partition_int1 = message_dict1["partition"]
+                    offset_int1 = message_dict1["offset"]
+                    partition_int2 = message_dict2["partition"]
+                    offset_int2 = message_dict2["offset"]
+                    print(f"Found differing messages on 1) partition {partition_int1}, offset {offset_int1} and 2) partition {partition_int2}, offset {offset_int2}.")
+        #
+        message_counter_int += batch_size_int
+        if cluster1.verbose_int > 0 and message_counter_int % cluster1.kash_dict["progress.num.messages"] == 0:
+            print(message_counter_int)
+        if num_messages_int != ALL_MESSAGES:
+            if message_counter_int >= num_messages_int:
+                break
+    #
+    cluster1.unsubscribe()
+    cluster2.unsubscribe()
+    return message_counter_int, differing_message_dict_tuple_list 
+
+
+def diff(cluster1, topic_str1, cluster2, topic_str2, group1=None, group2=None, offsets1=None, offsets2=None, key_type1="bytes", value_type1="bytes", key_type2="bytes", value_type2="bytes", n=ALL_MESSAGES, batch_size=1):
+    def diff_function(message_dict1, message_dict2):
+        return message_dict1["key"] != message_dict2["key"] or message_dict1["value"] != message_dict2["value"]
+    return diff_fun(cluster1, topic_str1, cluster2, topic_str2, diff_function, group1=group1, group2=group2, offsets1=offsets1, offsets2=offsets2, key_type1=key_type1, value_type1=value_type1, key_type2=key_type2, value_type2=value_type2, n=n, batch_size=batch_size)
+
+
 # Main kash.py class
 
 class Cluster:
@@ -732,7 +797,25 @@ class Cluster:
         #
         topic_str_key_str_value_str_tuple_dict = {topic_str: (key_str, value_str) for topic_str in topic_str_list}
         return topic_str_key_str_value_str_tuple_dict
-        
+    
+    def await_topic(self, topic_str, exists=True):
+        exists_bool = exists
+        #
+        num_retries_int = 0
+        while True:
+            if exists_bool:
+                if self.exists(topic_str):
+                    return True
+            else:
+                if not self.exists(topic_str):
+                    return True
+            #
+            num_retries_int += 1
+            if num_retries_int >= self.kash_dict["await.num.retries"]:
+                break
+            time.sleep(self.kash_dict["await.interval"])
+        return False
+
     def create(self, topic_str, partitions=1, config={"retention.ms": -1}, block=True):
         partitions_int = partitions
         config_dict = config
@@ -1152,7 +1235,7 @@ class Cluster:
     # Shell alias
     cat = foreach
 
-    def grep(self, topic_str, match_function, group=None, offsets=None, key_type="str", value_type="str", n=ALL_MESSAGES, batch_size=1):
+    def grep_fun(self, topic_str, match_function, group=None, offsets=None, key_type="str", value_type="str", n=ALL_MESSAGES, batch_size=1):
         group_str = group
         offsets_dict = offsets
         key_type_str = key_type
@@ -1166,12 +1249,20 @@ class Cluster:
                 if self.verbose_int > 0:
                     partition_int = message_dict["partition"]
                     offset_int = message_dict["offset"]
-                    print(f"Found matching message on partition {partition_int} with offset {offset_int}.")
+                    print(f"Found matching message on partition {partition_int}, offset {offset_int}.")
                 return [message_dict]
             else:
                 return []
         #
         return self.fold(topic_str, fold_function, group=group_str, offsets=offsets_dict, key_type=key_type_str, value_type=value_type_str, n=num_messages_int, batch_size=batch_size_int)
+
+    def grep(self, topic_str, re_pattern_str, group=None, offsets=None, key_type="str", value_type="str", n=ALL_MESSAGES, batch_size=1):
+        def match_function(message_dict):
+            pattern = re.compile(re_pattern_str)
+            key_str = str(message_dict["key"])
+            value_str = str(message_dict["value"])
+            return pattern.match(key_str) != None or pattern.match(value_str) != None
+        return self.grep_fun(topic_str, match_function, group=group, offsets=offsets, key_type=key_type, value_type=value_type, n=n, batch_size=batch_size)
 
     def download(self, topic_str, path_str, group=None, offsets=None, key_type="str", value_type="str", key_value_separator=None, message_separator="\n", overwrite=True, n=ALL_MESSAGES, batch_size=1):
         group_str = group
@@ -1243,21 +1334,3 @@ class Cluster:
                 self.delete(temp_topic_str)
         #
         return produced_messages_int
-
-    def await_topic(self, topic_str, exists=True):
-        exists_bool = exists
-        #
-        num_retries_int = 0
-        while True:
-            if exists_bool:
-                if self.exists(topic_str):
-                    return True
-            else:
-                if not self.exists(topic_str):
-                    return True
-            #
-            num_retries_int += 1
-            if num_retries_int >= self.kash_dict["await.num.retries"]:
-                break
-            time.sleep(self.kash_dict["await.interval"])
-        return False

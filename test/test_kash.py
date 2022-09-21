@@ -25,7 +25,6 @@ def create_test_topic_name():
 def create_test_group_name():
     return f"test_group_{get_millis()}"
 
-
 class Test(unittest.TestCase):
     def setUp(self):
         warnings.filterwarnings(action="ignore", message="unclosed", category=ResourceWarning)
@@ -487,10 +486,10 @@ class Test(unittest.TestCase):
         cluster.cp("./snacks_value.txt", topic_str, target_value_type="avro", target_value_schema=schema_str)
         self.assertEqual(cluster.size(topic_str)[topic_str][1], 3)
         #
-        message_dict_list = cluster.grep(topic_str, lambda message_dict: message_dict["value"]["name"] == "cake", value_type="avro")
+        message_dict_list = cluster.grep(topic_str, ".*name.*cake", value_type="avro")
         self.assertEqual(len(message_dict_list), 1)
         #
-        message_dict_list = cluster.grep(topic_str, lambda message_dict: message_dict["value"]["name"] == "cake", value_type="avro", offsets={0: 2})
+        message_dict_list = cluster.grep_fun(topic_str, lambda message_dict: message_dict["value"]["name"] == "cake", value_type="avro", offsets={0: 2})
         self.assertEqual(len(message_dict_list), 0)
         #
         cluster.delete(topic_str)
@@ -570,3 +569,32 @@ class Test(unittest.TestCase):
             os.remove("./snacks_value1.txt")
         #
         cluster.delete(topic_str)
+
+    def test_diff(self):
+        cluster = Cluster(cluster_str)
+        topic_str = create_test_topic_name()
+        cluster.create(topic_str)
+        cluster.cp("./snacks_value.txt", topic_str, target_value_type="json")
+        self.assertEqual(cluster.size(topic_str)[topic_str][1], 3)
+        #
+        cluster.create(f"{topic_str}_1")
+        cluster.cp("./snacks_value.txt", f"{topic_str}_1", target_value_type="json")
+        self.assertEqual(cluster.size(f"{topic_str}_1")[f"{topic_str}_1"][1], 3)
+        #
+        def transform(message_dict):
+            if message_dict["value"]["name"] == "cookie":
+                message_dict["value"]["colour"] += "ish"
+            return message_dict
+        cluster.create(f"{topic_str}_2")
+        cp(cluster, topic_str, cluster, f"{topic_str}_2", source_value_type="json", transform=transform, n=3)
+        self.assertEqual(cluster.size(f"{topic_str}_2")[f"{topic_str}_2"][1], 3)
+        #
+        cluster2 = Cluster(cluster_str)
+        num_messages_int, differing_message_dict_tuple_list = diff(cluster, topic_str, cluster2, f"{topic_str}_1")
+        self.assertEqual(num_messages_int, 3)
+        self.assertEqual(differing_message_dict_tuple_list, [])
+        #
+        num_messages_int1, differing_message_dict_tuple_list1 = diff(cluster, topic_str, cluster2, f"{topic_str}_2", value_type1="json", value_type2="json")
+        self.assertEqual(num_messages_int1, 3)
+        self.assertEqual(len(differing_message_dict_tuple_list1), 1)
+        self.assertEqual(differing_message_dict_tuple_list1[0][0]["value"]["name"], "cookie")
