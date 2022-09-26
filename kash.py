@@ -756,14 +756,18 @@ class Cluster:
 
     # AdminClient - topics
 
-    def topics(self, pattern=None, size=False):
-        size_bool = size
+    def topics(self, pattern=None, size=False, partitions=False):
         pattern_str = pattern
+        size_bool = size
+        partitions_bool = partitions
         #
         if size_bool:
-            topic_str_size_dict_total_size_int_tuple_dict = self.size(pattern_str)
-            topic_str_size_int_dict = {topic_str: topic_str_size_dict_total_size_int_tuple_dict[topic_str][1] for topic_str in topic_str_size_dict_total_size_int_tuple_dict}
-            return topic_str_size_int_dict
+            topic_str_total_size_int_size_dict_tuple_dict = self.size(pattern_str)
+            if partitions_bool:
+                return topic_str_total_size_int_size_dict_tuple_dict
+            else:
+                topic_str_size_int_dict = {topic_str: topic_str_total_size_int_size_dict_tuple_dict[topic_str][0] for topic_str in topic_str_total_size_int_size_dict_tuple_dict}
+                return topic_str_size_int_dict
         else:
             topic_str_list = list(self.adminClient.list_topics().topics.keys())
             if pattern_str is not None:
@@ -774,8 +778,8 @@ class Cluster:
     # Shell alias
     ls = topics
 
-    def l(self, pattern=None, size=True):
-        return self.topics(pattern=pattern, size=size)
+    def l(self, pattern=None, size=True, partitions=False):
+        return self.topics(pattern=pattern, size=size, partitions=partitions)
 
     # Shell alias
     ll = l
@@ -901,7 +905,7 @@ class Cluster:
     def size(self, pattern_str):
         topic_str_partition_int_tuple_dict_dict = self.watermarks(pattern_str)
         #
-        topic_str_size_dict_total_size_int_tuple_dict = {}
+        topic_str_total_size_int_size_dict_tuple_dict = {}
         for topic_str, partition_int_tuple_dict in topic_str_partition_int_tuple_dict_dict.items():
             size_dict = {partition_int: partition_int_tuple_dict[partition_int][1]-partition_int_tuple_dict[partition_int][0] for partition_int in partition_int_tuple_dict.keys()}
             #
@@ -910,8 +914,8 @@ class Cluster:
                 partition_size_int = offset_int_tuple[1] - offset_int_tuple[0]
                 total_size_int += partition_size_int
             #
-            topic_str_size_dict_total_size_int_tuple_dict[topic_str] = (size_dict, total_size_int)
-        return topic_str_size_dict_total_size_int_tuple_dict
+            topic_str_total_size_int_size_dict_tuple_dict[topic_str] = (total_size_int, size_dict)
+        return topic_str_total_size_int_size_dict_tuple_dict
 
     def watermarks(self, pattern_str, timeout=-1):
         timeout_float = timeout
@@ -1189,7 +1193,7 @@ class Cluster:
         else:
             return {}
 
-    def fold(self, topic_str, fold_function, group=None, offsets=None, key_type="str", value_type="str", n=ALL_MESSAGES, batch_size=1):
+    def foldl(self, topic_str, foldl_function, initial_acc, group=None, offsets=None, key_type="str", value_type="str", n=ALL_MESSAGES, batch_size=1):
         group_str = group
         offsets_dict = offsets
         key_type_str = key_type
@@ -1197,16 +1201,18 @@ class Cluster:
         num_messages_int = n
         batch_size_int = batch_size
         #
-        acc_list = []
         self.subscribe(topic_str, group=group_str, offsets=offsets_dict, key_type=key_type_str, value_type=value_type_str)
+        #
+        acc = initial_acc
         message_counter_int = 0
         while True:
             message_dict_list = self.consume(n=batch_size_int)
             if not message_dict_list:
                 break
-            acc_list1 = []
-            [acc_list1 := acc_list1 + fold_function(message_dict) for message_dict in message_dict_list]
-            acc_list += acc_list1
+            #
+            for message_dict in message_dict_list:
+                acc = foldl_function(acc, message_dict)
+            #
             message_counter_int += len(message_dict_list)
             if self.verbose_int > 0 and message_counter_int % self.kash_dict["progress.num.messages"] == 0:
                 print(message_counter_int)
@@ -1214,7 +1220,7 @@ class Cluster:
                 if message_counter_int >= num_messages_int:
                     break
         self.unsubscribe()
-        return acc_list
+        return acc
 
     def foreach(self, topic_str, foreach=print, group=None, offsets=None, key_type="str", value_type="str", n=ALL_MESSAGES, batch_size=1):
         foreach_function = foreach
@@ -1226,11 +1232,11 @@ class Cluster:
         batch_size_int = batch_size
         #
 
-        def fold_function(message_dict):
+        def foldl_function(_, message_dict):
             foreach_function(message_dict)
             return []
         #
-        self.fold(topic_str, fold_function, group=group_str, offsets=offsets_dict, key_type=key_type_str, value_type=value_type_str, n=num_messages_int, batch_size=batch_size_int)
+        self.foldl(topic_str, foldl_function, [], group=group_str, offsets=offsets_dict, key_type=key_type_str, value_type=value_type_str, n=num_messages_int, batch_size=batch_size_int)
 
     # Shell alias
     cat = foreach
@@ -1244,17 +1250,18 @@ class Cluster:
         batch_size_int = batch_size
         #
 
-        def fold_function(message_dict):
+        def foldl_function(acc_message_dict_list, message_dict):
             if match_function(message_dict):
                 if self.verbose_int > 0:
                     partition_int = message_dict["partition"]
                     offset_int = message_dict["offset"]
                     print(f"Found matching message on partition {partition_int}, offset {offset_int}.")
-                return [message_dict]
+                acc_message_dict_list.append(message_dict)
+                return acc_message_dict_list
             else:
-                return []
+                return acc_message_dict_list
         #
-        return self.fold(topic_str, fold_function, group=group_str, offsets=offsets_dict, key_type=key_type_str, value_type=value_type_str, n=num_messages_int, batch_size=batch_size_int)
+        return self.foldl(topic_str, foldl_function, [], group=group_str, offsets=offsets_dict, key_type=key_type_str, value_type=value_type_str, n=num_messages_int, batch_size=batch_size_int)
 
     def grep(self, topic_str, re_pattern_str, group=None, offsets=None, key_type="str", value_type="str", n=ALL_MESSAGES, batch_size=1):
         def match_function(message_dict):
@@ -1334,3 +1341,11 @@ class Cluster:
                 self.delete(temp_topic_str)
         #
         return produced_messages_int
+
+# replicate
+# diff
+# download
+# upload, foreach_line
+
+# foreach/cat: foldl
+# grep: foldl
