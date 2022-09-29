@@ -48,32 +48,46 @@ def create_unique_group_id():
     return str(get_millis())
 
 
-def foreach_line(path_str, proc_function, delimiter='\n', bufsize=4096, n=ALL_MESSAGES):
+def foldl_file(path_str, foldl_function, initial_acc, delimiter='\n', n=ALL_MESSAGES, bufsize=4096, verbose=0, progress_num_lines=1000):
     delimiter_str = delimiter
     bufsize_int = bufsize
     num_lines_int = n
+    verbose_int = verbose
+    progress_num_lines_int = progress_num_lines
     #
     buf_str = ""
     #
     line_counter_int = 0
     #
+    acc = initial_acc
     with open(path_str) as textIOWrapper:
         while True:
             newbuf_str = textIOWrapper.read(bufsize_int)
             if not newbuf_str:
                 if buf_str:
-                    proc_function(buf_str)
+                    last_line_str = buf_str
                     line_counter_int += 1
+                    if verbose_int > 0 and line_counter_int % progress_num_lines_int == 0:
+                        print(f"Read: {line_counter_int}")
+                    #
+                    acc = foldl_function(acc, last_line_str)
                 break
             buf_str += newbuf_str
             line_str_list = buf_str.split(delimiter_str)
             for line_str in line_str_list[:-1]:
-                proc_function(line_str)
                 line_counter_int += 1
+                if verbose_int > 0 and line_counter_int % progress_num_lines_int == 0:
+                    print(f"Read: {line_counter_int}")
+                #
+                acc = foldl_function(acc, line_str)
+                #
                 if num_lines_int != ALL_MESSAGES:
                     if line_counter_int >= num_lines_int:
                         break
+            #
             buf_str = line_str_list[-1]
+    #
+    return (acc, line_counter_int)
 
 
 # Get cluster configurations
@@ -334,7 +348,7 @@ def groupMember_to_dict(groupMember):
 
 # Cross-cluster
 
-def replicate(source_cluster, source_topic_str, target_cluster, target_topic_str, group=None, offsets=None, transform=None, source_key_type="bytes", source_value_type="bytes", target_key_type=None, target_value_type=None, target_key_schema=None, target_value_schema=None, keep_timestamps=True, n=ALL_MESSAGES, batch_size=1):
+def flatmap(source_cluster, source_topic_str, target_cluster, target_topic_str, flatmap_function, group=None, offsets=None, source_key_type="bytes", source_value_type="bytes", target_key_type=None, target_value_type=None, target_key_schema=None, target_value_schema=None, keep_timestamps=True, n=ALL_MESSAGES, batch_size=1):
     """Replicate a topic.
 
     Replicate (parts of) a topic (source_topic_str) on one cluster (source_cluster) to another topic (target_topic_str) on another (or the same) cluster (target_cluster). Each replicated message can be transformed into another message using a single message transform (transform). The source and target topics can have different message key and value types; e.g. the source topic can have value type Avro whereas the target topic will be written with value type Protobuf.
@@ -346,9 +360,6 @@ def replicate(source_cluster, source_topic_str, target_cluster, target_topic_str
     Returns:
         bool: Description of return value
     """
-    group_str = group
-    offsets_dict = offsets
-    transform_function = transform
     source_key_type_str = source_key_type
     source_value_type_str = source_value_type
     target_key_type_str = target_key_type
@@ -356,25 +367,18 @@ def replicate(source_cluster, source_topic_str, target_cluster, target_topic_str
     target_key_schema_str = target_key_schema
     target_value_schema_str = target_value_schema
     keep_timestamps_bool = keep_timestamps
-    num_messages_int = n
-    batch_size_int = batch_size
     #
     if not target_cluster.exists(target_topic_str):
         source_num_partitions_int = source_cluster.partitions(source_topic_str)[source_topic_str]
         source_config_dict = source_cluster.config(source_topic_str)[source_topic_str]
         target_cluster.create(target_topic_str, partitions=source_num_partitions_int, config=source_config_dict)
     #
-    source_cluster.subscribe(source_topic_str, group=group_str, offsets=offsets_dict, key_type=source_key_type_str, value_type=source_value_type_str)
-    #
     target_cluster.produced_messages_counter_int = 0
-    while True:
-        message_dict_list = source_cluster.consume(n=batch_size_int)
-        if not message_dict_list:
-            break
+    #
+    def foreach_function(message_dict):
+        message_dict_list = flatmap_function(message_dict)
+        #
         for message_dict in message_dict_list:
-            if transform_function:
-                message_dict = transform_function(message_dict)
-            #
             if keep_timestamps_bool:
                 timestamp_int_int_tuple = message_dict["timestamp"]
                 if timestamp_int_int_tuple[0] == TIMESTAMP_CREATE_TIME:
@@ -390,26 +394,29 @@ def replicate(source_cluster, source_topic_str, target_cluster, target_topic_str
             value_schema_str = target_value_schema_str if target_value_schema_str else source_cluster.last_consumed_message_value_schema_str
             #
             target_cluster.produce(target_topic_str, message_dict["value"], message_dict["key"], key_type=key_type_str, value_type=value_type_str, key_schema=key_schema_str, value_schema=value_schema_str, partition=message_dict["partition"], timestamp=timestamp_int, headers=message_dict["headers"])
-        #
-        if target_cluster.verbose_int > 0 and target_cluster.produced_messages_counter_int % target_cluster.kash_dict["progress.num.messages"] == 0:
-            print(target_cluster.produced_messages_counter_int)
-        if num_messages_int != ALL_MESSAGES:
-            if target_cluster.produced_messages_counter_int >= num_messages_int:
-                break
-        #
-        if target_cluster.produced_messages_counter_int % target_cluster.kash_dict["flush.num.messages"] == 0:
-            target_cluster.flush()
-
+            #
+            if target_cluster.verbose_int > 0 and target_cluster.produced_messages_counter_int % target_cluster.kash_dict["progress.num.messages"] == 0:
+                print(f"Produced: {target_cluster.produced_messages_counter_int}")
+            #
+            if target_cluster.produced_messages_counter_int % target_cluster.kash_dict["flush.num.messages"] == 0:
+                target_cluster.flush()
+    #
+    num_messages_int = source_cluster.foreach(source_topic_str, foreach_function, group=group, offsets=offsets, key_type=source_key_type_str, value_type=source_value_type_str, n=n, batch_size=batch_size)
     #
     target_cluster.flush()
-    source_cluster.unsubscribe()
-    return target_cluster.produced_messages_counter_int
+    #
+    return (num_messages_int, target_cluster.produced_messages_counter_int)
 
-# Shell alias
-cp = replicate
+def map(source_cluster, source_topic_str, target_cluster, target_topic_str, map_function, group=None, offsets=None, source_key_type="bytes", source_value_type="bytes", target_key_type=None, target_value_type=None, target_key_schema=None, target_value_schema=None, keep_timestamps=True, n=ALL_MESSAGES, batch_size=1):
+    def flatmap_function(message_dict):
+        return [map_function(message_dict)]
+    #
+    return flatmap(source_cluster, source_topic_str, target_cluster, target_topic_str, flatmap_function, group=group, offsets=offsets, source_key_type=source_key_type, source_value_type=source_value_type, target_key_type=target_key_type, target_value_type=target_value_type, target_key_schema=target_key_schema, target_value_schema=target_value_schema, keep_timestamps=keep_timestamps, n=n, batch_size=batch_size)
 
+def cp(source_cluster, source_topic_str, target_cluster, target_topic_str, flatmap_function=lambda x: [x], group=None, offsets=None, source_key_type="bytes", source_value_type="bytes", target_key_type=None, target_value_type=None, target_key_schema=None, target_value_schema=None, keep_timestamps=True, n=ALL_MESSAGES, batch_size=1):
+    return flatmap(source_cluster, source_topic_str, target_cluster, target_topic_str, flatmap_function, group=group, offsets=offsets, source_key_type=source_key_type, source_value_type=source_value_type, target_key_type=target_key_type, target_value_type=target_value_type, target_key_schema=target_key_schema, target_value_schema=target_value_schema, keep_timestamps=keep_timestamps, n=n, batch_size=batch_size)
 
-def diff_fun(cluster1, topic_str1, cluster2, topic_str2, diff_function, group1=None, group2=None, offsets1=None, offsets2=None, key_type1="bytes", value_type1="bytes", key_type2="bytes", value_type2="bytes", n=ALL_MESSAGES, batch_size=1):
+def zip_foldl(cluster1, topic_str1, cluster2, topic_str2, zip_foldl_function, initial_acc, group1=None, group2=None, offsets1=None, offsets2=None, key_type1="bytes", value_type1="bytes", key_type2="bytes", value_type2="bytes", n=ALL_MESSAGES, batch_size=1):
     group_str1 = group1
     group_str2 = group2
     offsets_dict1 = offsets1
@@ -425,7 +432,7 @@ def diff_fun(cluster1, topic_str1, cluster2, topic_str2, diff_function, group1=N
     cluster2.subscribe(topic_str2, group=group_str2, offsets=offsets_dict2, key_type=key_type_str2, value_type=value_type_str2)
     #
     message_counter_int = 0
-    differing_message_dict_tuple_list = []
+    acc = initial_acc
     while True:
         message_dict_list1 = []
         while True:
@@ -434,36 +441,51 @@ def diff_fun(cluster1, topic_str1, cluster2, topic_str2, diff_function, group1=N
                 break
         if not message_dict_list1:
             break
+        num_messages_int1 = len(message_dict_list1)
         #
+        batch_size_int2 = num_messages_int1 if num_messages_int1 < batch_size_int else batch_size_int
         message_dict_list2 = []
         while True:
-            message_dict_list2 += cluster2.consume(n=batch_size_int)
-            if not message_dict_list2 or len(message_dict_list2) == batch_size_int:
+            message_dict_list2 += cluster2.consume(n=batch_size_int2)
+            if not message_dict_list2 or len(message_dict_list2) == batch_size_int2:
                 break
         if not message_dict_list2:
             break
+        num_messages_int2 = len(message_dict_list2)
+        #
+        if num_messages_int1 != num_messages_int2:
+            break
         #
         for message_dict1, message_dict2 in zip(message_dict_list1, message_dict_list2):
-            if diff_function(message_dict1, message_dict2):
-                differing_message_dict_tuple_list += [(message_dict1, message_dict2)]
-                #
-                if cluster1.verbose_int > 0:
-                    partition_int1 = message_dict1["partition"]
-                    offset_int1 = message_dict1["offset"]
-                    partition_int2 = message_dict2["partition"]
-                    offset_int2 = message_dict2["offset"]
-                    print(f"Found differing messages on 1) partition {partition_int1}, offset {offset_int1} and 2) partition {partition_int2}, offset {offset_int2}.")
+            acc = zip_foldl_function(acc, message_dict1, message_dict2)
         #
-        message_counter_int += batch_size_int
+        message_counter_int += num_messages_int1
         if cluster1.verbose_int > 0 and message_counter_int % cluster1.kash_dict["progress.num.messages"] == 0:
-            print(message_counter_int)
+            print(f"Consumed: {message_counter_int}")
         if num_messages_int != ALL_MESSAGES:
             if message_counter_int >= num_messages_int:
                 break
     #
     cluster1.unsubscribe()
     cluster2.unsubscribe()
-    return message_counter_int, differing_message_dict_tuple_list 
+    return acc, message_counter_int
+
+
+def diff_fun(cluster1, topic_str1, cluster2, topic_str2, diff_function, group1=None, group2=None, offsets1=None, offsets2=None, key_type1="bytes", value_type1="bytes", key_type2="bytes", value_type2="bytes", n=ALL_MESSAGES, batch_size=1):
+    def zip_foldl_function(acc, message_dict1, message_dict2):
+        if diff_function(message_dict1, message_dict2):
+            acc += [(message_dict1, message_dict2)]
+            #
+            if cluster1.verbose_int > 0:
+                partition_int1 = message_dict1["partition"]
+                offset_int1 = message_dict1["offset"]
+                partition_int2 = message_dict2["partition"]
+                offset_int2 = message_dict2["offset"]
+                print(f"Found differing messages on 1) partition {partition_int1}, offset {offset_int1} and 2) partition {partition_int2}, offset {offset_int2}.")
+            #
+        return acc
+    #
+    return zip_foldl(cluster1, topic_str1, cluster2, topic_str2, zip_foldl_function, [], group1=group1, group2=group2, offsets1=offsets1, offsets2=offsets2, key_type1=key_type1, value_type1=value_type1, key_type2=key_type2, value_type2=value_type2, n=n, batch_size=batch_size)
 
 
 def diff(cluster1, topic_str1, cluster2, topic_str2, group1=None, group2=None, offsets1=None, offsets2=None, key_type1="bytes", value_type1="bytes", key_type2="bytes", value_type2="bytes", n=ALL_MESSAGES, batch_size=1):
@@ -775,13 +797,11 @@ class Cluster:
             topic_str_list.sort()
             return topic_str_list
 
-    # Shell alias
     ls = topics
 
     def l(self, pattern=None, size=True, partitions=False):
         return self.topics(pattern=pattern, size=size, partitions=partitions)
 
-    # Shell alias
     ll = l
 
     def config(self, pattern_str):
@@ -833,9 +853,6 @@ class Cluster:
         #
         return topic_str
 
-    # Shell aliases
-    mk = create
-
     def delete(self, pattern_str, block=True):
         block_bool = block
         #
@@ -849,7 +866,6 @@ class Cluster:
         #    
         return topic_str_list
 
-    # Shell alias
     rm = delete
 
     def offsets_for_times(self, topic_str, partition_int_timestamp_int_dict, timeout=-1):
@@ -1082,13 +1098,14 @@ class Cluster:
         #
         return key_str_or_bytes, value_str_or_bytes 
 
-    def upload(self, path_str, topic_str, key_type="str", value_type="str", key_schema=None, value_schema=None, key_value_separator=None, message_separator="\n", n=ALL_MESSAGES):
+    def flatmap_from_file(self, path_str, topic_str, flatmap_function, key_type="str", value_type="str", key_schema=None, value_schema=None, key_value_separator=None, message_separator="\n", n=ALL_MESSAGES, bufsize=4096):
         key_value_separator_str = key_value_separator
         message_separator_str = message_separator
         num_messages_int = n
+        bufsize_int = bufsize
         #
 
-        def proc(line_str):
+        def foldl_function(_, line_str):
             line_str1 = line_str.strip()
             if line_str1:
                 if key_value_separator_str is not None:
@@ -1103,20 +1120,27 @@ class Cluster:
                     key_str = None
                     value_str = line_str1
                 #
-                self.produce(topic_str, value_str, key=key_str, key_type=key_type, value_type=value_type, key_schema=key_schema, value_schema=value_schema)
+                key_str_value_str_tuple_list = flatmap_function((key_str, value_str))
                 #
-                if self.produced_messages_counter_int % self.kash_dict["flush.num.messages"] == 0:
-                    self.flush()
-                #
-                if self.verbose_int > 0 and self.produced_messages_counter_int % self.kash_dict["progress.num.messages"] == 0:
-                    print(self.produced_messages_counter_int)
+                for (key_str, value_str) in key_str_value_str_tuple_list:
+                    self.produce(topic_str, value_str, key=key_str, key_type=key_type, value_type=value_type, key_schema=key_schema, value_schema=value_schema)
+                    #
+                    if self.produced_messages_counter_int % self.kash_dict["flush.num.messages"] == 0:
+                        self.flush()
+                    #
+                    if self.verbose_int > 0 and self.produced_messages_counter_int % self.kash_dict["progress.num.messages"] == 0:
+                        print(f"Produced: {self.produced_messages_counter_int}")
         #
         self.produced_messages_counter_int = 0
         #
-        foreach_line(path_str, proc, delimiter=message_separator_str, n=num_messages_int)
+        progress_num_messages_int = self.kash_dict["progress.num.messages"]
+        (_, lines_counter_int) = foldl_file(path_str, foldl_function, None, delimiter=message_separator_str, n=num_messages_int, bufsize=bufsize_int, verbose=self.verbose_int, progress_num_lines=progress_num_messages_int)
         self.flush()
         #
-        return self.produced_messages_counter_int
+        return (lines_counter_int, self.produced_messages_counter_int)
+
+    def upload(self, path_str, topic_str, flatmap_function=lambda x: [x], key_type="str", value_type="str", key_schema=None, value_schema=None, key_value_separator=None, message_separator="\n", n=ALL_MESSAGES, bufsize=4096):
+        return self.flatmap_from_file(path_str, topic_str, flatmap_function, key_type=key_type, value_type=value_type, key_schema=key_schema, value_schema=value_schema, key_value_separator=key_value_separator, message_separator=message_separator, n=n, bufsize=bufsize)
 
     def flush(self):
         self.producer.flush(self.kash_dict["flush.timeout"])
@@ -1168,7 +1192,7 @@ class Cluster:
         num_messages_int = n
         #
         if self.subscribed_topic_str is None:
-            print("Please subscribe to a topic before you consume.")
+            print("Please subscribe to a topic before consuming.")
             return
         #
         message_list = self.consumer.consume(num_messages_int, self.kash_dict["consume.timeout"])
@@ -1193,6 +1217,8 @@ class Cluster:
         else:
             return {}
 
+    #
+
     def foldl(self, topic_str, foldl_function, initial_acc, group=None, offsets=None, key_type="str", value_type="str", n=ALL_MESSAGES, batch_size=1):
         group_str = group
         offsets_dict = offsets
@@ -1215,15 +1241,33 @@ class Cluster:
             #
             message_counter_int += len(message_dict_list)
             if self.verbose_int > 0 and message_counter_int % self.kash_dict["progress.num.messages"] == 0:
-                print(message_counter_int)
+                print(f"Consumed: {message_counter_int}")
             if num_messages_int != ALL_MESSAGES:
                 if message_counter_int >= num_messages_int:
                     break
         self.unsubscribe()
-        return acc
+        return (acc, message_counter_int)
 
-    def foreach(self, topic_str, foreach=print, group=None, offsets=None, key_type="str", value_type="str", n=ALL_MESSAGES, batch_size=1):
-        foreach_function = foreach
+    #
+
+    def flatmap(self, topic_str, flatmap_function, group=None, offsets=None, key_type="str", value_type="str", n=ALL_MESSAGES, batch_size=1):
+        def foldl_function(acc, message_dict):
+            acc += flatmap_function(message_dict)
+            return acc
+        #
+        return self.foldl(topic_str, foldl_function, [], group=group, offsets=offsets, key_type=key_type, value_type=value_type, n=n, batch_size=batch_size)
+
+    #
+
+    def map(self, topic_str, map_function, group=None, offsets=None, key_type="str", value_type="str", n=ALL_MESSAGES, batch_size=1):
+        def flatmap_function(message_dict):
+            return [map_function(message_dict)]
+        #
+        return self.flatmap(topic_str, flatmap_function, group=group, offsets=offsets, key_type=key_type, value_type=value_type, n=n, batch_size=batch_size)
+
+    #
+
+    def foreach(self, topic_str, foreach_function, group=None, offsets=None, key_type="str", value_type="str", n=ALL_MESSAGES, batch_size=1):
         group_str = group
         offsets_dict = offsets
         key_type_str = key_type
@@ -1234,12 +1278,18 @@ class Cluster:
 
         def foldl_function(_, message_dict):
             foreach_function(message_dict)
-            return []
+            return None
         #
-        self.foldl(topic_str, foldl_function, [], group=group_str, offsets=offsets_dict, key_type=key_type_str, value_type=value_type_str, n=num_messages_int, batch_size=batch_size_int)
+        (_, message_counter_int) = self.foldl(topic_str, foldl_function, None, group=group_str, offsets=offsets_dict, key_type=key_type_str, value_type=value_type_str, n=num_messages_int, batch_size=batch_size_int)
+        #
+        return message_counter_int
 
-    # Shell alias
-    cat = foreach
+    #
+
+    def cat(self, topic_str, foreach_function=print, group=None, offsets=None, key_type="str", value_type="str", n=ALL_MESSAGES, batch_size=1):
+        return self.foreach(topic_str, foreach_function, group=group, offsets=offsets, key_type=key_type, value_type=value_type, n=n, batch_size=batch_size)
+
+    #
 
     def grep_fun(self, topic_str, match_function, group=None, offsets=None, key_type="str", value_type="str", n=ALL_MESSAGES, batch_size=1):
         group_str = group
@@ -1250,18 +1300,17 @@ class Cluster:
         batch_size_int = batch_size
         #
 
-        def foldl_function(acc_message_dict_list, message_dict):
+        def flatmap_function(message_dict):
             if match_function(message_dict):
                 if self.verbose_int > 0:
                     partition_int = message_dict["partition"]
                     offset_int = message_dict["offset"]
                     print(f"Found matching message on partition {partition_int}, offset {offset_int}.")
-                acc_message_dict_list.append(message_dict)
-                return acc_message_dict_list
+                return [message_dict]
             else:
-                return acc_message_dict_list
+                return []
         #
-        return self.foldl(topic_str, foldl_function, [], group=group_str, offsets=offsets_dict, key_type=key_type_str, value_type=value_type_str, n=num_messages_int, batch_size=batch_size_int)
+        return self.flatmap(topic_str, flatmap_function, group=group_str, offsets=offsets_dict, key_type=key_type_str, value_type=value_type_str, n=num_messages_int, batch_size=batch_size_int)
 
     def grep(self, topic_str, re_pattern_str, group=None, offsets=None, key_type="str", value_type="str", n=ALL_MESSAGES, batch_size=1):
         def match_function(message_dict):
@@ -1269,83 +1318,99 @@ class Cluster:
             key_str = str(message_dict["key"])
             value_str = str(message_dict["value"])
             return pattern.match(key_str) != None or pattern.match(value_str) != None
+        #
         return self.grep_fun(topic_str, match_function, group=group, offsets=offsets, key_type=key_type, value_type=value_type, n=n, batch_size=batch_size)
 
-    def download(self, topic_str, path_str, group=None, offsets=None, key_type="str", value_type="str", key_value_separator=None, message_separator="\n", overwrite=True, n=ALL_MESSAGES, batch_size=1):
-        group_str = group
-        offsets_dict = offsets
-        key_type_str = key_type
-        value_type_str = value_type
+    #
+
+    def wc(self, topic_str, group=None, offsets=None, key_type="str", value_type="str", n=ALL_MESSAGES, batch_size=1):
+        def foldl_function(acc, message_dict):
+            if message_dict["key"] is None:
+                key_str = ""
+            else:
+                key_str = str(message_dict["key"])
+            num_words_key_int = 0 if key_str == "" else len(key_str.split(" "))
+            num_bytes_key_int = len(key_str)
+            #
+            if message_dict["value"] is None:
+                value_str = ""
+            else:
+                value_str = str(message_dict["value"])
+            num_words_value_int = len(value_str.split(" "))
+            num_bytes_value_int = len(value_str)
+            #
+            acc_num_words_int = acc[0] + num_words_key_int + num_words_value_int
+            acc_num_bytes_int = acc[1] + num_bytes_key_int + num_bytes_value_int
+            return (acc_num_words_int, acc_num_bytes_int)
+    #
+        ((acc_num_words_int, acc_num_bytes_int), num_messages_int) = self.foldl(topic_str, foldl_function, (0, 0), group=group, offsets=offsets, key_type=key_type, value_type=value_type, n=n, batch_size=batch_size)
+        return (num_messages_int, acc_num_words_int, acc_num_bytes_int)
+
+    #
+
+    def flatmap_to_file(self, topic_str, path_str, flatmap_function, group=None, offsets=None, key_type="str", value_type="str", key_value_separator=None, message_separator="\n", overwrite=True, n=ALL_MESSAGES, batch_size=1):
         key_value_separator_str = key_value_separator
         message_separator_str = message_separator
         overwrite_bool = overwrite
-        num_messages_int = n
-        batch_size_int = batch_size
         #
         mode_str = "w" if overwrite_bool else "a"
         #
-        self.subscribe(topic_str, group=group_str, offsets=offsets_dict, key_type=key_type_str, value_type=value_type_str)
-        with open(path_str, mode_str) as textIOWrapper:
-            message_counter_int = 0
-            while True:
-                message_dict_list = self.consume(n=batch_size_int)
-                if not message_dict_list:
-                    break
-                output_str_list = []
-                for message_dict in message_dict_list:
-                    value = message_dict["value"]
-                    if isinstance(value, dict):
-                        value = json.dumps(value)
-                    if key_value_separator_str is None:
-                        output = value
-                    else:
-                        key = message_dict["key"]
-                        if isinstance(key, dict):
-                            key = json.dumps(key)
-                        output = f"{key}{key_value_separator_str}{value}"
-                    #
-                    output_str = f"{output}{message_separator_str}"
-                    output_str_list += [output_str]
-                textIOWrapper.writelines(output_str_list)
+        
+        def foldl_function(acc, message_dict):
+            textIOWrapper = acc
+            #
+            message_dict_list = flatmap_function(message_dict)
+            #
+            output_str_list = []
+            for message_dict in message_dict_list:
+                value = message_dict["value"]
+                if isinstance(value, dict):
+                    value = json.dumps(value)
                 #
-                message_counter_int += len(message_dict_list)
-                if self.verbose_int > 0 and message_counter_int % self.kash_dict["progress.num.messages"] == 0:
-                    print(message_counter_int)
-                if num_messages_int != ALL_MESSAGES:
-                    if message_counter_int >= num_messages_int:
-                        break
+                if key_value_separator_str is None:
+                    output = value
+                else:
+                    key = message_dict["key"]
+                    if isinstance(key, dict):
+                        key = json.dumps(key)
+                    output = f"{key}{key_value_separator_str}{value}"
+                #
+                output_str = f"{output}{message_separator_str}"
+                output_str_list.append(output_str)
+            #
+            textIOWrapper.writelines(output_str_list)
+            #
+            return textIOWrapper
+        #
+        with open(path_str, mode_str) as textIOWrapper:
+            (_, message_counter_int) = self.foldl(topic_str, foldl_function, textIOWrapper, group=group, offsets=offsets, key_type=key_type, value_type=value_type, n=n, batch_size=batch_size)
         self.unsubscribe()
         #
         return message_counter_int
 
-    # Shell alias for upload and download
-    def cp(self, source_str, target_str, group=None, offsets=None, transform=None, source_key_type="str", source_value_type="str", target_key_type="str", target_value_type="str", target_key_schema=None, target_value_schema=None, key_value_separator=None, message_separator="\n", overwrite=True, keep_timestamps=True, n=ALL_MESSAGES, batch_size=1):
+    def download(self, topic_str, path_str, flatmap_function=lambda message_dict: [message_dict], group=None, offsets=None, key_type="str", value_type="str", key_value_separator=None, message_separator="\n", overwrite=True, n=ALL_MESSAGES, batch_size=1):
+        return self.flatmap_to_file(topic_str, path_str, flatmap_function, group=group, offsets=offsets, key_type=key_type, value_type=value_type, key_value_separator=key_value_separator, message_separator=message_separator, overwrite=overwrite, n=n, batch_size=batch_size)
+
+    def cp(self, source_str, target_str, group=None, offsets=None, flatmap_function=lambda x: [x], source_key_type="str", source_value_type="str", target_key_type="str", target_value_type="str", target_key_schema=None, target_value_schema=None, key_value_separator=None, message_separator="\n", overwrite=True, keep_timestamps=True, n=ALL_MESSAGES, batch_size=1, bufsize=4096):
+        #
         if is_file(source_str) and not is_file(target_str):
-            return self.upload(source_str, target_str, key_type=target_key_type, value_type=target_value_type, key_schema=target_key_schema, value_schema=target_value_schema, key_value_separator=key_value_separator, message_separator=message_separator, n=n)
+            return self.upload(source_str, target_str, flatmap_function=flatmap_function, key_type=target_key_type, value_type=target_value_type, key_schema=target_key_schema, value_schema=target_value_schema, key_value_separator=key_value_separator, message_separator=message_separator, n=n, bufsize=bufsize)
         elif not is_file(source_str) and is_file(target_str):
-            return self.download(source_str, target_str, group=group, offsets=offsets, key_type=source_key_type, value_type=source_value_type, key_value_separator=key_value_separator, message_separator=message_separator, overwrite=overwrite, n=n, batch_size=batch_size)
+            return self.download(source_str, target_str, flatmap_function=flatmap_function, group=group, offsets=offsets, key_type=source_key_type, value_type=source_value_type, key_value_separator=key_value_separator, message_separator=message_separator, overwrite=overwrite, n=n, batch_size=batch_size)
         elif (not is_file(source_str)) and (not is_file(target_str)):
-            return replicate(self, source_str, self, target_str, group=group, offsets=offsets, transform=transform, source_key_type=source_key_type, source_value_type=source_value_type, target_key_type=target_key_type, target_value_type=target_value_type, target_key_schema=target_key_schema, target_value_schema=target_value_schema, keep_timestamps=keep_timestamps, n=n, batch_size=batch_size)
+            return cp(self, source_str, self, target_str, flatmap_function=flatmap_function, group=group, offsets=offsets, source_key_type=source_key_type, source_value_type=source_value_type, target_key_type=target_key_type, target_value_type=target_value_type, target_key_schema=target_key_schema, target_value_schema=target_value_schema, keep_timestamps=keep_timestamps, n=n, batch_size=batch_size)
         elif is_file(source_str) and is_file(target_str):
-            print("Please use your shell or file manager to copy files.")
+            print("Please use a shell or file manager to copy files.")
 
     def recreate(self, topic_str):
         temp_topic_str = f"{topic_str}_{get_millis()}"
-        replicate(self, topic_str, self, temp_topic_str)
+        cp(self, topic_str, self, temp_topic_str)
         #
         produced_messages_int = 0
         if self.size(temp_topic_str)[temp_topic_str][1] == self.size(topic_str)[topic_str][1]:
             self.delete(topic_str)
-            produced_messages_int = replicate(self, temp_topic_str, self, topic_str)
+            produced_messages_int = cp(self, temp_topic_str, self, topic_str)
             if self.size(topic_str)[topic_str][1] == self.size(temp_topic_str)[temp_topic_str][1]:
                 self.delete(temp_topic_str)
         #
         return produced_messages_int
-
-# replicate
-# diff
-# download
-# upload, foreach_line
-
-# foreach/cat: foldl
-# grep: foldl
