@@ -349,16 +349,43 @@ def groupMember_to_dict(groupMember):
 # Cross-cluster
 
 def flatmap(source_cluster, source_topic_str, target_cluster, target_topic_str, flatmap_function, group=None, offsets=None, source_key_type="bytes", source_value_type="bytes", target_key_type=None, target_value_type=None, target_key_schema=None, target_value_schema=None, keep_timestamps=True, n=ALL_MESSAGES, batch_size=1):
-    """Replicate a topic.
+    """Replicate a topic and transform the messages in a flatmap-like manner.
 
-    Replicate (parts of) a topic (source_topic_str) on one cluster (source_cluster) to another topic (target_topic_str) on another (or the same) cluster (target_cluster). Each replicated message can be transformed into another message using a single message transform (transform). The source and target topics can have different message key and value types; e.g. the source topic can have value type Avro whereas the target topic will be written with value type Protobuf.
+    Replicate (parts of) a topic (source_topic_str) on one cluster (source_cluster) to another topic (target_topic_str) on another (or the same) cluster (target_cluster). Each replicated message is transformed into a list of other messages in a flatmap-like manner. The source and target topics can have different message key and value types; e.g. the source topic can have value type Avro whereas the target topic will be written with value type Protobuf.
 
     Args:
-        arg1 (str): Description of arg1
-        arg2 (int): Description of arg2
+        source_cluster (Cluster): Source cluster
+        source_topic_str (str): Source topic
+        target_cluster (Cluster): Target cluster
+        target_topic_str (str): Target topic
+        flatmap_function (function): Flatmap function (takes a message dictionary and returns a list of message dictionaries)
+        group (str, optional): Consumer group name used for consuming from the source topic. If set to None, creates a new unique consumer group name. Defaults to None.
+        offsets (dict, optional): Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for consuming from the source topic. If set to None, consume the topic using the offsets from the consumer group for the topic. Defaults to None.
+        source_key_type (str, optional): Source topic message key type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "bytes".
+        source_value_type (str, optional): Source topic message value type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "bytes".
+        target_key_type (str, optional): Target topic message key type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). If set to None, target_key_type = source_key_type. Defaults to None.
+        target_value_type (str, optional): Target topic message value type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). If set to None, target_value_type = source_value_type. Defaults to None.
+        target_key_schema (str, optional): Target key message type schema (for "avro", "protobuf"/"pb" or "jsonschema"). Defaults to None.
+        target_value_schema (str, optional): Target value message type schema (for "avro", "protobuf"/"pb" or "jsonschema"). Defaults to None.
+        keep_timestamps (bool, optional): Replicate the timestamps of the source messages in the target messages. Defaults to True.
+        n (int, optional): Number of messages to consume from the source topic. Defaults to ALL_MESSAGES.
+        batch_size (int, optional): Maximum number of messages to consume from the source topic at a time. Defaults to 1.
 
     Returns:
-        bool: Description of return value
+        tuple(int, int): Pair of the number of messages consumed from the source topic and the number of messages produced to the target topic.
+
+    Examples:
+        flatmap(cluster1, "topic1", cluster2, "topic2", lambda message_dict: [message_dict])
+            Replicate "topic1" on cluster1 to "topic2" on cluster2.
+
+        flatmap(cluster1, "topic1", cluster2, "topic2", lambda message_dict: [message_dict, message_dict])
+            Replicate "topic1" on cluster1 to "topic2" on cluster2, while duplicating each message from topic1 in topic2.
+
+        flatmap(cluster1, "topic1", cluster2, "topic2", lambda message_dict: [message_dict], source_value_type="avro", target_value_type="protobuf", target_value_schema="message Snack { required string name = 1; required float calories = 2; optional string colour = 3; }", n=100)
+            Replicate the first 100 messages from "topic1" on cluster1 to "topic2" on cluster2, changing the value schema from avro to protobuf.
+        
+        flatmap(cluster1, "topic1", cluster2, "topic2", lambda message_dict: [message_dict], offsets={0:100}, keep_timestamps=False, n=500)
+            Replicate the messages 100-600 from "topic1" on cluster1 to "topic2" on cluster2. Create new timestamps for the messages produced to the target topic.     
     """
     source_key_type_str = source_key_type
     source_value_type_str = source_value_type
@@ -414,9 +441,76 @@ def map(source_cluster, source_topic_str, target_cluster, target_topic_str, map_
     return flatmap(source_cluster, source_topic_str, target_cluster, target_topic_str, flatmap_function, group=group, offsets=offsets, source_key_type=source_key_type, source_value_type=source_value_type, target_key_type=target_key_type, target_value_type=target_value_type, target_key_schema=target_key_schema, target_value_schema=target_value_schema, keep_timestamps=keep_timestamps, n=n, batch_size=batch_size)
 
 def cp(source_cluster, source_topic_str, target_cluster, target_topic_str, flatmap_function=lambda x: [x], group=None, offsets=None, source_key_type="bytes", source_value_type="bytes", target_key_type=None, target_value_type=None, target_key_schema=None, target_value_schema=None, keep_timestamps=True, n=ALL_MESSAGES, batch_size=1):
+    """Replicate a topic and optionally transform the messages in a flatmap-like manner.
+
+    Replicate (parts of) a topic (source_topic_str) on one cluster (source_cluster) to another topic (target_topic_str) on another (or the same) cluster (target_cluster). Each replicated message can be transformed into a list of other messages in a flatmap-like manner. The source and target topics can have different message key and value types; e.g. the source topic can have value type Avro whereas the target topic will be written with value type Protobuf.
+
+    Args:
+        source_cluster (Cluster): Source cluster
+        source_topic_str (str): Source topic
+        target_cluster (Cluster): Target cluster
+        target_topic_str (str): Target topic
+        flatmap_function (function, optional): Flatmap function (takes a message dictionary and returns a list of message dictionaries). Defaults to lambda x: [x].
+        group (str, optional): Consumer group name used for consuming from the source topic. If set to None, creates a new unique consumer group name. Defaults to None.
+        offsets (dict, optional): Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for consuming from the source topic. If set to None, consume the topic using the offsets from the consumer group for the topic. Defaults to None.
+        source_key_type (str, optional): Source topic message key type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "bytes".
+        source_value_type (str, optional): Source topic message value type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "bytes".
+        target_key_type (str, optional): Target topic message key type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). If set to None, target_key_type = source_key_type. Defaults to None.
+        target_value_type (str, optional): Target topic message value type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). If set to None, target_value_type = source_value_type. Defaults to None.
+        target_key_schema (str, optional): Target key message type schema (for "avro", "protobuf"/"pb" or "jsonschema"). Defaults to None.
+        target_value_schema (str, optional): Target value message type schema (for "avro", "protobuf"/"pb" or "jsonschema"). Defaults to None.
+        keep_timestamps (bool, optional): Replicate the timestamps of the source messages in the target messages. Defaults to True.
+        n (int, optional): Number of messages to consume from the source topic. Defaults to ALL_MESSAGES.
+        batch_size (int, optional): Maximum number of messages to consume from the source topic at a time. Defaults to 1.
+
+    Returns:
+        tuple(int, int): Pair of the number of messages consumed from the source topic and the number of messages produced to the target topic.
+
+    Examples:
+        cp(cluster1, "topic1", cluster2, "topic2")
+            Replicate "topic1" on cluster1 to "topic2" on cluster2.
+
+        cp(cluster1, "topic1", cluster2, "topic2", flatmap_function=lambda message_dict: [message_dict, message_dict])
+            Replicate "topic1" on cluster1 to "topic2" on cluster2, while duplicating each message from topic1 in topic2.
+
+        cp(cluster1, "topic1", cluster2, "topic2", source_value_type="avro", target_value_type="protobuf", target_value_schema="message Snack { required string name = 1; required float calories = 2; optional string colour = 3; }", n=100)
+            Replicate the first 100 messages from "topic1" on cluster1 to "topic2" on cluster2, changing the value schema from avro to protobuf.
+        
+        cp(cluster1, "topic1", cluster2, "topic2", offsets={0:100}, keep_timestamps=False, n=500)
+            Replicate the messages 100-600 from "topic1" on cluster1 to "topic2" on cluster2. Create new timestamps for the messages produced to the target topic.     
+    """
     return flatmap(source_cluster, source_topic_str, target_cluster, target_topic_str, flatmap_function, group=group, offsets=offsets, source_key_type=source_key_type, source_value_type=source_value_type, target_key_type=target_key_type, target_value_type=target_value_type, target_key_schema=target_key_schema, target_value_schema=target_value_schema, keep_timestamps=keep_timestamps, n=n, batch_size=batch_size)
 
 def zip_foldl(cluster1, topic_str1, cluster2, topic_str2, zip_foldl_function, initial_acc, group1=None, group2=None, offsets1=None, offsets2=None, key_type1="bytes", value_type1="bytes", key_type2="bytes", value_type2="bytes", n=ALL_MESSAGES, batch_size=1):
+    """Consume topic 1 on cluster 1 and topic 2 on cluster 2 and combine the messages using a foldl function.
+
+    Consume (parts of) a topic (topic_str1) on one cluster (cluster1) and another topic (topic_str2) on another (or the same) cluster (cluster2) and combine them using a foldl function.
+
+    Args:
+        cluster1 (Cluster): Cluster 1
+        topic_str1 (str): Topic 1
+        cluster2 (Cluster): Cluster 2
+        topic_str2 (str): Topic 2
+        zip_foldl_function (function): Foldl function (takes an accumulator (any type) and a message dictionary and returns the updated accumulator)
+        initial_acc: Initial value of the accumulator (any type).
+        group1 (str, optional): Consumer group name used for consuming from topic 1. If set to None, creates a new unique consumer group name. Defaults to None.
+        group2 (str, optional): Consumer group name used for consuming from topic 2. If set to None, creates a new unique consumer group name. Defaults to None.
+        offsets1 (dict, optional): Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for consuming from topic 1. If set to None, consume topic 1 using the offsets from the consumer group for topic 1. Defaults to None.
+        offsets2 (dict, optional): Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for consuming from topic 2. If set to None, consume topic 2 using the offsets from the consumer group for topic 2. Defaults to None.
+        key_type1 (str, optional): Topic 1 message key type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "bytes".
+        value_type1 (str, optional): Topic 1 message value type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "bytes".
+        key_type2 (str, optional): Topic 2 message key type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). If set to None, target_key_type = source_key_type. Defaults to None.
+        value_type2 (str, optional): Topic 2 message value type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). If set to None, target_value_type = source_value_type. Defaults to None.
+        n (int, optional): Number of messages to consume from the topic 1 and topic 2. Defaults to ALL_MESSAGES.
+        batch_size (int, optional): Maximum number of messages to consume from topic 1 and topic 2 at a time. Defaults to 1.
+
+    Returns:
+        tuple(acc, int, int): Tuple of the accumulator (any type), the number of messages consumed from topic 1 and the number of messages consumed from topic 2.
+
+    Examples:
+        zip_foldl(cluster1, "topic1", cluster2, "topic2", lambda acc, message_dict1, message_dict2: acc += [(message_dict1, message_dict2)], [])
+            Consume "topic1" on cluster1 and "topic2" on cluster2 and return a list of pairs of message dictionaries from topic 1 and topic 2, respectively.
+    """
     group_str1 = group1
     group_str2 = group2
     offsets_dict1 = offsets1
@@ -431,7 +525,8 @@ def zip_foldl(cluster1, topic_str1, cluster2, topic_str2, zip_foldl_function, in
     cluster1.subscribe(topic_str1, group=group_str1, offsets=offsets_dict1, key_type=key_type_str1, value_type=value_type_str1)
     cluster2.subscribe(topic_str2, group=group_str2, offsets=offsets_dict2, key_type=key_type_str2, value_type=value_type_str2)
     #
-    message_counter_int = 0
+    message_counter_int1 = 0
+    message_counter_int2 = 0
     acc = initial_acc
     while True:
         message_dict_list1 = []
@@ -442,6 +537,9 @@ def zip_foldl(cluster1, topic_str1, cluster2, topic_str2, zip_foldl_function, in
         if not message_dict_list1:
             break
         num_messages_int1 = len(message_dict_list1)
+        message_counter_int1 += num_messages_int1
+        if cluster1.verbose_int > 0 and message_counter_int1 % cluster1.kash_dict["progress.num.messages"] == 0:
+            print(f"Consumed (topic 1): {message_counter_int1}")
         #
         batch_size_int2 = num_messages_int1 if num_messages_int1 < batch_size_int else batch_size_int
         message_dict_list2 = []
@@ -452,6 +550,9 @@ def zip_foldl(cluster1, topic_str1, cluster2, topic_str2, zip_foldl_function, in
         if not message_dict_list2:
             break
         num_messages_int2 = len(message_dict_list2)
+        message_counter_int2 += num_messages_int2
+        if cluster2.verbose_int > 0 and message_counter_int2 % cluster2.kash_dict["progress.num.messages"] == 0:
+            print(f"Consumed (topic 2): {message_counter_int2}")
         #
         if num_messages_int1 != num_messages_int2:
             break
@@ -459,19 +560,44 @@ def zip_foldl(cluster1, topic_str1, cluster2, topic_str2, zip_foldl_function, in
         for message_dict1, message_dict2 in zip(message_dict_list1, message_dict_list2):
             acc = zip_foldl_function(acc, message_dict1, message_dict2)
         #
-        message_counter_int += num_messages_int1
-        if cluster1.verbose_int > 0 and message_counter_int % cluster1.kash_dict["progress.num.messages"] == 0:
-            print(f"Consumed: {message_counter_int}")
         if num_messages_int != ALL_MESSAGES:
-            if message_counter_int >= num_messages_int:
+            if message_counter_int1 >= num_messages_int:
                 break
     #
     cluster1.unsubscribe()
     cluster2.unsubscribe()
-    return acc, message_counter_int
+    return acc, message_counter_int1, message_counter_int2
 
 
 def diff_fun(cluster1, topic_str1, cluster2, topic_str2, diff_function, group1=None, group2=None, offsets1=None, offsets2=None, key_type1="bytes", value_type1="bytes", key_type2="bytes", value_type2="bytes", n=ALL_MESSAGES, batch_size=1):
+    """Create a diff of topic 1 on cluster 1 and topic 2 on cluster 2 using a diff function.
+
+    Create a diff of (parts of) a topic (topic_str1) on one cluster (cluster1) and another topic (topic_str2) on another (or the same) cluster (cluster2) using a diff function (diff_function).
+
+    Args:
+        cluster1 (Cluster): Cluster 1
+        topic_str1 (str): Topic 1
+        cluster2 (Cluster): Cluster 2
+        topic_str2 (str): Topic 2
+        diff_function (function): Diff function (takes a message dictionary from topic 1 and a message dictionary from topic 2 and returns the updated accumulator)
+        group1 (str, optional): Consumer group name used for consuming from topic 1. If set to None, creates a new unique consumer group name. Defaults to None.
+        group2 (str, optional): Consumer group name used for consuming from topic 2. If set to None, creates a new unique consumer group name. Defaults to None.
+        offsets1 (dict, optional): Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for consuming from topic 1. If set to None, consume topic 1 using the offsets from the consumer group for topic 1. Defaults to None.
+        offsets2 (dict, optional): Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for consuming from topic 2. If set to None, consume topic 2 using the offsets from the consumer group for topic 2. Defaults to None.
+        key_type1 (str, optional): Topic 1 message key type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "bytes".
+        value_type1 (str, optional): Topic 1 message value type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "bytes".
+        key_type2 (str, optional): Topic 2 message key type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). If set to None, target_key_type = source_key_type. Defaults to None.
+        value_type2 (str, optional): Topic 2 message value type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). If set to None, target_value_type = source_value_type. Defaults to None.
+        n (int, optional): Number of messages to consume from the topic 1 and topic 2. Defaults to ALL_MESSAGES.
+        batch_size (int, optional): Maximum number of messages to consume from topic 1 and topic 2 at a time. Defaults to 1.
+
+    Returns:
+        list(tuple(message_dict, message_dict)): Tuple of message dictionaries from topic 1 and topic 2 which are different according to the diff_function (=where diff_function(message_dict1, message_dict2) returned True).
+
+    Examples:
+        diff_fun(cluster1, "topic1", cluster2, "topic2", lambda message_dict1, message_dict2: message_dict1["value"] != message_dict2["value"])
+            Create a diff of "topic1" on cluster1 and "topic2" on cluster2 by comparing the message values.
+    """
     def zip_foldl_function(acc, message_dict1, message_dict2):
         if diff_function(message_dict1, message_dict2):
             acc += [(message_dict1, message_dict2)]
@@ -489,6 +615,33 @@ def diff_fun(cluster1, topic_str1, cluster2, topic_str2, diff_function, group1=N
 
 
 def diff(cluster1, topic_str1, cluster2, topic_str2, group1=None, group2=None, offsets1=None, offsets2=None, key_type1="bytes", value_type1="bytes", key_type2="bytes", value_type2="bytes", n=ALL_MESSAGES, batch_size=1):
+    """Create a diff of topic 1 on cluster 1 and topic 2 on cluster 2 using a diff function.
+
+    Create a diff of (parts of) a topic (topic_str1) on one cluster (cluster1) and another topic (topic_str2) on another (or the same) cluster (cluster2) with respect to their keys and values.
+
+    Args:
+        cluster1 (Cluster): Cluster 1
+        topic_str1 (str): Topic 1
+        cluster2 (Cluster): Cluster 2
+        topic_str2 (str): Topic 2
+        group1 (str, optional): Consumer group name used for consuming from topic 1. If set to None, creates a new unique consumer group name. Defaults to None.
+        group2 (str, optional): Consumer group name used for consuming from topic 2. If set to None, creates a new unique consumer group name. Defaults to None.
+        offsets1 (dict, optional): Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for consuming from topic 1. If set to None, consume topic 1 using the offsets from the consumer group for topic 1. Defaults to None.
+        offsets2 (dict, optional): Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for consuming from topic 2. If set to None, consume topic 2 using the offsets from the consumer group for topic 2. Defaults to None.
+        key_type1 (str, optional): Topic 1 message key type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "bytes".
+        value_type1 (str, optional): Topic 1 message value type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "bytes".
+        key_type2 (str, optional): Topic 2 message key type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). If set to None, target_key_type = source_key_type. Defaults to None.
+        value_type2 (str, optional): Topic 2 message value type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). If set to None, target_value_type = source_value_type. Defaults to None.
+        n (int, optional): Number of messages to consume from the topic 1 and topic 2. Defaults to ALL_MESSAGES.
+        batch_size (int, optional): Maximum number of messages to consume from topic 1 and topic 2 at a time. Defaults to 1.
+
+    Returns:
+        list(tuple(message_dict, message_dict)): Tuple of message dictionaries from topic 1 and topic 2 which are different with respect to their keys and values.
+
+    Examples:
+        diff(cluster1, "topic1", cluster2, "topic2")
+            Create a diff of "topic1" on cluster1 and "topic2" on cluster2 with respect to their keys and values.
+    """
     def diff_function(message_dict1, message_dict2):
         return message_dict1["key"] != message_dict2["key"] or message_dict1["value"] != message_dict2["value"]
     return diff_fun(cluster1, topic_str1, cluster2, topic_str2, diff_function, group1=group1, group2=group2, offsets1=offsets1, offsets2=offsets2, key_type1=key_type1, value_type1=value_type1, key_type2=key_type2, value_type2=value_type2, n=n, batch_size=batch_size)
@@ -778,7 +931,101 @@ class Cluster:
 
     # AdminClient - topics
 
+    def size(self, pattern_str, timeout=-1.0):
+        """List topics, their total sizes and the sizes of their partitions.
+
+        List topics on the cluster whose names match the pattern pattern_str, their total sizes and the sizes of their partitions.
+
+        Args:
+            pattern (str): The pattern for selecting those topics which shall be listed.
+            timeout (float, optional): The timeout for the internally used get_watermark_offsets() method calls from confluent_kafka.Consumer. Defaults to -1.0 (infinite=no timeout).
+
+        Returns:
+            dict(str, tuple(int, dict(int, int))): Dictionary of strings (topic name) and pairs of integers (total size of the topic) and dictionaries of integers (partition) and integers (size of the partition).
+
+        Examples:
+            size("*")
+                List all topics of the cluster, their total sizes and the sizes of their partitions.
+
+            size("*test", timeout=1.0)
+                List those topics whose name ends with "test", their total sizes and the sizes of their partitions and time out the internally used get_watermark_offsets() method after one second.
+        """
+        topic_str_partition_int_tuple_dict_dict = self.watermarks(pattern_str, timeout=timeout)
+        #
+        topic_str_total_size_int_size_dict_tuple_dict = {}
+        for topic_str, partition_int_tuple_dict in topic_str_partition_int_tuple_dict_dict.items():
+            size_dict = {partition_int: partition_int_tuple_dict[partition_int][1]-partition_int_tuple_dict[partition_int][0] for partition_int in partition_int_tuple_dict.keys()}
+            #
+            total_size_int = 0
+            for offset_int_tuple in partition_int_tuple_dict.values():
+                partition_size_int = offset_int_tuple[1] - offset_int_tuple[0]
+                total_size_int += partition_size_int
+            #
+            topic_str_total_size_int_size_dict_tuple_dict[topic_str] = (total_size_int, size_dict)
+        return topic_str_total_size_int_size_dict_tuple_dict
+
+    def watermarks(self, pattern_str, timeout=-1.0):
+        """Get low and high offsets (=so called "watermarks") of topics on the cluster.
+
+        Returns a dictionary of the topics whose names match the bash-like pattern pattern_str and the low and high offsets of their partitions.
+
+        Args:
+            pattern_str (str): The pattern for selecting the topics.
+            timeout (float, optional): The timeout for the individual get_watermark_offsets() method calls from confluent_kafka.Consumer. Defaults to -1.0 (infinite=no timeout).
+
+        Returns:
+            dict(str, dict(int, tuple(int, int))): Dictionary of strings (topic names) and dictionaries of integers (partition) and pairs of integers (low and high offsets of the respective partition of the respective topic)
+
+        Examples:
+            watermarks("test*")
+                Return the watermarks for all topics whose name starts with "test" and their partitions.
+
+            watermarks("test", timeout=1.0)
+                Return the watermarks for the topic "test" and time out the internally used get_watermark_offsets() method after one second.
+        """
+        timeout_float = timeout
+        #
+        config_dict = self.config_dict
+        config_dict["group.id"] = "dummy_group_id"
+        consumer = get_consumer(config_dict)
+        #
+        topic_str_list = self.topics(pattern_str)
+        topic_str_partition_int_tuple_dict_dict = {}
+        for topic_str in topic_str_list:
+            partitions_int = self.partitions(topic_str)[topic_str]
+            partition_int_tuple_dict = {partition_int: consumer.get_watermark_offsets(TopicPartition(topic_str, partition=partition_int), timeout_float) for partition_int in range(partitions_int)}
+            topic_str_partition_int_tuple_dict_dict[topic_str] = partition_int_tuple_dict
+        return topic_str_partition_int_tuple_dict_dict
+
     def topics(self, pattern=None, size=False, partitions=False):
+        """List topics on the cluster.
+
+        List topics on the cluster. Optionally return only those topics whose names match a bash-like pattern. Optionally return the total sizes of the topics and the sizes of their individual partitions.
+
+        Args:
+            pattern (str, optional): The pattern for selecting those topics which shall be listed. Defaults to None.
+            size (bool, optional): Return the total sizes of the topics if set to True. Defaults to False.
+            partitions (bool, optional): Return the sizes of the individual partitions of the topics if set to True. Defaults to False.
+
+        Returns:
+            list(str) | dict(str, int) | dict(str, dict(int, int)) | dict(str, tuple(int, dict(int, int))): List of strings if size=False and partitions=False; dictionary of strings (topic name) and integers (total size of the topic) if size=True and partitions=False; dictionary of strings (topic name) and dictionaries of integers (partition) and integers (size of the partition) if size=False and partitions=True; dictionary of strings (topic name) and pairs of integers (total size of the topic) and dictionaries of integers (partition) and integers (size of the partition) if size=True and partitions=True.
+
+        Examples:
+            topics()
+                List all topics of the cluster.
+
+            topics(size=True)
+                List all the topics of the cluster and their total sizes.
+            
+            topics(partitions=True)
+                List all the topics of the cluster and the sizes of their individual partitions.
+
+            topics(size=True, partitions=True)
+                List all the topics of the cluster, their total sizes and the sizes of their individual partitions.
+
+            topics("test*")
+                List all those topics of the cluster whose name starts with "test". 
+        """
         pattern_str = pattern
         size_bool = size
         partitions_bool = partitions
@@ -791,20 +1038,126 @@ class Cluster:
                 topic_str_size_int_dict = {topic_str: topic_str_total_size_int_size_dict_tuple_dict[topic_str][0] for topic_str in topic_str_total_size_int_size_dict_tuple_dict}
                 return topic_str_size_int_dict
         else:
-            topic_str_list = list(self.adminClient.list_topics().topics.keys())
-            if pattern_str is not None:
-                topic_str_list = [topic_str for topic_str in topic_str_list if fnmatch(topic_str, pattern_str)]
-            topic_str_list.sort()
-            return topic_str_list
+            if partitions_bool:
+                topic_str_total_size_int_size_dict_tuple_dict = self.size(pattern_str)
+                topic_str_size_dict_dict = {topic_str: topic_str_total_size_int_size_dict_tuple_dict[topic_str][1] for topic_str in topic_str_total_size_int_size_dict_tuple_dict}
+                return topic_str_size_dict_dict
+            else:
+                topic_str_list = list(self.adminClient.list_topics().topics.keys())
+                if pattern_str is not None:
+                    topic_str_list = [topic_str for topic_str in topic_str_list if fnmatch(topic_str, pattern_str)]
+                topic_str_list.sort()
+                return topic_str_list
 
     ls = topics
+    """List topics on the cluster (shortcut for topics()).
+
+    List topics on the cluster. Optionally return only those topics whose names match a bash-like pattern. Optionally return the total sizes of the topics and the sizes of their individual partitions.
+
+    Args:
+        pattern (str, optional): The pattern for selecting those topics which shall be listed. Defaults to None.
+        size (bool, optional): Return the total sizes of the topics if set to True. Defaults to False.
+        partitions (bool, optional): Return the sizes of the individual partitions of the topics if set to True. Defaults to False.
+
+    Returns:
+        list(str) | dict(str, int) | dict(str, dict(int, int)) | dict(str, tuple(int, dict(int, int))): List of strings if size=False and partitions=False; dictionary of strings (topic name) and integers (total size of the topic) if size=True and partitions=False; dictionary of strings (topic name) and dictionaries of integers (partition) and integers (size of the partition) if size=False and partitions=True; dictionary of strings (topic name) and pairs of integers (total size of the topic) and dictionaries of integers (partition) and integers (size of the partition) if size=True and partitions=True.
+
+    Examples:
+        ls()
+            List all topics of the cluster.
+
+        ls(size=True)
+            List all the topics of the cluster and their total sizes.
+        
+        ls(partitions=True)
+            List all the topics of the cluster and the sizes of their individual partitions.
+
+        ls(size=True, partitions=True)
+            List all the topics of the cluster, their total sizes and the sizes of their individual partitions.
+
+        ls  ("test*")
+            List all those topics of the cluster whose name starts with "test". 
+    """
 
     def l(self, pattern=None, size=True, partitions=False):
+        """List topics on the cluster (shortcut for topics(size=True), a la the "l" alias in bash).
+
+        List topics on the cluster. Optionally return only those topics whose names match a bash-like pattern. Optionally return the total sizes of the topics and the sizes of their individual partitions.
+
+        Args:
+            pattern (str, optional): The pattern for selecting those topics which shall be listed. Defaults to None.
+            size (bool, optional): Return the total sizes of the topics if set to True. Defaults to True.
+            partitions (bool, optional): Return the sizes of the individual partitions of the topics if set to True. Defaults to False.
+
+        Returns:
+            list(str) | dict(str, int) | dict(str, dict(int, int)) | dict(str, tuple(int, dict(int, int))): List of strings if size=False and partitions=False; dictionary of strings (topic name) and integers (total size of the topic) if size=True and partitions=False; dictionary of strings (topic name) and dictionaries of integers (partition) and integers (size of the partition) if size=False and partitions=True; dictionary of strings (topic name) and pairs of integers (total size of the topic) and dictionaries of integers (partition) and integers (size of the partition) if size=True and partitions=True.
+
+        Examples:
+            l()
+                List all the topics of the cluster and their total sizes.
+            
+            l(size=False)
+                List all the topics of the cluster.
+            
+            l(partitions=True)
+                List all the topics of the cluster, their total sizes and the sizes of their individual partitions.
+
+            l(size=False, partitions=True)
+                List all the topics of the cluster and the sizes of their individual partitions.
+            
+            l("test*")
+                List all those topics of the cluster whose name starts with "test" and their total sizes. 
+        """
         return self.topics(pattern=pattern, size=size, partitions=partitions)
 
     ll = l
+    """List topics on the cluster (shortcut for topics(size=True), a la the "ll" alias in bash).
+
+    List topics on the cluster. Optionally return only those topics whose names match a bash-like pattern. Optionally return the total sizes of the topics and the sizes of their individual partitions.
+
+    Args:
+        pattern (str, optional): The pattern for selecting those topics which shall be listed. Defaults to None.
+        size (bool, optional): Return the total sizes of the topics if set to True. Defaults to True.
+        partitions (bool, optional): Return the sizes of the individual partitions of the topics if set to True. Defaults to False.
+
+    Returns:
+        list(str | dict(str, int) | dict(str, dict(int, int)) | dict(str, tuple(int, dict(int, int)))): List of strings if size=False and partitions=False; dictionary of strings (topic name) and integers (total size of the topic) if size=True and partitions=False; dictionary of strings (topic name) and dictionaries of integers (partition) and integers (size of the partition) if size=False and partitions=True; dictionary of strings (topic name) and pairs of integers (total size of the topic) and dictionaries of integers (partition) and integers (size of the partition) if size=True and partitions=True.
+
+    Examples:
+        ll()
+            List all the topics of the cluster and their total sizes.
+        
+        ll(size=False)
+            List all the topics of the cluster.
+        
+        ll(partitions=True)
+            List all the topics of the cluster, their total sizes and the sizes of their individual partitions.
+
+        ll(size=False, partitions=True)
+            List all the topics of the cluster and the sizes of their individual partitions.
+        
+        ll("test*")
+            List all those topics of the cluster whose name starts with "test" and their total sizes. 
+    """
 
     def config(self, pattern_str):
+        """Return the configuration of topics.
+
+        Return the configuration of those topics whose names match the bash-like pattern pattern_str.
+
+        Args:
+            pattern_str (str): The pattern for selecting the topics for which the configuration shall be returned.
+
+        Returns:
+            dict(str, dict(str, str)): Dictionary of strings (topic names) and dictionaries of strings (configuration keys) and strings (configuration values).
+        
+        Examples:
+            config("test")
+                Return the configuration of the topic "test".
+            
+            config("test?")
+                Return the configuration of all topics matching the pattern "test?"
+        """
         topic_str_list = self.topics(pattern_str)
         #
         topic_str_config_dict_dict = {topic_str: self.get_config_dict(ResourceType.TOPIC, topic_str) for topic_str in topic_str_list}
@@ -812,6 +1165,23 @@ class Cluster:
         return topic_str_config_dict_dict
 
     def set_config(self, pattern_str, key_str, value_str, test=False):
+        """Set a configuration item of topics.
+
+        Set the configuration item with key key_str and value value_str of those topics whose names match the bash-like pattern pattern_str.
+
+        Args:
+            pattern_str (str): The pattern for selecting those topics whose configuration shall be changed.
+
+        Returns:
+            dict(str, tuple(str, str)): Dictionary of strings (topic names) and tuples of strings (configuration keys) and strings (configuration values)
+        
+        Examples:
+            set_config("test", "retention.ms", "4711")
+                Sets the configuration key "retention.ms" to configuration value "4711" for topic "test".
+            
+            set_config("test*", "42")
+                Sets the configuration key "retention.ms" to configuration value "42" for all topics whose names start with "test".
+        """
         test_bool = test
         #
         topic_str_list = self.topics(pattern_str)
@@ -840,7 +1210,33 @@ class Cluster:
             time.sleep(self.kash_dict["await.interval"])
         return False
 
-    def create(self, topic_str, partitions=1, config={"retention.ms": -1}, block=True):
+    def create(self, topic_str, partitions=1, config={"retention.ms": "-1"}, block=True):
+        """Create a topic.
+
+        Create a topic.
+
+        Args:
+            topic_str (str): The name of the topic to be created.
+            partitions (int, optional): The number of partitions for the topic to be created. Defaults to 1.
+            config (dict(str, str), optional): Configuration overrides for the topic to be created. Defaults to {"retention.ms": "-1"} (unlimited retention).
+            block (bool, optional): Block until the topic is created. Defaults to True.
+
+        Returns:
+            str: Name of the created topic.
+        
+        Examples:
+            create("test")
+                Create the topic "test" with one partition, unlimited retention and block until it is created.
+            
+            create("test", partitions=2)
+                Create the topic "test" with two partitions, unlimited retention and block until it is created.
+
+            create("test", config={"retention.ms": "4711"})
+                Create the topic "test" with one partition, a retention time of 4711ms and block until it is created.
+            
+            create("test", block=False)
+                Create the topic "test" with one partition, unlimited retention time and *do not* block until it is created.
+        """
         partitions_int = partitions
         config_dict = config
         block_bool = block
@@ -854,6 +1250,27 @@ class Cluster:
         return topic_str
 
     def delete(self, pattern_str, block=True):
+        """Delete topics.
+
+        Delete those topics whose names match the bash-like pattern pattern_str.
+
+        Args:
+            pattern_str (str): The pattern for selecting the topics to be deleted.
+            block (bool, optional): Block until the topic is deleted. Defaults to True.
+
+        Returns:
+            list(str): List of strings of names of the deleted topics.
+        
+        Examples:
+            delete("test")
+                Delete the topic "test" and block until it is deleted.
+            
+            delete("test", block=False)
+                Delete the topic "test" and *do not* block until it is deleted.
+
+            delete("test*")
+                Delete all topics starting with "test".
+        """
         block_bool = block
         #
         topic_str_list = self.topics(pattern_str)
@@ -867,22 +1284,67 @@ class Cluster:
         return topic_str_list
 
     rm = delete
+    """Delete topics (shortcut for delete(), a la bash "rm")
 
-    def offsets_for_times(self, topic_str, partition_int_timestamp_int_dict, timeout=-1):
-        partition_int_offset_int_dict = {}
-        timeout_float = timeout
+    Delete those topics whose names match the bash-like pattern pattern_str.
+
+    Args:
+        pattern_str (str): The pattern for selecting the topics to be deleted.
+        block (bool, optional): Block until the topic is deleted. Defaults to True.
+
+    Returns:
+        list(str): List of strings of names of the deleted topics.
+    
+    Examples:
+        rm("test")
+            Delete the topic "test" and block until it is deleted.
+        
+        rm("test", block=False)
+            Delete the topic "test" and *do not* block until it is deleted.
+
+        rm("test*")
+            Delete all topics starting with "test".
+    """
+
+    def offsets_for_times(self, pattern_str, partition_int_timestamp_int_dict, timeout=-1.0):
+        """Look up offsets corresponding to message timestamps in the partitions of topics.
+
+        Look up those offsets in the individual partitions of all topics matching the bash-like pattern pattern_str which correspond to the timestamps provided in partition_int_timestamp_int_dict (for the individual partitions).
+
+        Args:
+            pattern_str (str): The pattern for selecting the topics.
+            partition_int_timestamp_int_dict (dict(int, int)): Dictionary of integers (partitions) and integers (timestamps).
+            timeout (float, optional): The timeout for the individual offsets_for_times() method calls from confluent_kafka.Consumer. Defaults to -1.0 (infinite=no timeout).
+
+        Returns:
+            dict(str, dict(int, int)): Dictionary of strings (topic names) and dictionaries of integers (partitions) and integers (offsets).
+        
+        Examples:
+            offsets_for_times("test", {0: 1664644769886})
+                Look up the offset of the first message in the first partition of the topic "test" which has a timestamp greater or equal to 1664644769886 milliseconds from epoch. If the provided timestamp exceeds that of the last message in the partition, a value of -1 will be returned.
+
+            offsets_for_times("te*st", {0: 1664644769886, 1: 1664645155987}, timeout=1.0)
+                Look up the offset of the first message in the first partition of those topics starting with "te" and ending with "st" with a timestamp greater or equal to 1664644769886 milliseconds from epoch; and look up the offset of the first message in the second partition of those topics with a timestamp greater or equal to 1664645155987 milliseconds from epoch. Time out the internally used offsets_for_times() calls after one second.
+        """
+        topic_str_list = self.topics(pattern_str)
         #
-        topicPartition_list = [TopicPartition(topic_str, partition_int, timestamp_int) for partition_int, timestamp_int in partition_int_timestamp_int_dict.items()]
-        if topicPartition_list:
-            config_dict = self.config_dict
-            config_dict["group.id"] = "dummy_group_id"
-            consumer = get_consumer(config_dict)
-            topicPartition_list1 = consumer.offsets_for_times(topicPartition_list, timeout=timeout_float)
+        topic_str_partition_int_offsets_int_dict_dict = {}
+        for topic_str in topic_str_list:
+            partition_int_offset_int_dict = {}
             #
-            for topicPartition in topicPartition_list1:
-                partition_int_offset_int_dict[topicPartition.partition] = topicPartition.offset
+            topicPartition_list = [TopicPartition(topic_str, partition_int, timestamp_int) for partition_int, timestamp_int in partition_int_timestamp_int_dict.items()]
+            if topicPartition_list:
+                config_dict = self.config_dict
+                config_dict["group.id"] = "dummy_group_id"
+                consumer = get_consumer(config_dict)
+                topicPartition_list1 = consumer.offsets_for_times(topicPartition_list, timeout=timeout)
+                #
+                for topicPartition in topicPartition_list1:
+                    partition_int_offset_int_dict[topicPartition.partition] = topicPartition.offset
+                #
+                topic_str_partition_int_offsets_int_dict_dict[topic_str] = partition_int_offset_int_dict
         #
-        return partition_int_offset_int_dict
+        return topic_str_partition_int_offsets_int_dict_dict
 
     def describe(self, pattern_str):
         topic_str_topicMetadata_dict = self.adminClient.list_topics().topics
@@ -917,36 +1379,6 @@ class Cluster:
         #
         topic_str_num_partitions_int_dict = {topic_str: num_partitions_int for topic_str in topic_str_list}
         return topic_str_num_partitions_int_dict
-
-    def size(self, pattern_str):
-        topic_str_partition_int_tuple_dict_dict = self.watermarks(pattern_str)
-        #
-        topic_str_total_size_int_size_dict_tuple_dict = {}
-        for topic_str, partition_int_tuple_dict in topic_str_partition_int_tuple_dict_dict.items():
-            size_dict = {partition_int: partition_int_tuple_dict[partition_int][1]-partition_int_tuple_dict[partition_int][0] for partition_int in partition_int_tuple_dict.keys()}
-            #
-            total_size_int = 0
-            for offset_int_tuple in partition_int_tuple_dict.values():
-                partition_size_int = offset_int_tuple[1] - offset_int_tuple[0]
-                total_size_int += partition_size_int
-            #
-            topic_str_total_size_int_size_dict_tuple_dict[topic_str] = (total_size_int, size_dict)
-        return topic_str_total_size_int_size_dict_tuple_dict
-
-    def watermarks(self, pattern_str, timeout=-1):
-        timeout_float = timeout
-        #
-        config_dict = self.config_dict
-        config_dict["group.id"] = "dummy_group_id"
-        consumer = get_consumer(config_dict)
-        #
-        topic_str_list = self.topics(pattern_str)
-        topic_str_partition_int_tuple_dict_dict = {}
-        for topic_str in topic_str_list:
-            partitions_int = self.partitions(topic_str)[topic_str]
-            partition_int_tuple_dict = {partition_int: consumer.get_watermark_offsets(TopicPartition(topic_str, partition=partition_int), timeout_float) for partition_int in range(partitions_int)}
-            topic_str_partition_int_tuple_dict_dict[topic_str] = partition_int_tuple_dict
-        return topic_str_partition_int_tuple_dict_dict
 
     # AdminClient - groups
 

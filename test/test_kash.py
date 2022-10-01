@@ -532,8 +532,8 @@ class Test(unittest.TestCase):
         message1_timestamp_int = message_dict_list[1]["timestamp"][1]
         message1_offset_int = message_dict_list[1]["offset"]
         #
-        partition_int_offset_int_dict = cluster.offsets_for_times(topic_str, {0: message1_timestamp_int})
-        found_message1_offset_int = partition_int_offset_int_dict[0]
+        topic_str_partition_int_offset_int_dict_dict = cluster.offsets_for_times(topic_str, {0: message1_timestamp_int})
+        found_message1_offset_int = topic_str_partition_int_offset_int_dict_dict[topic_str][0]
         self.assertEqual(message1_offset_int, found_message1_offset_int)
         #
         cluster.delete(topic_str)
@@ -615,13 +615,15 @@ class Test(unittest.TestCase):
         #
         cluster2 = Cluster(cluster_str)
         cluster.set_verbose(1)
-        differing_message_dict_tuple_list, num_messages_int = diff(cluster, topic_str, cluster2, f"{topic_str}_1")
-        self.assertEqual(num_messages_int, 3)
+        differing_message_dict_tuple_list, num_messages_int1, num_messages_int2 = diff(cluster, topic_str, cluster2, f"{topic_str}_1")
         self.assertEqual(differing_message_dict_tuple_list, [])
-        #
-        differing_message_dict_tuple_list1, num_messages_int1 = diff(cluster, topic_str, cluster2, f"{topic_str}_2", value_type1="json", value_type2="json")
         self.assertEqual(num_messages_int1, 3)
+        self.assertEqual(num_messages_int2, 3)
+        #
+        differing_message_dict_tuple_list1, num_messages_int1, num_messages_int2 = diff(cluster, topic_str, cluster2, f"{topic_str}_2", value_type1="json", value_type2="json")
         self.assertEqual(len(differing_message_dict_tuple_list1), 1)
+        self.assertEqual(num_messages_int1, 3)
+        self.assertEqual(num_messages_int2, 3)
         self.assertEqual(differing_message_dict_tuple_list1[0][0]["value"]["name"], "cookie")
         #
         cluster.delete(topic_str)
