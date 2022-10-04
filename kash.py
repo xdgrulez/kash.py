@@ -944,10 +944,10 @@ class Cluster:
             dict(str, tuple(int, dict(int, int))): Dictionary of strings (topic name) and pairs of integers (total size of the topic) and dictionaries of integers (partition) and integers (size of the partition).
 
         Examples:
-            size("*")
+            size("\*")
                 List all topics of the cluster, their total sizes and the sizes of their partitions.
 
-            size("*test", timeout=1.0)
+            size("\*test", timeout=1.0)
                 List those topics whose name ends with "test", their total sizes and the sizes of their partitions and time out the internally used get_watermark_offsets() method after one second.
         """
         topic_str_partition_int_tuple_dict_dict = self.watermarks(pattern_str, timeout=timeout)
