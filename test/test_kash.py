@@ -73,10 +73,10 @@ class Test(unittest.TestCase):
     def test_topics(self):
         cluster = Cluster(cluster_str)
         topic_str = create_test_topic_name()
-        old_topic_str_list = cluster.topics()
+        old_topic_str_list = cluster.topics(["test_*"])
         self.assertNotIn(topic_str, old_topic_str_list)
         cluster.create(topic_str)
-        new_topic_str_list = cluster.ls()
+        new_topic_str_list = cluster.ls(["test_*"])
         self.assertIn(topic_str, new_topic_str_list)
         cluster.produce(topic_str, "message 1")
         cluster.produce(topic_str, "message 2")

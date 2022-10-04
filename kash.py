@@ -931,13 +931,13 @@ class Cluster:
 
     # AdminClient - topics
 
-    def size(self, pattern_str, timeout=-1.0):
+    def size(self, pattern_str_or_str_list, timeout=-1.0):
         """List topics, their total sizes and the sizes of their partitions.
 
         List topics on the cluster whose names match the pattern pattern_str, their total sizes and the sizes of their partitions.
 
         Args:
-            pattern (str): The pattern for selecting those topics which shall be listed.
+            pattern_str_or_str_list (str | list(str)): The pattern or a list of patterns for selecting those topics which shall be listed.
             timeout (float, optional): The timeout for the internally used get_watermark_offsets() method calls from confluent_kafka.Consumer. Defaults to -1.0 (infinite=no timeout).
 
         Returns:
@@ -947,10 +947,10 @@ class Cluster:
             size("\*")
                 List all topics of the cluster, their total sizes and the sizes of their partitions.
 
-            size("\*test", timeout=1.0)
-                List those topics whose name ends with "test", their total sizes and the sizes of their partitions and time out the internally used get_watermark_offsets() method after one second.
+            size(["\*test", "bla"], timeout=1.0)
+                List those topics whose name end with "test" or whose name is "bla", their total sizes and the sizes of their partitions and time out the internally used get_watermark_offsets() method after one second.
         """
-        topic_str_partition_int_tuple_dict_dict = self.watermarks(pattern_str, timeout=timeout)
+        topic_str_partition_int_tuple_dict_dict = self.watermarks(pattern_str_or_str_list, timeout=timeout)
         #
         topic_str_total_size_int_size_dict_tuple_dict = {}
         for topic_str, partition_int_tuple_dict in topic_str_partition_int_tuple_dict_dict.items():
@@ -964,13 +964,13 @@ class Cluster:
             topic_str_total_size_int_size_dict_tuple_dict[topic_str] = (total_size_int, size_dict)
         return topic_str_total_size_int_size_dict_tuple_dict
 
-    def watermarks(self, pattern_str, timeout=-1.0):
+    def watermarks(self, pattern_str_or_str_list, timeout=-1.0):
         """Get low and high offsets (=so called "watermarks") of topics on the cluster.
 
         Returns a dictionary of the topics whose names match the bash-like pattern pattern_str and the low and high offsets of their partitions.
 
         Args:
-            pattern_str (str): The pattern for selecting the topics.
+            pattern_str_or_str_list (str | list(str)): The pattern or list of patterns for selecting the topics.
             timeout (float, optional): The timeout for the individual get_watermark_offsets() method calls from confluent_kafka.Consumer. Defaults to -1.0 (infinite=no timeout).
 
         Returns:
@@ -980,8 +980,8 @@ class Cluster:
             watermarks("test*")
                 Return the watermarks for all topics whose name starts with "test" and their partitions.
 
-            watermarks("test", timeout=1.0)
-                Return the watermarks for the topic "test" and time out the internally used get_watermark_offsets() method after one second.
+            watermarks(["test", "bla"], timeout=1.0)
+                Return the watermarks for the topics "test" and "bla" and time out the internally used get_watermark_offsets() method after one second.
         """
         timeout_float = timeout
         #
@@ -989,7 +989,7 @@ class Cluster:
         config_dict["group.id"] = "dummy_group_id"
         consumer = get_consumer(config_dict)
         #
-        topic_str_list = self.topics(pattern_str)
+        topic_str_list = self.topics(pattern_str_or_str_list)
         topic_str_partition_int_tuple_dict_dict = {}
         for topic_str in topic_str_list:
             partitions_int = self.partitions(topic_str)[topic_str]
@@ -1000,10 +1000,10 @@ class Cluster:
     def topics(self, pattern=None, size=False, partitions=False):
         """List topics on the cluster.
 
-        List topics on the cluster. Optionally return only those topics whose names match a bash-like pattern. Optionally return the total sizes of the topics and the sizes of their individual partitions.
+        List topics on the cluster. Optionally return only those topics whose names match bash-like patterns. Optionally return the total sizes of the topics and the sizes of their individual partitions.
 
         Args:
-            pattern (str, optional): The pattern for selecting those topics which shall be listed. Defaults to None.
+            pattern (str | list(str), optional): The pattern or list of patterns for selecting those topics which shall be listed. Defaults to None.
             size (bool, optional): Return the total sizes of the topics if set to True. Defaults to False.
             partitions (bool, optional): Return the sizes of the individual partitions of the topics if set to True. Defaults to False.
 
@@ -1025,13 +1025,16 @@ class Cluster:
 
             topics("test*")
                 List all those topics of the cluster whose name starts with "test". 
+
+            topics(["test*", "bla*"])
+                List all those topics of the cluster whose name starts with "test" or "bla". 
         """
-        pattern_str = pattern
+        pattern_str_or_str_list = pattern
         size_bool = size
         partitions_bool = partitions
         #
         if size_bool:
-            topic_str_total_size_int_size_dict_tuple_dict = self.size(pattern_str)
+            topic_str_total_size_int_size_dict_tuple_dict = self.size(pattern_str_or_str_list)
             if partitions_bool:
                 return topic_str_total_size_int_size_dict_tuple_dict
             else:
@@ -1039,23 +1042,25 @@ class Cluster:
                 return topic_str_size_int_dict
         else:
             if partitions_bool:
-                topic_str_total_size_int_size_dict_tuple_dict = self.size(pattern_str)
+                topic_str_total_size_int_size_dict_tuple_dict = self.size(pattern_str_or_str_list)
                 topic_str_size_dict_dict = {topic_str: topic_str_total_size_int_size_dict_tuple_dict[topic_str][1] for topic_str in topic_str_total_size_int_size_dict_tuple_dict}
                 return topic_str_size_dict_dict
             else:
                 topic_str_list = list(self.adminClient.list_topics().topics.keys())
-                if pattern_str is not None:
-                    topic_str_list = [topic_str for topic_str in topic_str_list if fnmatch(topic_str, pattern_str)]
+                if pattern_str_or_str_list is not None:
+                    if isinstance(pattern_str_or_str_list, str):
+                        pattern_str_or_str_list = [pattern_str_or_str_list]
+                    topic_str_list = [topic_str for topic_str in topic_str_list if any(fnmatch(topic_str, pattern_str) for pattern_str in pattern_str_or_str_list)]
                 topic_str_list.sort()
                 return topic_str_list
 
     ls = topics
     """List topics on the cluster (shortcut for topics()).
 
-    List topics on the cluster. Optionally return only those topics whose names match a bash-like pattern. Optionally return the total sizes of the topics and the sizes of their individual partitions.
+    List topics on the cluster. Optionally return only those topics whose names match bash-like patterns. Optionally return the total sizes of the topics and the sizes of their individual partitions.
 
     Args:
-        pattern (str, optional): The pattern for selecting those topics which shall be listed. Defaults to None.
+        pattern (str, optional): The pattern or list of patterns for selecting those topics which shall be listed. Defaults to None.
         size (bool, optional): Return the total sizes of the topics if set to True. Defaults to False.
         partitions (bool, optional): Return the sizes of the individual partitions of the topics if set to True. Defaults to False.
 
@@ -1075,17 +1080,20 @@ class Cluster:
         ls(size=True, partitions=True)
             List all the topics of the cluster, their total sizes and the sizes of their individual partitions.
 
-        ls  ("test*")
-            List all those topics of the cluster whose name starts with "test". 
+        ls("test*")
+            List all those topics of the cluster whose name starts with "test".
+        
+        ls(["test*", "bla*"])
+            List all those topics of the cluster whose name starts with "test" or "bla".
     """
 
     def l(self, pattern=None, size=True, partitions=False):
         """List topics on the cluster (shortcut for topics(size=True), a la the "l" alias in bash).
 
-        List topics on the cluster. Optionally return only those topics whose names match a bash-like pattern. Optionally return the total sizes of the topics and the sizes of their individual partitions.
+        List topics on the cluster. Optionally return only those topics whose names match bash-like patterns. Optionally return the total sizes of the topics and the sizes of their individual partitions.
 
         Args:
-            pattern (str, optional): The pattern for selecting those topics which shall be listed. Defaults to None.
+            pattern (str, optional): The pattern or list of patterns for selecting those topics which shall be listed. Defaults to None.
             size (bool, optional): Return the total sizes of the topics if set to True. Defaults to True.
             partitions (bool, optional): Return the sizes of the individual partitions of the topics if set to True. Defaults to False.
 
@@ -1106,17 +1114,20 @@ class Cluster:
                 List all the topics of the cluster and the sizes of their individual partitions.
             
             l("test*")
-                List all those topics of the cluster whose name starts with "test" and their total sizes. 
+                List all those topics of the cluster whose name starts with "test" and their total sizes.
+
+            l(["test*", "bla*"])
+                List all those topics of the cluster whose name starts with "test" or "bla".
         """
         return self.topics(pattern=pattern, size=size, partitions=partitions)
 
     ll = l
     """List topics on the cluster (shortcut for topics(size=True), a la the "ll" alias in bash).
 
-    List topics on the cluster. Optionally return only those topics whose names match a bash-like pattern. Optionally return the total sizes of the topics and the sizes of their individual partitions.
+    List topics on the cluster. Optionally return only those topics whose names match bash-like patterns. Optionally return the total sizes of the topics and the sizes of their individual partitions.
 
     Args:
-        pattern (str, optional): The pattern for selecting those topics which shall be listed. Defaults to None.
+        pattern (str, optional): The pattern or list of patterns for selecting those topics which shall be listed. Defaults to None.
         size (bool, optional): Return the total sizes of the topics if set to True. Defaults to True.
         partitions (bool, optional): Return the sizes of the individual partitions of the topics if set to True. Defaults to False.
 
@@ -1137,16 +1148,19 @@ class Cluster:
             List all the topics of the cluster and the sizes of their individual partitions.
         
         ll("test*")
-            List all those topics of the cluster whose name starts with "test" and their total sizes. 
+            List all those topics of the cluster whose name starts with "test" and their total sizes.
+
+        ll(["test*", "bla*"])
+            List all those topics of the cluster whose name starts with "test" or "bla" and their total sizes.
     """
 
-    def config(self, pattern_str):
+    def config(self, pattern_str_or_str_list):
         """Return the configuration of topics.
 
-        Return the configuration of those topics whose names match the bash-like pattern pattern_str.
+        Return the configuration of those topics whose names match the bash-like pattern (or list of patterns) pattern_str_or_str_list.
 
         Args:
-            pattern_str (str): The pattern for selecting the topics for which the configuration shall be returned.
+            pattern_str_or_str_list (str | list(str)): The pattern (or list of patterns) for selecting the topics for which the configuration shall be returned.
 
         Returns:
             dict(str, dict(str, str)): Dictionary of strings (topic names) and dictionaries of strings (configuration keys) and strings (configuration values).
@@ -1155,22 +1169,22 @@ class Cluster:
             config("test")
                 Return the configuration of the topic "test".
             
-            config("test?")
-                Return the configuration of all topics matching the pattern "test?"
+            config(["test?", "bla?"])
+                Return the configuration of all topics matching the patterns "test?" or "bla?".
         """
-        topic_str_list = self.topics(pattern_str)
+        topic_str_list = self.topics(pattern_str_or_str_list)
         #
         topic_str_config_dict_dict = {topic_str: self.get_config_dict(ResourceType.TOPIC, topic_str) for topic_str in topic_str_list}
         #
         return topic_str_config_dict_dict
 
-    def set_config(self, pattern_str, key_str, value_str, test=False):
+    def set_config(self, pattern_str_or_str_list, key_str, value_str, test=False):
         """Set a configuration item of topics.
 
-        Set the configuration item with key key_str and value value_str of those topics whose names match the bash-like pattern pattern_str.
+        Set the configuration item with key key_str and value value_str of those topics whose names match the bash-like pattern (or list of patterns) pattern_str_or_str_list.
 
         Args:
-            pattern_str (str): The pattern for selecting those topics whose configuration shall be changed.
+            pattern_str_or_str_list (str | list(str)): The pattern (or list of patterns) for selecting those topics whose configuration shall be changed.
 
         Returns:
             dict(str, tuple(str, str)): Dictionary of strings (topic names) and tuples of strings (configuration keys) and strings (configuration values)
@@ -1179,12 +1193,12 @@ class Cluster:
             set_config("test", "retention.ms", "4711")
                 Sets the configuration key "retention.ms" to configuration value "4711" for topic "test".
             
-            set_config("test*", "42")
-                Sets the configuration key "retention.ms" to configuration value "42" for all topics whose names start with "test".
+            set_config(["test*", "bla*"], "42")
+                Sets the configuration key "retention.ms" to configuration value "42" for all topics whose names start with "test" or "bla".
         """
         test_bool = test
         #
-        topic_str_list = self.topics(pattern_str)
+        topic_str_list = self.topics(pattern_str_or_str_list)
         #
         for topic_str in topic_str_list:
             self.set_config_dict(ResourceType.TOPIC, topic_str, {key_str: value_str}, test_bool)
@@ -1249,13 +1263,13 @@ class Cluster:
         #
         return topic_str
 
-    def delete(self, pattern_str, block=True):
+    def delete(self, pattern_str_or_str_list, block=True):
         """Delete topics.
 
-        Delete those topics whose names match the bash-like pattern pattern_str.
+        Delete those topics whose names match the bash-like pattern (or list of patterns) pattern_str_or_str_list.
 
         Args:
-            pattern_str (str): The pattern for selecting the topics to be deleted.
+            pattern_str_or_str_list (str | list(str)): The pattern (or list of patterns) for selecting the topics to be deleted.
             block (bool, optional): Block until the topic is deleted. Defaults to True.
 
         Returns:
@@ -1268,12 +1282,12 @@ class Cluster:
             delete("test", block=False)
                 Delete the topic "test" and *do not* block until it is deleted.
 
-            delete("test*")
-                Delete all topics starting with "test".
+            delete(["test*", "bla*"])
+                Delete all topics starting with "test" or "bla".
         """
         block_bool = block
         #
-        topic_str_list = self.topics(pattern_str)
+        topic_str_list = self.topics(pattern_str_or_str_list)
         #
         if topic_str_list:
             self.adminClient.delete_topics(topic_str_list)
@@ -1286,10 +1300,10 @@ class Cluster:
     rm = delete
     """Delete topics (shortcut for delete(), a la bash "rm")
 
-    Delete those topics whose names match the bash-like pattern pattern_str.
+    Delete those topics whose names match the bash-like pattern (or list of patterns) pattern_str_or_str_list.
 
     Args:
-        pattern_str (str): The pattern for selecting the topics to be deleted.
+        pattern_str_or_str_list (str | list(str)): The pattern (or list of patterns) for selecting the topics to be deleted.
         block (bool, optional): Block until the topic is deleted. Defaults to True.
 
     Returns:
@@ -1302,17 +1316,17 @@ class Cluster:
         rm("test", block=False)
             Delete the topic "test" and *do not* block until it is deleted.
 
-        rm("test*")
-            Delete all topics starting with "test".
+        rm(["test*", "bla*"])
+            Delete all topics starting with "test" or "bla".
     """
 
-    def offsets_for_times(self, pattern_str, partition_int_timestamp_int_dict, timeout=-1.0):
+    def offsets_for_times(self, pattern_str_or_str_list, partition_int_timestamp_int_dict, timeout=-1.0):
         """Look up offsets corresponding to message timestamps in the partitions of topics.
 
-        Look up those offsets in the individual partitions of all topics matching the bash-like pattern pattern_str which correspond to the timestamps provided in partition_int_timestamp_int_dict (for the individual partitions).
+        Look up those offsets in the individual partitions of all topics matching the bash-like pattern (or list of patterns) pattern_str_or_str_list which correspond to the timestamps provided in partition_int_timestamp_int_dict (for the individual partitions).
 
         Args:
-            pattern_str (str): The pattern for selecting the topics.
+            pattern_str_or_str_list (str | list(str)): The pattern (or list of patterns) for selecting the topics.
             partition_int_timestamp_int_dict (dict(int, int)): Dictionary of integers (partitions) and integers (timestamps).
             timeout (float, optional): The timeout for the individual offsets_for_times() method calls from confluent_kafka.Consumer. Defaults to -1.0 (infinite=no timeout).
 
@@ -1326,7 +1340,7 @@ class Cluster:
             offsets_for_times("te*st", {0: 1664644769886, 1: 1664645155987}, timeout=1.0)
                 Look up the offset of the first message in the first partition of those topics starting with "te" and ending with "st" with a timestamp greater or equal to 1664644769886 milliseconds from epoch; and look up the offset of the first message in the second partition of those topics with a timestamp greater or equal to 1664645155987 milliseconds from epoch. Time out the internally used offsets_for_times() calls after one second.
         """
-        topic_str_list = self.topics(pattern_str)
+        topic_str_list = self.topics(pattern_str_or_str_list)
         #
         topic_str_partition_int_offsets_int_dict_dict = {}
         for topic_str in topic_str_list:
@@ -1346,30 +1360,100 @@ class Cluster:
         #
         return topic_str_partition_int_offsets_int_dict_dict
 
-    def describe(self, pattern_str):
+    def describe(self, pattern_str_or_str_list):
+        """Describe topics.
+
+        Describe all topics matching the bash-like pattern (or list of patterns) pattern_str_or_str_list.
+
+        Args:
+            pattern_str_or_str_list (str | list(str)): The pattern (or list of patterns) for selecting the topics.
+
+        Returns:
+            dict(str, topic_dict): Dictionary of strings (topic names) and topic dictionaries describing the topic (converted from confluent_kafka.TopicMetadata objects).
+        
+        Examples:
+            describe("test")
+                Describe the topic "test".
+
+            describe(["test*", "bla*"])
+                Describe all topics whose names start with "test" or "bla".
+        """
+        if isinstance(pattern_str_or_str_list, str):
+            pattern_str_or_str_list = [pattern_str_or_str_list]
+        #
         topic_str_topicMetadata_dict = self.adminClient.list_topics().topics
         #
-        topic_str_topic_dict_dict = {topic_str: topicMetadata_to_topic_dict(topic_str_topicMetadata_dict[topic_str]) for topic_str in topic_str_topicMetadata_dict if fnmatch(topic_str, pattern_str)}
+        topic_str_topic_dict_dict = {topic_str: topicMetadata_to_topic_dict(topic_str_topicMetadata_dict[topic_str]) for topic_str in topic_str_topicMetadata_dict if any(fnmatch(topic_str, pattern_str) for pattern_str in pattern_str_or_str_list)}
         #
         return topic_str_topic_dict_dict
 
     def exists(self, topic_str):
-        if self.topics(topic_str):
-            return True
-        else:
-            return False
+        """Test whether a topic exists on the cluster.
 
-    def partitions(self, pattern_str):
+        Test whether a topic exists on the cluster.
+
+        Args:
+            topic_str (str): A topic.
+
+        Returns:
+            bool: True if the topic topic_str exists, False otherwise.
+        
+        Examples:
+            exists("test")
+                Test whether the topic "test" exists on the cluster.
+        """
+        return self.topics(topic_str) != []
+
+    def partitions(self, pattern_str_or_str_list):
+        """Get the number of partitions of topics.
+
+        Get the number of partitions of all topics matching the bash-like pattern (or list of patterns) pattern_str_or_str_list.
+
+        Args:
+            pattern_str_or_str_list (str | list(str)): The pattern (or list of patterns) for selecting the topics.
+
+        Returns:
+            dict(str, int): Dictionary of strings (topic names) and their respective numbers of partitions.
+        
+        Examples:
+            partitions("test")
+                Get the number of partitions of the topic "test".
+
+            partitions(["test*", "bla*"])
+                Get the numbers of partitions of all topics whose names start with "test" or "bla".
+        """
+        if isinstance(pattern_str_or_str_list, str):
+            pattern_str_or_str_list = [pattern_str_or_str_list]
+        #
         topic_str_topicMetadata_dict = self.adminClient.list_topics().topics
         #
-        topic_str_num_partitions_int_dict = {topic_str: len(topic_str_topicMetadata_dict[topic_str].partitions) for topic_str in topic_str_topicMetadata_dict if fnmatch(topic_str, pattern_str)}
+        topic_str_num_partitions_int_dict = {topic_str: len(topic_str_topicMetadata_dict[topic_str].partitions) for topic_str in topic_str_topicMetadata_dict if any(fnmatch(topic_str, pattern_str) for pattern_str in pattern_str_or_str_list)}
         #
         return topic_str_num_partitions_int_dict
 
-    def set_partitions(self, pattern_str, num_partitions_int, test=False):
+    def set_partitions(self, pattern_str_or_str_list, num_partitions_int, test=False):
+        """Set the number of partitions of topics.
+
+        Set the number of partitions of all topics matching the bash-like pattern (or list of patterns) pattern_str_or_str_list. The number of partitions of a topic can only be increased but not decreased, i.e., only additional partitions can be created.
+
+        Args:
+            pattern_str_or_str_list (str | list(str)): The pattern (or list of patterns) for selecting the topics.
+            num_partitions_int (int): The number of partitions to set for the selected topics. The number of partitions of a topic can only be increased but not decreased, i.e., only additional partitions can be created.
+            test (bool, optional): If True, the request is only validated without creating the partitions.
+
+        Returns:
+            dict(str, int): Dictionary of strings (topic names) and their respective new numbers of partitions.
+        
+        Examples:
+            partitions("test")
+                Get the number of partitions of the topic "test".
+
+            partitions(["test*", "bla*"])
+                Get the numbers of partitions of all topics whose names start with "test" or "bla".
+        """
         test_bool = test
         #
-        topic_str_list = self.topics(pattern_str)
+        topic_str_list = self.topics(pattern_str_or_str_list)
         #
         newPartitions_list = [NewPartitions(topic_str, num_partitions_int) for topic_str in topic_str_list]
         topic_str_future_dict = self.adminClient.create_partitions(newPartitions_list, validate_only=test_bool)
