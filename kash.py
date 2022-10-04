@@ -1024,10 +1024,10 @@ class Cluster:
                 List all the topics of the cluster, their total sizes and the sizes of their individual partitions.
 
             topics("test*")
-                List all those topics of the cluster whose name starts with "test". 
+                List all those topics of the cluster whose name starts with "test".
 
             topics(["test*", "bla*"])
-                List all those topics of the cluster whose name starts with "test" or "bla". 
+                List all those topics of the cluster whose name starts with "test" or "bla".
         """
         pattern_str_or_str_list = pattern
         size_bool = size
@@ -1185,6 +1185,7 @@ class Cluster:
 
         Args:
             pattern_str_or_str_list (str | list(str)): The pattern (or list of patterns) for selecting those topics whose configuration shall be changed.
+            test (bool, optional): If True, the request is only validated without changing the configuration. Defaults to False.
 
         Returns:
             dict(str, tuple(str, str)): Dictionary of strings (topic names) and tuples of strings (configuration keys) and strings (configuration values)
@@ -1193,6 +1194,9 @@ class Cluster:
             set_config("test", "retention.ms", "4711")
                 Sets the configuration key "retention.ms" to configuration value "4711" for topic "test".
             
+            set_config("test", "retention.ms", "4711", test=True)
+                Verifies if the configuration key "retention.ms" can be set to configuration value "4711" for topic "test", but does not change the configuration.
+
             set_config(["test*", "bla*"], "42")
                 Sets the configuration key "retention.ms" to configuration value "42" for all topics whose names start with "test" or "bla".
         """
@@ -1466,44 +1470,154 @@ class Cluster:
 
     # AdminClient - groups
 
-    def groups(self):
+    def groups(self, pattern=None):
+        """List consumer groups on the cluster.
+
+        List consumer groups on the cluster. Optionally return only those consumer groups whose names match bash-like patterns.
+
+        Args:
+            pattern (str | list(str), optional): The pattern or list of patterns for selecting those consumer groups which shall be listed. Defaults to None.
+
+        Returns:
+            list(str): List of strings (consumer group names).
+
+        Examples:
+            groups()
+                List all consumer groups of the cluster.
+
+            groups("test*")
+                List all those consumer groups of the cluster whose name starts with "test".
+
+            groups(["test*", "bla*"])
+                List all those consumer groups of the cluster whose name starts with "test" or "bla".
+        """
+        pattern_str_or_str_list = pattern
+        #
         groupMetadata_list = self.adminClient.list_groups()
         group_str_list = [groupMetadata.id for groupMetadata in groupMetadata_list]
+        #
+        if pattern_str_or_str_list is not None:
+            if isinstance(pattern_str_or_str_list, str):
+                pattern_str_or_str_list = [pattern_str_or_str_list]
+            group_str_list = [group_str for group_str in group_str_list if any(fnmatch(group_str, pattern_str) for pattern_str in pattern_str_or_str_list)]
+        #
         group_str_list.sort()
         return group_str_list
 
-    def describe_groups(self, pattern_str):
+    def describe_groups(self, pattern_str_or_str_list):
+        """Describe consumer groups on the cluster.
+
+        Describe consumer groups on the cluster whose names match bash-like patterns.
+
+        Args:
+            pattern (str | list(str), optional): The pattern or list of patterns for selecting those consumer groups which shall be listed. Defaults to None.
+
+        Returns:
+            dict(str, group_dict): Dictionary of strings (consumer group names) and group dictionaries describing the consumer group (converted from confluent_kafka.GroupMetadata objects).
+
+        Examples:
+            describe_groups("test*")
+                Describe all those consumer groups of the cluster whose name starts with "test".
+
+            describe_groups(["test*", "bla*"])
+                Describe all those consumer groups of the cluster whose name starts with "test" or "bla".
+        """
         groupMetadata_list = self.adminClient.list_groups()
         #
-        group_str_group_dict_dict = {groupMetadata.id: groupMetadata_to_group_dict(groupMetadata) for groupMetadata in groupMetadata_list if fnmatch(groupMetadata.id, pattern_str)}
+        if isinstance(pattern_str_or_str_list, str):
+            pattern_str_or_str_list = [pattern_str_or_str_list]
+        #
+        group_str_group_dict_dict = {groupMetadata.id: groupMetadata_to_group_dict(groupMetadata) for groupMetadata in groupMetadata_list if any(fnmatch(groupMetadata.id, pattern_str) for pattern_str in pattern_str_or_str_list)}
         #
         return group_str_group_dict_dict
 
     # AdminClient - brokers
 
     def brokers(self, pattern=None):
-        pattern_int_or_str = pattern
+        """List brokers of the cluster.
+
+        List brokers of the cluster. Optionally only list those brokers whose identifiers match the pattern (or list of patterns) pattern.
+        
+        Args:
+            pattern (str | list(str), optional): The pattern or list of patterns for selecting those brokers which shall be listed. Defaults to None.
+
+        Returns:
+            dict(int, str): Dictionary of integers (broker identifiers) and strings (broker URLs and ports).
+
+        Examples:
+            brokers()
+                List all brokers of the cluster.
+
+            brokers([0, 1])
+                List only the brokers 0 and 1 of the cluster.
+        """
+        pattern_int_or_str_or_int_or_str_list = pattern
         #
-        if pattern_int_or_str is None:
-            pattern_int_or_str = "*"
+        if pattern_int_or_str_or_int_or_str_list is None:
+            pattern_int_or_str_or_int_or_str_list = ["*"]
         else:
-            pattern_int_or_str = str(pattern_int_or_str)
+            if isinstance(pattern_int_or_str_or_int_or_str_list, int):
+                pattern_int_or_str_or_int_or_str_list = [str(pattern_int_or_str_or_int_or_str_list)]
+            elif isinstance(pattern_int_or_str_or_int_or_str_list, str):
+                pattern_int_or_str_or_int_or_str_list = [pattern_int_or_str_or_int_or_str_list]
+            elif isinstance(pattern_int_or_str_or_int_or_str_list, list):
+                pattern_int_or_str_or_int_or_str_list = [str(pattern_int_or_str) for pattern_int_or_str in pattern_int_or_str_or_int_or_str_list]
         #
-        broker_dict = {broker_int: brokerMetadata.host + ":" + str(brokerMetadata.port) for broker_int, brokerMetadata in self.adminClient.list_topics().brokers.items() if fnmatch(str(broker_int), pattern_int_or_str)}
+        broker_dict = {broker_int: brokerMetadata.host + ":" + str(brokerMetadata.port) for broker_int, brokerMetadata in self.adminClient.list_topics().brokers.items() if any(fnmatch(str(broker_int), pattern_int_or_str) for pattern_int_or_str in pattern_int_or_str_or_int_or_str_list)}
         #
         return broker_dict
 
-    def broker_config(self, pattern_int_or_str):
-        broker_dict = self.brokers(pattern=pattern_int_or_str)
+    def broker_config(self, pattern_int_or_str_or_int_or_str_list):
+        """List the configurations of brokers of the cluster.
+
+        List the configurations of brokers of the cluster. Optionally only list those brokers whose identifiers match the pattern (or list of patterns) pattern.
+        
+        Args:
+            pattern_int_or_str_or_int_or_str_list (str | list(str), optional): The pattern or list of patterns for selecting those brokers which shall be listed. Defaults to None.
+
+        Returns:
+            dict(int, dict(str, str)): Dictionary of integers (broker identifiers) and configuration dictionaries (dictionaries of strings (keys) and strings (values)).
+
+        Examples:
+            broker_config(0)
+                List the configuration of broker 0 of the cluster.
+
+            broker_config([0, 1])
+                List the configurations of brokers 0 and 1 of the cluster.
+        """
+        broker_dict = self.brokers(pattern_int_or_str_or_int_or_str_list)
         #
         broker_int_broker_config_dict = {broker_int: self.get_config_dict(ResourceType.BROKER, str(broker_int)) for broker_int in broker_dict}
         #
         return broker_int_broker_config_dict
 
-    def set_broker_config(self, pattern_int_or_str, key_str, value_str, test=False):
+    def set_broker_config(self, pattern_int_or_str_or_int_or_str_list, key_str, value_str, test=False):
+        """Set a configuration item of brokers.
+
+        Set the configuration item with key key_str and value value_str of those brokers whose identifiers match the bash-like pattern (or list of patterns) pattern_int_or_str_or_int_or_str_list.
+
+        Args:
+            pattern_str_or_str_list (str | list(str)): The pattern (or list of patterns) for selecting those topics whose configuration shall be changed.
+            key_str (str): Configuration key.
+            value_str (str): Configuration value.
+            test (bool, optional): If True, the request is only validated without changing the configuration. Defaults to False.
+
+        Returns:
+            dict(int, tuple(str, str)): Dictionary of integers (broker identifiers) and tuples of strings (configuration keys) and strings (configuration values)
+
+        Examples:
+            set_broker_config(0, "background.threads", "5")
+                Sets the configuration key "background.threads" to configuration value "5" for broker 0.
+            
+            set_broker_config(0, "background.threads", "5", test=True)
+                Verifies if the configuration key "background.threads" can be set to configuration value "5" for broker 0, but does not change the configuration.
+
+            set_broker_config("[0-2]", "background.threads", "5")
+                Sets the configuration key "background.threads" to configuration value "5" for brokers 0, 1 and 2.
+        """
         test_bool = test
         #
-        broker_dict = self.brokers(pattern=pattern_int_or_str)
+        broker_dict = self.brokers(pattern_int_or_str_or_int_or_str_list)
         #
         for broker_int in broker_dict:
             self.set_config_dict(ResourceType.BROKER, str(broker_int), {key_str: value_str}, test_bool)
@@ -1514,6 +1628,29 @@ class Cluster:
     # AdminClient - ACLs
 
     def acls(self, restype="any", name=None, resource_pattern_type="any", principal=None, host=None, operation="any", permission_type="any"):
+        """List ACLs.
+
+        List ACLs of the cluster.
+
+        Args:
+            restype (str, optional): The resource type ("unknown", "any", "topic", "group" or "broker"). Defaults to "any".
+            name (str, optional): The name. Defaults to None.
+            resource_pattern_type (str, optional): The resource pattern type ("unknown", "any", "match", "literal" or "prefixed"). Defaults to "any".
+            principal (str, optional): The principal. Defaults to None.
+            host (str, optional): The host. Defaults to None.
+            operation (str, optional): The operation ("unknown", "any", "all", "read", "write", "create", "delete", "alter", "describe", "cluster_action", "describe_configs", "alter_configs", "idempotent_write"). Defaults to "any"
+            permission_type (str, optional): The permission type ("unknown", "any", "deny" or "allow"). Defaults to "any".
+
+        Returns:
+            list(aclBinding_dict): List of ACL Binding dictionaries (converted from confluent_kafka.AclBinding objects) of the selected ACLs.
+
+        Examples:
+            acls():
+                List all ACLs of the cluster.
+
+            acls(restype="topic"):
+                List all ACLs for the topics of the cluster.
+        """
         resourceType = str_to_resourceType(restype)
         name_str = name
         resourcePatternType = str_to_resourcePatternType(resource_pattern_type)
@@ -1528,6 +1665,26 @@ class Cluster:
         return [aclBinding_to_dict(aclBinding) for aclBinding in aclBinding_list]
 
     def create_acl(self, restype="any", name=None, resource_pattern_type="any", principal=None, host=None, operation="any", permission_type="any"):
+        """Create an ACL.
+
+        Create an ACL on the cluster.
+
+        Args:
+            restype (str, optional): The resource type ("unknown", "any", "topic", "group" or "broker"). Defaults to "any".
+            name (str, optional): The name. Defaults to None.
+            resource_pattern_type (str, optional): The resource pattern type ("unknown", "any", "match", "literal" or "prefixed"). Defaults to "any".
+            principal (str, optional): The principal. Defaults to None.
+            host (str, optional): The host. Defaults to None.
+            operation (str, optional): The operation ("unknown", "any", "all", "read", "write", "create", "delete", "alter", "describe", "cluster_action", "describe_configs", "alter_configs", "idempotent_write"). Defaults to "any"
+            permission_type (str, optional): The permission type ("unknown", "any", "deny" or "allow"). Defaults to "any".
+
+        Returns:
+            aclBinding_dict: ACL Binding dictionary (converted from an confluent_kafka.AclBinding object) of the created ACL.
+
+        Examples:
+            create_acl(restype="topic", name="test", resource_pattern_type="literal", principal="User:abc", host="*", operation="read", permission_type="allow"):
+                Grant user "abc" read permission on topic "test".
+        """
         resourceType = str_to_resourceType(restype)
         name_str = name
         resourcePatternType = str_to_resourcePatternType(resource_pattern_type)
@@ -1542,6 +1699,26 @@ class Cluster:
         return aclBinding_to_dict(aclBinding)
 
     def delete_acl(self, restype=ResourceType.ANY, name=None, resource_pattern_type=ResourcePatternType.ANY, principal=None, host=None, operation=AclOperation.ANY, permission_type=AclPermissionType.ANY):
+        """Delete ACLs.
+
+        Delete ACLs from the cluster.
+
+        Args:
+            restype (str, optional): The resource type ("unknown", "any", "topic", "group" or "broker"). Defaults to "any".
+            name (str, optional): The name. Defaults to None.
+            resource_pattern_type (str, optional): The resource pattern type ("unknown", "any", "match", "literal" or "prefixed"). Defaults to "any".
+            principal (str, optional): The principal. Defaults to None.
+            host (str, optional): The host. Defaults to None.
+            operation (str, optional): The operation ("unknown", "any", "all", "read", "write", "create", "delete", "alter", "describe", "cluster_action", "describe_configs", "alter_configs", "idempotent_write"). Defaults to "any"
+            permission_type (str, optional): The permission type ("unknown", "any", "deny" or "allow"). Defaults to "any".
+
+        Returns:
+            List(aclBinding_dict): List of ACL Binding dictionaries (converted from confluent_kafka.AclBinding objects) of the deleted ACLs.
+
+        Examples:
+            delete_acl(restype="topic", name="test", resource_pattern_type="literal", principal="User:abc", host="*", operation="read", permission_type="allow"):
+                Delete the ACL which granted user "abc" read permission on topic "test".
+        """
         resourceType = str_to_resourceType(restype)
         name_str = name
         resourcePatternType = str_to_resourcePatternType(resource_pattern_type)

@@ -137,7 +137,7 @@ class Test(unittest.TestCase):
         group_str = create_test_group_name()
         cluster.subscribe(topic_str, group_str)
         cluster.consume()
-        group_str_list = cluster.groups()
+        group_str_list = cluster.groups(["test*", "test_group*"])
         self.assertIn(group_str, group_str_list)
         group_dict = cluster.describe_groups(group_str)[group_str]
         self.assertEqual(group_dict["id"], group_str)
