@@ -369,7 +369,7 @@ def flatmap(source_cluster, source_topic_str, target_cluster, target_topic_str, 
         target_key_schema (str, optional): Target key message type schema (for "avro", "protobuf"/"pb" or "jsonschema"). Defaults to None.
         target_value_schema (str, optional): Target value message type schema (for "avro", "protobuf"/"pb" or "jsonschema"). Defaults to None.
         keep_timestamps (bool, optional): Replicate the timestamps of the source messages in the target messages. Defaults to True.
-        n (int, optional): Number of messages to consume from the source topic. Defaults to ALL_MESSAGES.
+        n (int, optional): Number of messages to consume from the source topic. Defaults to ALL_MESSAGES = -1.
         batch_size (int, optional): Maximum number of messages to consume from the source topic at a time. Defaults to 1.
 
     Returns:
@@ -461,7 +461,7 @@ def cp(source_cluster, source_topic_str, target_cluster, target_topic_str, flatm
         target_key_schema (str, optional): Target key message type schema (for "avro", "protobuf"/"pb" or "jsonschema"). Defaults to None.
         target_value_schema (str, optional): Target value message type schema (for "avro", "protobuf"/"pb" or "jsonschema"). Defaults to None.
         keep_timestamps (bool, optional): Replicate the timestamps of the source messages in the target messages. Defaults to True.
-        n (int, optional): Number of messages to consume from the source topic. Defaults to ALL_MESSAGES.
+        n (int, optional): Number of messages to consume from the source topic. Defaults to ALL_MESSAGES = -1.
         batch_size (int, optional): Maximum number of messages to consume from the source topic at a time. Defaults to 1.
 
     Returns:
@@ -502,7 +502,7 @@ def zip_foldl(cluster1, topic_str1, cluster2, topic_str2, zip_foldl_function, in
         value_type1 (str, optional): Topic 1 message value type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "bytes".
         key_type2 (str, optional): Topic 2 message key type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). If set to None, target_key_type = source_key_type. Defaults to None.
         value_type2 (str, optional): Topic 2 message value type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). If set to None, target_value_type = source_value_type. Defaults to None.
-        n (int, optional): Number of messages to consume from the topic 1 and topic 2. Defaults to ALL_MESSAGES.
+        n (int, optional): Number of messages to consume from the topic 1 and topic 2. Defaults to ALL_MESSAGES = -1.
         batch_size (int, optional): Maximum number of messages to consume from topic 1 and topic 2 at a time. Defaults to 1.
 
     Returns:
@@ -589,7 +589,7 @@ def diff_fun(cluster1, topic_str1, cluster2, topic_str2, diff_function, group1=N
         value_type1 (str, optional): Topic 1 message value type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "bytes".
         key_type2 (str, optional): Topic 2 message key type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). If set to None, target_key_type = source_key_type. Defaults to None.
         value_type2 (str, optional): Topic 2 message value type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). If set to None, target_value_type = source_value_type. Defaults to None.
-        n (int, optional): Number of messages to consume from the topic 1 and topic 2. Defaults to ALL_MESSAGES.
+        n (int, optional): Number of messages to consume from the topic 1 and topic 2. Defaults to ALL_MESSAGES = -1.
         batch_size (int, optional): Maximum number of messages to consume from topic 1 and topic 2 at a time. Defaults to 1.
 
     Returns:
@@ -633,7 +633,7 @@ def diff(cluster1, topic_str1, cluster2, topic_str2, group1=None, group2=None, o
         value_type1 (str, optional): Topic 1 message value type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "bytes".
         key_type2 (str, optional): Topic 2 message key type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). If set to None, target_key_type = source_key_type. Defaults to None.
         value_type2 (str, optional): Topic 2 message value type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). If set to None, target_value_type = source_value_type. Defaults to None.
-        n (int, optional): Number of messages to consume from the topic 1 and topic 2. Defaults to ALL_MESSAGES.
+        n (int, optional): Number of messages to consume from the topic 1 and topic 2. Defaults to ALL_MESSAGES = -1.
         batch_size (int, optional): Maximum number of messages to consume from topic 1 and topic 2 at a time. Defaults to 1.
 
     Returns:
@@ -1849,7 +1849,38 @@ class Cluster:
         #
         return key_str_or_bytes, value_str_or_bytes 
 
-    def flatmap_from_file(self, path_str, topic_str, flatmap_function, key_type="str", value_type="str", key_schema=None, value_schema=None, key_value_separator=None, message_separator="\n", n=ALL_MESSAGES, bufsize=4096):
+    def flatmap_from_file(self, path_str, topic_str, flatmap_function, key_type="str", value_type="str", key_schema=None, value_schema=None, partition=RD_KAFKA_PARTITION_UA, key_value_separator=None, message_separator="\n", n=ALL_MESSAGES, bufsize=4096):
+        """Read messages from a local file and produce them to a topic, while transforming the messages in a flatmap-like manner.
+
+        Read messages from a local file with path path_str and produce them to topic topic_str, while transforming the messages in a flatmap-like manner.
+
+        Args:
+            path_str (str): The path to the local file to read from.
+            topic_str (str): The topic to produce to.
+            flatmap_function (function): Flatmap function (takes a message and returns a list of messages)
+            key_type (str, optional): The key type ("bytes", "str", "json", "avro", "protobuf" or "pb", or "jsonschema"). Defaults to "str".
+            value_type (str, optional): The value type ("bytes", "str", "json", "avro", "protobuf" or "pb", or "jsonschema"). Defaults to "str".
+            key_schema (str, optional): The schema of the key of the message to be produced (if key_type is either "avro", "protobuf" or "pb", or "jsonschema"). Defaults to None.
+            value_schema (str, optional): The schema of the value of the message to be produced (if key_type is either "avro", "protobuf" or "pb", or "jsonschema"). Defaults to None.
+            partition (int, optional): The partition to produce to. Defaults to RD_KAFKA_PARTITION_UA = -1, i.e., the partition is selected by configured built-in partitioner.
+            key_value_separator (str, optional): The separator between the keys and the values in the local file to read from, e.g. ":". Defaults to None.
+            message_separator (str, optional): The separator between individual messages in the local file to read from. Defaults to the newline character.
+            n (int, optional): The number of messages to read from the local file. Defaults to ALL_MESSAGES = -1.
+            bufsize (int, optional): The buffer size for reading from the local file. Defaults to 4096.
+
+        Returns:
+            (int, int): Pair of the number of messages read from the local file and the number of messages produced to the topic.
+
+        Examples:
+            flatmap("./snacks_value.txt", "test", flatmap_function=lambda x: [x])
+                Read all messages from the local file "./snacks_value.txt" and produce them to the topic "test".
+
+            flatmap("./snacks_value.txt", "test", flatmap_function=lambda x: [x, x])
+                Read all messages from the local file "./snacks_value.txt" and duplicate each of them in the topic "test".
+            
+            flatmap("./snacks_value.txt", "test", flatmap_function=lambda x: [x], value_type="protobuf", value_schema='message Snack { required string name = 1; required float calories = 2; optional string colour = 3; }')
+                Read all messages from the local file "./snacks_value.txt" and produce them to the topic "test" in Protobuf using schema 'message Snack { required string name = 1; required float calories = 2; optional string colour = 3; }'.
+        """
         key_value_separator_str = key_value_separator
         message_separator_str = message_separator
         num_messages_int = n
@@ -1874,7 +1905,7 @@ class Cluster:
                 key_str_value_str_tuple_list = flatmap_function((key_str, value_str))
                 #
                 for (key_str, value_str) in key_str_value_str_tuple_list:
-                    self.produce(topic_str, value_str, key=key_str, key_type=key_type, value_type=value_type, key_schema=key_schema, value_schema=value_schema)
+                    self.produce(topic_str, value_str, key=key_str, key_type=key_type, value_type=value_type, key_schema=key_schema, value_schema=value_schema, partition=partition)
                     #
                     if self.produced_messages_counter_int % self.kash_dict["flush.num.messages"] == 0:
                         self.flush()
@@ -1891,9 +1922,44 @@ class Cluster:
         return (lines_counter_int, self.produced_messages_counter_int)
 
     def upload(self, path_str, topic_str, flatmap_function=lambda x: [x], key_type="str", value_type="str", key_schema=None, value_schema=None, key_value_separator=None, message_separator="\n", n=ALL_MESSAGES, bufsize=4096):
+        """Read messages from a local file and produce them to a topic, while optionally transforming the messages in a flatmap-like manner.
+
+        Read messages from a local file with path path_str and produce them to topic topic_str, while optionally transforming the messages in a flatmap-like manner.
+
+        Args:
+            path_str (str): The path to the local file to read from.
+            topic_str (str): The topic to produce to.
+            flatmap_function (function, optional): Flatmap function (takes a message and returns a list of messages). Defaults to lambda x: [x] (=the identify function for flatmap, leading to a one-to-one copy from the messages in the file to the messages in the topic).
+            key_type (str, optional): The key type ("bytes", "str", "json", "avro", "protobuf" or "pb", or "jsonschema"). Defaults to "str".
+            value_type (str, optional): The value type ("bytes", "str", "json", "avro", "protobuf" or "pb", or "jsonschema"). Defaults to "str".
+            key_schema (str, optional): The schema of the key of the message to be produced (if key_type is either "avro", "protobuf" or "pb", or "jsonschema"). Defaults to None.
+            value_schema (str, optional): The schema of the value of the message to be produced (if key_type is either "avro", "protobuf" or "pb", or "jsonschema"). Defaults to None.
+            partition (int, optional): The partition to produce to. Defaults to RD_KAFKA_PARTITION_UA = -1, i.e., the partition is selected by configured built-in partitioner.
+            key_value_separator (str, optional): The separator between the keys and the values in the local file to read from, e.g. ":". Defaults to None.
+            message_separator (str, optional): The separator between individual messages in the local file to read from. Defaults to the newline character.
+            n (int, optional): The number of messages to read from the local file. Defaults to ALL_MESSAGES = -1.
+            bufsize (int, optional): The buffer size for reading from the local file. Defaults to 4096.
+
+        Returns:
+            (int, int): Pair of the number of messages read from the local file and the number of messages produced to the topic.
+
+        Examples:
+            upload("./snacks_value.txt", "test")
+                Read all messages from the local file "./snacks_value.txt" and produce them to the topic "test".
+
+            upload("./snacks_value.txt", "test", flatmap_function=lambda x: [x, x])
+                Read all messages from the local file "./snacks_value.txt" and duplicate each of them in the topic "test".
+            
+            upload("./snacks_value.txt", "test", value_type="protobuf", value_schema='message Snack { required string name = 1; required float calories = 2; optional string colour = 3; }')
+                Read all messages from the local file "./snacks_value.txt" and produce them to the topic "test" in Protobuf using schema 'message Snack { required string name = 1; required float calories = 2; optional string colour = 3; }'.
+        """
         return self.flatmap_from_file(path_str, topic_str, flatmap_function, key_type=key_type, value_type=value_type, key_schema=key_schema, value_schema=value_schema, key_value_separator=key_value_separator, message_separator=message_separator, n=n, bufsize=bufsize)
 
     def flush(self):
+        """Wait for all messages in the Producer queue to be delivered.
+        
+        Wait for all messages in the Producer queue to be delivered. Uses the "flush.timeout" setting from the cluster configuration file ("kash"-section).
+        """
         self.producer.flush(self.kash_dict["flush.timeout"])
 
     # Consumer
