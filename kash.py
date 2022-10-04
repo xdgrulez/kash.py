@@ -21,6 +21,7 @@ import time
 
 ALL_MESSAGES = -1
 RD_KAFKA_PARTITION_UA = -1
+CURRENT_TIME = 0
 
 # Helpers
 
@@ -724,9 +725,19 @@ class Cluster:
     #
 
     def set_verbose(self, verbose_int):
+        """Set verbosity level.
+
+        Args:
+            verbose_int (int): Verbosity level.
+        """
         self.verbose_int = verbose_int
 
     def verbose(self):
+        """Get verbosity level.
+
+        Returns:
+            int: Verbosity level.
+        """
         return self.verbose_int
 
     # Schema Registry helper methods (inside the Cluster class to do caching etc.)
@@ -859,35 +870,35 @@ class Cluster:
         def bytes_to_bytes(bytes):
             return bytes
         #
-        if key_type_str == "str":
+        if key_type_str.lower() == "str":
             decode_key = bytes_to_str
-        elif key_type_str == "bytes":
+        elif key_type_str.lower() == "bytes":
             decode_key = bytes_to_bytes
-        elif key_type_str == "json":
+        elif key_type_str.lower() == "json":
             decode_key = json.loads
-        elif key_type_str in ["pb", "protobuf"]:
+        elif key_type_str.lower() in ["pb", "protobuf"]:
             def decode_key(bytes):
                 return self.bytes_protobuf_to_dict(bytes, key_bool=True)
-        elif key_type_str == "avro":
+        elif key_type_str.lower() == "avro":
             def decode_key(bytes):
                 return self.bytes_avro_to_dict(bytes, key_bool=True)
-        elif key_type_str == "jsonschema":
+        elif key_type_str.lower() == "jsonschema":
             def decode_key(bytes):
                 return self.bytes_jsonschema_to_dict(bytes, key_bool=True)
         #
-        if value_type_str == "str":
+        if value_type_str.lower() == "str":
             decode_value = bytes_to_str
-        elif value_type_str == "bytes":
+        elif value_type_str.lower() == "bytes":
             decode_value = bytes_to_bytes
-        elif value_type_str == "json":
+        elif value_type_str.lower() == "json":
             decode_value = json.loads
-        elif value_type_str in ["pb", "protobuf"]:
+        elif value_type_str.lower() in ["pb", "protobuf"]:
             def decode_value(bytes):
                 return self.bytes_protobuf_to_dict(bytes, key_bool=False)
-        elif value_type_str == "avro":
+        elif value_type_str.lower() == "avro":
             def decode_value(bytes):
                 return self.bytes_avro_to_dict(bytes, key_bool=False)
-        elif value_type_str == "jsonschema":
+        elif value_type_str.lower() == "jsonschema":
             def decode_value(bytes):
                 return self.bytes_jsonschema_to_dict(bytes, key_bool=False)
         #
@@ -1734,7 +1745,54 @@ class Cluster:
 
     # Producer
 
-    def produce(self, topic_str, value, key=None, key_type="str", value_type="str", key_schema=None, value_schema=None, partition=RD_KAFKA_PARTITION_UA, timestamp=0, headers=None):
+    def produce(self, topic_str, value, key=None, key_type="str", value_type="str", key_schema=None, value_schema=None, partition=RD_KAFKA_PARTITION_UA, timestamp=CURRENT_TIME, headers=None):
+        """Produce a message to a topic.
+
+        Produce a message to a topic. The key and the value of the message can be either bytes, a string, a dictionary, or a schema-based format supported by the Confluent Schema Registry (currently Avro, Protobuf or JSONSchema).
+
+        Args:
+            topic_str (str): The topic to produce to.
+            value (bytes | str | dict): The value of the message to be produced.
+            key (bytes | str | dict, optional): The key of the message to be produced. Defaults to None.
+            key_type (str, optional): The key type ("bytes", "str", "json", "avro", "protobuf" or "pb", or "jsonschema"). Defaults to "str".
+            value_type (str, optional): The value type ("bytes", "str", "json", "avro", "protobuf" or "pb", or "jsonschema"). Defaults to "str".
+            key_schema (str, optional): The schema of the key of the message to be produced (if key_type is either "avro", "protobuf" or "pb", or "jsonschema"). Defaults to None.
+            value_schema (str, optional): The schema of the value of the message to be produced (if key_type is either "avro", "protobuf" or "pb", or "jsonschema"). Defaults to None.
+            partition (int, optional): The partition to produce to. Defaults to RD_KAFKA_PARTITION_UA = -1, i.e., the partition is selected by configured built-in partitioner.
+            timestamp (int, optional): Message timestamp (CreateTime) in milliseconds since epoch UTC. Defaults to CURRENT_TIME = 0.
+            headers (dict | list): Message headers to set on the message. The header key must be a string while the value must be binary, unicode or None. Accepts a list of (key,value) or a dict.
+
+        Returns:
+            tuple(bytes | str, bytes | str): Pair of bytes or string and bytes or string (=the key and the value of the produced message).
+
+        Examples:
+            produce("test", "value 1")
+                Produce a message with value = "value 1" and key = None to the topic "test".
+
+            produce("test", "value 1", key="key 1")
+                Produce a message with value = "value 1" and key = "key 1" to the topic "test".
+
+            produce("test", "value 1", key="key 1", partition=0)
+                Produce a message with value = "value 1" and key = "key 1" to partition 0 of the topic "test".
+
+            produce("test", "value 1", key="key 1", timestamp=1664902656169)
+                Produce a message with value = "value 1" and key = "key 1" to the topic "test", set the timestamp of this message to 1664902656169.
+
+            produce("test", "value 1", headers={"bla": "blups"})
+                Produce a message with value = "value 1" and key = None to the topic "test", set the headers of this message to {"bla": "blups"}.
+
+            produce("test", {'name': 'cookie', 'calories': 500.0, 'colour': 'brown'}, value_type="json")
+                Produce a message with value = {'name': 'cookie', 'calories': 500.0, 'colour': 'brown'} and key = None to the topic "test", using JSON without schema.
+
+            produce("test", {'name': 'cookie', 'calories': 500.0, 'colour': 'brown'}, value_type="avro", value_schema='{ "type": "record", "name": "myrecord", "fields": [{"name": "name",  "type": "string" }, {"name": "calories", "type": "float" }, {"name": "colour", "type": "string" }] }')
+                Produce a message with value = {'name': 'cookie', 'calories': 500.0, 'colour': 'brown'} and key = None to the topic "test", using Avro with the schema '{ "type": "record", "name": "myrecord", "fields": [{"name": "name",  "type": "string" }, {"name": "calories", "type": "float" }, {"name": "colour", "type": "string" }] }'.
+
+            produce("test", {'name': 'cookie', 'calories': 500.0, 'colour': 'brown'}, value_type="protobuf", value_schema='message Snack { required string name = 1; required float calories = 2; optional string colour = 3; }')
+                Produce a message with value = {'name': 'cookie', 'calories': 500.0, 'colour': 'brown'} and key = None to the topic "test", using Protobuf with the schema 'message Snack { required string name = 1; required float calories = 2; optional string colour = 3; }'.
+
+            produce("test", {'name': 'cookie', 'calories': 500.0, 'colour': 'brown'}, value_type="jsonschema", value_schema='{ "title": "abc", "definitions" : { "record:myrecord" : { "type" : "object", "required" : [ "name", "calories" ], "additionalProperties" : false, "properties" : { "name" : {"type" : "string"}, "calories" : {"type" : "number"}, "colour" : {"type" : "string"} } } }, "$ref" : "#/definitions/record:myrecord" }')
+                Produce a message with value = {'name': 'cookie', 'calories': 500.0, 'colour': 'brown'} and key = None to the topic "test", using JSONSchema with the schema '{ "title": "abc", "definitions" : { "record:myrecord" : { "type" : "object", "required" : [ "name", "calories" ], "additionalProperties" : false, "properties" : { "name" : {"type" : "string"}, "calories" : {"type" : "number"}, "colour" : {"type" : "string"} } } }, "$ref" : "#/definitions/record:myrecord" }'.
+        """
         key_type_str = key_type
         value_type_str = value_type
         key_schema_str = key_schema
@@ -1758,23 +1816,23 @@ class Cluster:
                     payload_dict = payload
                 return payload_dict
             #
-            if type_str == "json":
+            if type_str.lower() == "json":
                 if isinstance(payload, dict):
                     payload_str_or_bytes = json.dumps(payload)
                 else:
                     payload_str_or_bytes = payload
-            elif type_str in ["pb", "protobuf"]:
+            elif type_str.lower() in ["pb", "protobuf"]:
                 generalizedProtocolMessageType = self.schema_str_to_generalizedProtocolMessageType(schema_str, topic_str, key_bool)
                 protobufSerializer = ProtobufSerializer(generalizedProtocolMessageType, self.schemaRegistryClient, {"use.deprecated.format": False})
                 payload_dict = payload_to_payload_dict(payload)
                 protobuf_message = generalizedProtocolMessageType()
                 ParseDict(payload_dict, protobuf_message)
                 payload_str_or_bytes = protobufSerializer(protobuf_message, SerializationContext(topic_str, messageField))
-            elif type_str == "avro":
+            elif type_str.lower() == "avro":
                 avroSerializer = AvroSerializer(self.schemaRegistryClient, schema_str)
                 payload_dict = payload_to_payload_dict(payload)
                 payload_str_or_bytes = avroSerializer(payload_dict, SerializationContext(topic_str, messageField))
-            elif type_str == "jsonschema":
+            elif type_str.lower() == "jsonschema":
                 jSONSerializer = JSONSerializer(schema_str, self.schemaRegistryClient)
                 payload_dict = payload_to_payload_dict(payload)
                 payload_str_or_bytes = jSONSerializer(payload_dict, SerializationContext(topic_str, messageField))
