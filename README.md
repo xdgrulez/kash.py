@@ -1,8 +1,36 @@
-# kash module
+# kash.py
 
+*kash.py* is a Python-based shell based on [confluent-kafka-python](https://github.com/confluentinc/confluent-kafka-python) by Magnus Edenhill, which is itself based on the native Kafka client library [librdkafka](https://github.com/edenhill/librdkafka) by the same author.
+
+The aim of *kash.py* is to gift you with a wonderful Kafka scripting experience, both interactively and non-interactively. It is both like a *shell* for bash fans (you have *ls*, *touch*, *rm*, *cp*, *grep*, *wc* etc.) and *functional* for those who once fell in love with Haskell, Scala or Mozart-Oz (there are *foldl*s, *flatmap*s and *map*s for you to explore). You can use *kash.py* either way :-)
+
+## Tutorial
+
+This little tutorial shows you how *kash.py* can help you unlock the Kafka black box.
+
+TODO
+
+## Installation
+
+### Install Dependencies
+```
+pip install -r requirements.txt
+```
+
+### Have fun :)
+For interactive use, e.g. using your local cluster configured in the file "clusters_unsecured/local.conf", just do the following to list the topics:
+```
+python3
+>> from kash import *
+>> c = Cluster("local")
+>> c.ls()
+['__consumer_offsets', '_schemas']
+>>
+```
+
+## Documentation
 
 ### _class_ kash.Cluster(cluster_str)
-Bases: `object`
 
 Initialize a kash.py Cluster object.
 

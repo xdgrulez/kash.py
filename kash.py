@@ -1437,6 +1437,34 @@ class Cluster:
         #
         return topic_str
 
+    touch = create
+    """Create a topic.
+
+    Create a topic (shell synonym for ``Cluster.create()``)
+
+    Args:
+        topic_str (str): The name of the topic to be created.
+        partitions (int, optional): The number of partitions for the topic to be created. Defaults to 1.
+        config (dict(str, str), optional): Configuration overrides for the topic to be created. Note that the default "retention.ms" can also be set in the kash.py cluster configuration file (e.g. you can set it to -1 to have infinite retention for all topics that you create). Defaults to {}.
+        block (bool, optional): Block until the topic is created. Defaults to True.
+
+    Returns:
+        str: Name of the created topic.
+
+    Examples:
+        c.touch("test")
+            Create the topic "test" with one partition, and block until it is created.
+
+        c.touch("test", partitions=2)
+            Create the topic "test" with two partitions, and block until it is created.
+
+        c.touch("test", config={"retention.ms": "4711"})
+            Create the topic "test" with one partition, a retention time of 4711ms and block until it is created.
+
+        c.touch("test", block=False)
+            Create the topic "test" with one partition, and *do not* block until it is created.
+    """
+
     def delete(self, pattern_str_or_str_list, block=True):
         """Delete topics.
 
@@ -1472,9 +1500,9 @@ class Cluster:
         return topic_str_list
 
     rm = delete
-    """Delete topics (shortcut for delete(), a la bash "rm")
+    """Delete topics.
 
-    Delete those topics whose names match the bash-like pattern (or list of patterns) pattern_str_or_str_list.
+    Delete those topics whose names match the bash-like pattern (or list of patterns) pattern_str_or_str_list (shell synonym for ``Cluster.delete()``).
 
     Args:
         pattern_str_or_str_list (str | list(str)): The pattern (or list of patterns) for selecting the topics to be deleted.
