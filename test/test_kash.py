@@ -369,7 +369,7 @@ class Test(unittest.TestCase):
     def test_transforms_string(self):
         cluster = Cluster(cluster_str)
         topic_str = create_test_topic_name()
-        cluster.create(topic_str)
+        cluster.touch(topic_str)
         cluster.cp("./snacks_value.txt", topic_str, target_value_type="str")
         self.assertEqual(cluster.size(topic_str)[topic_str][0], 3)
         #
