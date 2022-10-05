@@ -506,12 +506,14 @@ class Test(unittest.TestCase):
         cluster.cp("./snacks_value.txt", topic_str, target_value_type="avro", target_value_schema=schema_str)
         self.assertEqual(cluster.size(topic_str)[topic_str][0], 3)
         #
-        (message_dict_list, message_counter_int) = cluster.grep(topic_str, ".*name.*cake", value_type="avro")
+        (message_dict_list, num_matching_messages_int, message_counter_int) = cluster.grep(topic_str, ".*name.*cake", value_type="avro")
         self.assertEqual(len(message_dict_list), 1)
+        self.assertEqual(num_matching_messages_int, 1)
         self.assertEqual(message_counter_int, 3)
         #
-        (message_dict_list, message_counter_int) = cluster.grep_fun(topic_str, lambda message_dict: message_dict["value"]["name"] == "cake", value_type="avro", offsets={0: 2})
+        (message_dict_list, num_matching_messages_int, message_counter_int) = cluster.grep_fun(topic_str, lambda message_dict: message_dict["value"]["name"] == "cake", value_type="avro", offsets={0: 2})
         self.assertEqual(len(message_dict_list), 0)
+        self.assertEqual(num_matching_messages_int, 0)
         self.assertEqual(message_counter_int, 1)
         #
         cluster.delete(topic_str)

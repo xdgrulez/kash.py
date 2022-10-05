@@ -360,8 +360,8 @@ def flatmap(source_cluster, source_topic_str, target_cluster, target_topic_str, 
         target_cluster (Cluster): Target cluster
         target_topic_str (str): Target topic
         flatmap_function (function): Flatmap function (takes a message dictionary and returns a list of message dictionaries)
-        group (str, optional): Consumer group name used for consuming from the source topic. If set to None, creates a new unique consumer group name. Defaults to None.
-        offsets (dict, optional): Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for consuming from the source topic. If set to None, consume the topic using the offsets from the consumer group for the topic. Defaults to None.
+        group (str, optional): Consumer group name used for subscribing to the source topic. If set to None, creates a new unique consumer group name. Defaults to None.
+        offsets (dict, optional): Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for subscribing to the source topic. If set to None, subscribe to the topic using the offsets from the consumer group for the topic. Defaults to None.
         source_key_type (str, optional): Source topic message key type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "bytes".
         source_value_type (str, optional): Source topic message value type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "bytes".
         target_key_type (str, optional): Target topic message key type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). If set to None, target_key_type = source_key_type. Defaults to None.
@@ -444,7 +444,7 @@ def map(source_cluster, source_topic_str, target_cluster, target_topic_str, map_
 def cp(source_cluster, source_topic_str, target_cluster, target_topic_str, flatmap_function=lambda x: [x], group=None, offsets=None, source_key_type="bytes", source_value_type="bytes", target_key_type=None, target_value_type=None, target_key_schema=None, target_value_schema=None, keep_timestamps=True, n=ALL_MESSAGES, batch_size=1):
     """Replicate a topic and optionally transform the messages in a flatmap-like manner.
 
-    Replicate (parts of) a topic (source_topic_str) on one cluster (source_cluster) to another topic (target_topic_str) on another (or the same) cluster (target_cluster). Each replicated message can be transformed into a list of other messages in a flatmap-like manner. The source and target topics can have different message key and value types; e.g. the source topic can have value type Avro whereas the target topic will be written with value type Protobuf.
+    Replicate (parts of) a topic (source_topic_str) on one cluster (source_cluster) to another topic (target_topic_str) on another (or the same) cluster (target_cluster). Each replicated message can be transformed into a list of other messages in a flatmap-like manner. The source and target topics can have different message key and value types; e.g. the source topic can have value type Avro whereas the target topic will be written with value type Protobuf. Stops either if the consume timeout is exceeded on the source cluster (``consume.timeout`` in the kash.py cluster configuration) or the number of messages specified in ``n`` has been consumed.
 
     Args:
         source_cluster (Cluster): Source cluster
@@ -452,8 +452,8 @@ def cp(source_cluster, source_topic_str, target_cluster, target_topic_str, flatm
         target_cluster (Cluster): Target cluster
         target_topic_str (str): Target topic
         flatmap_function (function, optional): Flatmap function (takes a message dictionary and returns a list of message dictionaries). Defaults to lambda x: [x].
-        group (str, optional): Consumer group name used for consuming from the source topic. If set to None, creates a new unique consumer group name. Defaults to None.
-        offsets (dict, optional): Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for consuming from the source topic. If set to None, consume the topic using the offsets from the consumer group for the topic. Defaults to None.
+        group (str, optional): Consumer group name used for subscribing to the source topic. If set to None, creates a new unique consumer group name. Defaults to None.
+        offsets (dict, optional): Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for subscribing to the source topic. If set to None, subscribe to the topic using the offsets from the consumer group for the topic. Defaults to None.
         source_key_type (str, optional): Source topic message key type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "bytes".
         source_value_type (str, optional): Source topic message value type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "bytes".
         target_key_type (str, optional): Target topic message key type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). If set to None, target_key_type = source_key_type. Defaults to None.
@@ -482,49 +482,43 @@ def cp(source_cluster, source_topic_str, target_cluster, target_topic_str, flatm
     """
     return flatmap(source_cluster, source_topic_str, target_cluster, target_topic_str, flatmap_function, group=group, offsets=offsets, source_key_type=source_key_type, source_value_type=source_value_type, target_key_type=target_key_type, target_value_type=target_value_type, target_key_schema=target_key_schema, target_value_schema=target_value_schema, keep_timestamps=keep_timestamps, n=n, batch_size=batch_size)
 
-def zip_foldl(cluster1, topic_str1, cluster2, topic_str2, zip_foldl_function, initial_acc, group1=None, group2=None, offsets1=None, offsets2=None, key_type1="bytes", value_type1="bytes", key_type2="bytes", value_type2="bytes", n=ALL_MESSAGES, batch_size=1):
-    """Consume topic 1 on cluster 1 and topic 2 on cluster 2 and combine the messages using a foldl function.
+def zip_foldl(cluster1, topic_str1, cluster2, topic_str2, zip_foldl_function, initial_acc, group1=None, group2=None, offsets1=None, offsets2=None, config1={}, config2={}, key_type1="bytes", value_type1="bytes", key_type2="bytes", value_type2="bytes", n=ALL_MESSAGES, batch_size=1):
+    """Subscribe to and consume from topic 1 on cluster 1 and topic 2 on cluster 2 and combine the messages using a foldl function.
 
-    Consume (parts of) a topic (topic_str1) on one cluster (cluster1) and another topic (topic_str2) on another (or the same) cluster (cluster2) and combine them using a foldl function.
+    Consume (parts of) a topic (topic_str1) on one cluster (cluster1) and another topic (topic_str2) on another (or the same) cluster (cluster2) and combine them using a foldl function. Stops on either topic/cluster if either the consume timeout is exceeded (``consume.timeout`` in the kash.py cluster configuration) or the number of messages specified in ``n`` has been consumed.
 
     Args:
         cluster1 (Cluster): Cluster 1
         topic_str1 (str): Topic 1
         cluster2 (Cluster): Cluster 2
         topic_str2 (str): Topic 2
-        zip_foldl_function (function): Foldl function (takes an accumulator (any type) and a message dictionary and returns the updated accumulator)
+        zip_foldl_function (function): Foldl function (takes an accumulator (any type) and a message dictionary and returns the updated accumulator).
         initial_acc: Initial value of the accumulator (any type).
         group1 (str, optional): Consumer group name used for consuming from topic 1. If set to None, creates a new unique consumer group name. Defaults to None.
         group2 (str, optional): Consumer group name used for consuming from topic 2. If set to None, creates a new unique consumer group name. Defaults to None.
         offsets1 (dict, optional): Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for consuming from topic 1. If set to None, consume topic 1 using the offsets from the consumer group for topic 1. Defaults to None.
         offsets2 (dict, optional): Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for consuming from topic 2. If set to None, consume topic 2 using the offsets from the consumer group for topic 2. Defaults to None.
+        config1 (dict(str, str), optional): Dictionary of strings (keys) and strings (values) to augment the consumer configuration for topic 1 on cluster 1. Defaults to {}.
+        config2 (dict(str, str), optional): Dictionary of strings (keys) and strings (values) to augment the consumer configuration for topic 2 on cluster 2. Defaults to {}.
         key_type1 (str, optional): Topic 1 message key type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "bytes".
         value_type1 (str, optional): Topic 1 message value type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "bytes".
         key_type2 (str, optional): Topic 2 message key type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). If set to None, target_key_type = source_key_type. Defaults to None.
         value_type2 (str, optional): Topic 2 message value type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). If set to None, target_value_type = source_value_type. Defaults to None.
-        n (int, optional): Number of messages to consume from the topic 1 and topic 2. Defaults to ALL_MESSAGES = -1.
+        n (int, optional): Number of messages to consume from topic 1 and topic 2. Defaults to ALL_MESSAGES = -1.
         batch_size (int, optional): Maximum number of messages to consume from topic 1 and topic 2 at a time. Defaults to 1.
 
     Returns:
         tuple(acc, int, int): Tuple of the accumulator (any type), the number of messages consumed from topic 1 and the number of messages consumed from topic 2.
 
     Examples:
-        zip_foldl(cluster1, "topic1", cluster2, "topic2", lambda acc, message_dict1, message_dict2: acc += [(message_dict1, message_dict2)], [])
+        zip_foldl(cluster1, "topic1", cluster2, "topic2", lambda acc, message_dict1, message_dict2: acc + [(message_dict1, message_dict2)], [])
             Consume "topic1" on cluster1 and "topic2" on cluster2 and return a list of pairs of message dictionaries from topic 1 and topic 2, respectively.
     """
-    group_str1 = group1
-    group_str2 = group2
-    offsets_dict1 = offsets1
-    offsets_dict2 = offsets2
-    key_type_str1 = key_type1
-    value_type_str1 = value_type1
-    key_type_str2 = key_type2
-    value_type_str2 = value_type2
     num_messages_int = n
     batch_size_int = batch_size
     #
-    cluster1.subscribe(topic_str1, group=group_str1, offsets=offsets_dict1, key_type=key_type_str1, value_type=value_type_str1)
-    cluster2.subscribe(topic_str2, group=group_str2, offsets=offsets_dict2, key_type=key_type_str2, value_type=value_type_str2)
+    cluster1.subscribe(topic_str1, group=group1, offsets=offsets1, config=config1, key_type=key_type1, value_type=value_type1)
+    cluster2.subscribe(topic_str2, group=group2, offsets=offsets2, config=config2, key_type=key_type2, value_type=value_type2)
     #
     message_counter_int1 = 0
     message_counter_int2 = 0
@@ -573,7 +567,7 @@ def zip_foldl(cluster1, topic_str1, cluster2, topic_str2, zip_foldl_function, in
 def diff_fun(cluster1, topic_str1, cluster2, topic_str2, diff_function, group1=None, group2=None, offsets1=None, offsets2=None, key_type1="bytes", value_type1="bytes", key_type2="bytes", value_type2="bytes", n=ALL_MESSAGES, batch_size=1):
     """Create a diff of topic 1 on cluster 1 and topic 2 on cluster 2 using a diff function.
 
-    Create a diff of (parts of) a topic (topic_str1) on one cluster (cluster1) and another topic (topic_str2) on another (or the same) cluster (cluster2) using a diff function (diff_function).
+    Create a diff of (parts of) a topic (topic_str1) on one cluster (cluster1) and another topic (topic_str2) on another (or the same) cluster (cluster2) using a diff function (diff_function). Stops on either topic/cluster if either the consume timeout is exceeded (``consume.timeout`` in the kash.py cluster configuration) or the number of messages specified in ``n`` has been consumed.
 
     Args:
         cluster1 (Cluster): Cluster 1
@@ -618,7 +612,7 @@ def diff_fun(cluster1, topic_str1, cluster2, topic_str2, diff_function, group1=N
 def diff(cluster1, topic_str1, cluster2, topic_str2, group1=None, group2=None, offsets1=None, offsets2=None, key_type1="bytes", value_type1="bytes", key_type2="bytes", value_type2="bytes", n=ALL_MESSAGES, batch_size=1):
     """Create a diff of topic 1 on cluster 1 and topic 2 on cluster 2 using a diff function.
 
-    Create a diff of (parts of) a topic (topic_str1) on one cluster (cluster1) and another topic (topic_str2) on another (or the same) cluster (cluster2) with respect to their keys and values.
+    Create a diff of (parts of) a topic (topic_str1) on one cluster (cluster1) and another topic (topic_str2) on another (or the same) cluster (cluster2) with respect to their keys and values. Stops on either topic/cluster if either the consume timeout is exceeded (``consume.timeout`` in the kash.py cluster configuration) or the number of messages specified in ``n`` has been consumed.
 
     Args:
         cluster1 (Cluster): Cluster 1
@@ -675,7 +669,7 @@ class Cluster:
     
     * Progress display:
 
-      * ``progress.num.messages``: Number of messages to be consumed/produced until a status print out to standard out is triggered (if verbosity level > 0). Defaults to 1000.
+      * ``progress.num.messages``: Number of messages to be consumed/produced until a status print out to standard out/the console is triggered (if verbosity level > 0). Defaults to 1000.
     
     * Blocking (applies to ``create()`` and ``delete()``/``rm()``)
 
@@ -2237,15 +2231,37 @@ class Cluster:
 
     #
 
-    def foldl(self, topic_str, foldl_function, initial_acc, group=None, offsets=None, key_type="str", value_type="str", n=ALL_MESSAGES, batch_size=1):
-        group_str = group
-        offsets_dict = offsets
-        key_type_str = key_type
-        value_type_str = value_type
+    def foldl(self, topic_str, foldl_function, initial_acc, group=None, offsets=None, config={}, key_type="str", value_type="str", n=ALL_MESSAGES, batch_size=1):
+        """Subscribe to and consume messages from a topic and transform them in a foldl-like manner.
+
+        Subscribe to and consume messages from a topic and transform them in a foldl-like manner, optionally explicitly set the consumer group, initial offsets, and augment the consumer configuration. Stops either if the consume timeout is exceeded (``consume.timeout`` in the kash.py cluster configuration) or the number of messages specified in ``n`` has been consumed.
+
+        Args:
+            topic_str (str): The topic to subscribe to and consume from.
+            foldl_function (function): Foldl function (takes an accumulator (any type) and a message dictionary and returns the updated accumulator).
+            initial_acc: Initial value of the accumulator (any type).
+            group (str, optional): Consumer group name used for subscribing to the topic. If set to None, creates a new unique consumer group name. Defaults to None.
+            offsets (dict, optional): Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for subscribing to the topic. If set to None, subscribe to the topic using the offsets from the consumer group. Defaults to None.
+            config (dict(str, str), optional): Dictionary of strings (keys) and strings (values) to augment the consumer configuration for the topic. Defaults to {}.
+            key_type (str, optional): Message key type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "str".
+            value_type (str, optional): Message value type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "str".
+            n (int, optional): Number of messages to consume from the topic. Defaults to ALL_MESSAGES = -1.
+            batch_size (int, optional): Maximum number of messages to consume from the topic at a time. Defaults to 1.
+
+        Returns:
+            tuple(acc, int): Pair of the accumulator (any type) and the number of messages consumed from the topic (integer).
+
+        Examples:
+            foldl("test", lambda acc, message_dict: acc + [message_dict], [])
+                Consume topic "test" and return a list of all its messages as message dictionaries.
+
+            foldl("test", lambda acc, x: acc + x["value"]["calories"], 0, value_type="json")
+                Consume topic "test" and sum up the "calories" value of the individual messages.
+        """
         num_messages_int = n
         batch_size_int = batch_size
         #
-        self.subscribe(topic_str, group=group_str, offsets=offsets_dict, key_type=key_type_str, value_type=value_type_str)
+        self.subscribe(topic_str, group=group, offsets=offsets, config=config, key_type=key_type, value_type=value_type)
         #
         acc = initial_acc
         message_counter_int = 0
@@ -2268,28 +2284,97 @@ class Cluster:
 
     #
 
-    def flatmap(self, topic_str, flatmap_function, group=None, offsets=None, key_type="str", value_type="str", n=ALL_MESSAGES, batch_size=1):
+    def flatmap(self, topic_str, flatmap_function, group=None, offsets=None, config={}, key_type="str", value_type="str", n=ALL_MESSAGES, batch_size=1):
+        """Subscribe to and consume messages from a topic and transform them in a flatmap-like manner.
+
+        Subscribe to and consume messages from a topic and transform them in a flatmap-like manner, optionally explicitly set the consumer group, initial offsets, and augment the consumer configuration. Stops either if the consume timeout is exceeded (``consume.timeout`` in the kash.py cluster configuration) or the number of messages specified in ``n`` has been consumed.
+
+        Args:
+            topic_str (str): The topic to subscribe to and consume from.
+            flatmap_function (function): Flatmap function (takes a message dictionary and returns a list of message dictionaries).
+            group (str, optional): Consumer group name used for subscribing to the topic. If set to None, creates a new unique consumer group name. Defaults to None.
+            offsets (dict, optional): Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for subscribing to the topic. If set to None, subscribe to the topic using the offsets from the consumer group. Defaults to None.
+            config (dict(str, str), optional): Dictionary of strings (keys) and strings (values) to augment the consumer configuration for the topic. Defaults to {}.
+            key_type (str, optional): Message key type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "str".
+            value_type (str, optional): Message value type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "str".
+            n (int, optional): Number of messages to consume from the topic. Defaults to ALL_MESSAGES = -1.
+            batch_size (int, optional): Maximum number of messages to consume from the topic at a time. Defaults to 1.
+
+        Returns:
+            tuple(list(message_dict), int): Pair of the list of message dictionaries and the number of messages consumed from the topic (integer).
+
+        Examples:
+            flatmap("test", lambda x: [x])
+                Consume topic "test" and return a list of all its messages as message dictionaries.
+
+            flatmap("test", lambda x: [x, x, x])
+                Consume topic "test" and return a list of all its messages repeated three times.
+        """
         def foldl_function(acc, message_dict):
             acc += flatmap_function(message_dict)
             return acc
         #
-        return self.foldl(topic_str, foldl_function, [], group=group, offsets=offsets, key_type=key_type, value_type=value_type, n=n, batch_size=batch_size)
+        return self.foldl(topic_str, foldl_function, [], group=group, offsets=offsets, config=config, key_type=key_type, value_type=value_type, n=n, batch_size=batch_size)
 
     #
 
-    def map(self, topic_str, map_function, group=None, offsets=None, key_type="str", value_type="str", n=ALL_MESSAGES, batch_size=1):
+    def map(self, topic_str, map_function, group=None, offsets=None, config={}, key_type="str", value_type="str", n=ALL_MESSAGES, batch_size=1):
+        """Subscribe to and consume messages from a topic and transform them in a map-like manner.
+
+        Subscribe to and consume messages from a topic and transform them in a map-like manner, optionally explicitly set the consumer group, initial offsets, and augment the consumer configuration. Stops either if the consume timeout is exceeded (``consume.timeout`` in the kash.py cluster configuration) or the number of messages specified in ``n`` has been consumed.
+
+        Args:
+            topic_str (str): The topic to subscribe to and consume from.
+            map_function (function): Map function (takes a message dictionary and returns a message dictionary).
+            group (str, optional): Consumer group name used for subscribing to the topic. If set to None, creates a new unique consumer group name. Defaults to None.
+            offsets (dict, optional): Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for subscribing to the topic. If set to None, subscribe to the topic using the offsets from the consumer group. Defaults to None.
+            config (dict(str, str), optional): Dictionary of strings (keys) and strings (values) to augment the consumer configuration for the topic. Defaults to {}.
+            key_type (str, optional): Message key type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "str".
+            value_type (str, optional): Message value type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "str".
+            n (int, optional): Number of messages to consume from the topic. Defaults to ALL_MESSAGES = -1.
+            batch_size (int, optional): Maximum number of messages to consume from the topic at a time. Defaults to 1.
+
+        Returns:
+            tuple(list(message_dict), int): Pair of the list of message dictionaries and the number of messages consumed from the topic (integer).
+
+        Examples:
+            map("test", lambda x: x)
+                Consume topic "test" and return a list of all its messages as message dictionaries.
+
+            map("test", lambda x: x["value"].update({"colour": "yellow"}) or x, value_type="json")
+
+                Consume topic "test" and return a list of all its messages where the "colour" is set to "yellow".
+        """
         def flatmap_function(message_dict):
             return [map_function(message_dict)]
         #
-        return self.flatmap(topic_str, flatmap_function, group=group, offsets=offsets, key_type=key_type, value_type=value_type, n=n, batch_size=batch_size)
+        return self.flatmap(topic_str, flatmap_function, group=group, offsets=offsets, config=config, key_type=key_type, value_type=value_type, n=n, batch_size=batch_size)
 
     #
 
-    def foreach(self, topic_str, foreach_function, group=None, offsets=None, key_type="str", value_type="str", n=ALL_MESSAGES, batch_size=1):
-        group_str = group
-        offsets_dict = offsets
-        key_type_str = key_type
-        value_type_str = value_type
+    def foreach(self, topic_str, foreach_function, group=None, offsets=None, config={}, key_type="str", value_type="str", n=ALL_MESSAGES, batch_size=1):
+        """Subscribe to and consume messages from a topic and call an operation on each of them.
+
+        Subscribe to and consume messages from a topic and call an operation on each of them, optionally explicitly set the consumer group, initial offsets, and augment the consumer configuration. Stops either if the consume timeout is exceeded (``consume.timeout`` in the kash.py cluster configuration) or the number of messages specified in ``n`` has been consumed.
+
+        Args:
+            topic_str (str): The topic to subscribe to and consume from.
+            foreach_function (function): Foreach function (takes a message dictionary and returns None).
+            group (str, optional): Consumer group name used for subscribing to the topic. If set to None, creates a new unique consumer group name. Defaults to None.
+            offsets (dict, optional): Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for subscribing to the topic. If set to None, subscribe to the topic using the offsets from the consumer group. Defaults to None.
+            config (dict(str, str), optional): Dictionary of strings (keys) and strings (values) to augment the consumer configuration for the topic. Defaults to {}.
+            key_type (str, optional): Message key type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "str".
+            value_type (str, optional): Message value type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "str".
+            n (int, optional): Number of messages to consume from the topic. Defaults to ALL_MESSAGES = -1.
+            batch_size (int, optional): Maximum number of messages to consume from the topic at a time. Defaults to 1.
+
+        Returns:
+            int: Number of messages consumed from the topic (integer).
+
+        Examples:
+            foreach("test", print)
+                Consume topic "test" and print out all the consumed messages to standard out/the console.
+        """
         num_messages_int = n
         batch_size_int = batch_size
         #
@@ -2298,22 +2383,62 @@ class Cluster:
             foreach_function(message_dict)
             return None
         #
-        (_, message_counter_int) = self.foldl(topic_str, foldl_function, None, group=group_str, offsets=offsets_dict, key_type=key_type_str, value_type=value_type_str, n=num_messages_int, batch_size=batch_size_int)
+        (_, message_counter_int) = self.foldl(topic_str, foldl_function, None, group=group, offsets=offsets, config=config, key_type=key_type, value_type=value_type, n=num_messages_int, batch_size=batch_size_int)
         #
         return message_counter_int
 
     #
 
-    def cat(self, topic_str, foreach_function=print, group=None, offsets=None, key_type="str", value_type="str", n=ALL_MESSAGES, batch_size=1):
-        return self.foreach(topic_str, foreach_function, group=group, offsets=offsets, key_type=key_type, value_type=value_type, n=n, batch_size=batch_size)
+    def cat(self, topic_str, foreach_function=print, group=None, offsets=None, config={}, key_type="str", value_type="str", n=ALL_MESSAGES, batch_size=1):
+        """Subscribe to and consume messages from a topic and call an operation on each of them.
+
+        Subscribe to and consume messages from a topic and call an operation on each of them, optionally explicitly set the consumer group, initial offsets, and augment the consumer configuration. Stops either if the consume timeout is exceeded (``consume.timeout`` in the kash.py cluster configuration) or the number of messages specified in ``n`` has been consumed.
+
+        Args:
+            topic_str (str): The topic to subscribe to and consume from.
+            foreach_function (function, optional): Foreach function (takes a message dictionary and returns None). Defaults to ``print``.
+            group (str, optional): Consumer group name used for subscribing to the topic. If set to None, creates a new unique consumer group name. Defaults to None.
+            offsets (dict, optional): Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for subscribing to the topic. If set to None, subscribe to the topic using the offsets from the consumer group. Defaults to None.
+            config (dict(str, str), optional): Dictionary of strings (keys) and strings (values) to augment the consumer configuration for the topic. Defaults to {}.
+            key_type (str, optional): Message key type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "str".
+            value_type (str, optional): Message value type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "str".
+            n (int, optional): Number of messages to consume from the topic. Defaults to ALL_MESSAGES = -1.
+            batch_size (int, optional): Maximum number of messages to consume from the topic at a time. Defaults to 1.
+
+        Returns:
+            int: Number of messages consumed from the topic (integer).
+
+        Examples:
+            cat("test")
+                Consume topic "test" and print out all the consumed messages to standard out/the console.
+        """
+        return self.foreach(topic_str, foreach_function, group=group, offsets=offsets, config=config, key_type=key_type, value_type=value_type, n=n, batch_size=batch_size)
 
     #
 
-    def grep_fun(self, topic_str, match_function, group=None, offsets=None, key_type="str", value_type="str", n=ALL_MESSAGES, batch_size=1):
-        group_str = group
-        offsets_dict = offsets
-        key_type_str = key_type
-        value_type_str = value_type
+    def grep_fun(self, topic_str, match_function, group=None, offsets=None, config={}, key_type="str", value_type="str", n=ALL_MESSAGES, batch_size=1):
+        """Find matching messages in a topic (custom function matching).
+
+        Find matching messages in a topic using a custom match function match_function. Optionally explicitly set the consumer group, initial offsets, and augment the consumer configuration. Stops either if the consume timeout is exceeded (``consume.timeout`` in the kash.py cluster configuration) or the number of messages specified in ``n`` has been consumed.
+
+        Args:
+            topic_str (str): The topic to subscribe to and consume from.
+            match_function (function): Match function (takes a message dictionary and returns a True for a match and False otherwise).
+            group (str, optional): Consumer group name used for subscribing to the topic. If set to None, creates a new unique consumer group name. Defaults to None.
+            offsets (dict, optional): Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for subscribing to the topic. If set to None, subscribe to the topic using the offsets from the consumer group. Defaults to None.
+            config (dict(str, str), optional): Dictionary of strings (keys) and strings (values) to augment the consumer configuration for the topic. Defaults to {}.
+            key_type (str, optional): Message key type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "str".
+            value_type (str, optional): Message value type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "str".
+            n (int, optional): Number of messages to consume from the topic. Defaults to ALL_MESSAGES = -1.
+            batch_size (int, optional): Maximum number of messages to consume from the topic at a time. Defaults to 1.
+
+        Returns:
+            tuple(list(message_dict), int, int): Tuple of the list of message dictionaries of the matching messages, the number of matching messages (integer), and the number of messages consumed from the topic (integer).
+
+        Examples:
+            grep_fun("test", lambda x: x["value"]["name"] == "cake", value_type="json")
+                Consume topic "test" and return all messages whose value is a JSON with the "name" attribute set to "cake".
+        """
         num_messages_int = n
         batch_size_int = batch_size
         #
@@ -2328,9 +2453,33 @@ class Cluster:
             else:
                 return []
         #
-        return self.flatmap(topic_str, flatmap_function, group=group_str, offsets=offsets_dict, key_type=key_type_str, value_type=value_type_str, n=num_messages_int, batch_size=batch_size_int)
+        (matching_message_dict_list, message_counter_int) = self.flatmap(topic_str, flatmap_function, group=group, offsets=offsets, config=config, key_type=key_type, value_type=value_type, n=num_messages_int, batch_size=batch_size_int)
+        #
+        return matching_message_dict_list, len(matching_message_dict_list), message_counter_int
 
     def grep(self, topic_str, re_pattern_str, group=None, offsets=None, key_type="str", value_type="str", n=ALL_MESSAGES, batch_size=1):
+        """Find matching messages in a topic (regular expression matching).
+
+        Find matching messages in a topic using regular expression matching. Optionally explicitly set the consumer group, initial offsets, and augment the consumer configuration. Stops either if the consume timeout is exceeded (``consume.timeout`` in the kash.py cluster configuration) or the number of messages specified in ``n`` has been consumed.
+
+        Args:
+            topic_str (str): The topic to subscribe to and consume from.
+            re_pattern_str (str): Regular expression to for matching messages.
+            group (str, optional): Consumer group name used for subscribing to the topic. If set to None, creates a new unique consumer group name. Defaults to None.
+            offsets (dict, optional): Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for subscribing to the topic. If set to None, subscribe to the topic using the offsets from the consumer group. Defaults to None.
+            config (dict(str, str), optional): Dictionary of strings (keys) and strings (values) to augment the consumer configuration for the topic. Defaults to {}.
+            key_type (str, optional): Message key type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "str".
+            value_type (str, optional): Message value type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "str".
+            n (int, optional): Number of messages to consume from the topic. Defaults to ALL_MESSAGES = -1.
+            batch_size (int, optional): Maximum number of messages to consume from the topic at a time. Defaults to 1.
+
+        Returns:
+            tuple(list(message_dict), int, int): Tuple of the list of message dictionaries of the matching messages, the number of matching messages (integer), and the number of messages consumed from the topic (integer).
+
+        Examples:
+            grep("test", ".*name.*cake")
+                Consume topic "test" and return all messages whose value matches the regular expression ".*name.*cake".
+        """
         def match_function(message_dict):
             pattern = re.compile(re_pattern_str)
             key_str = str(message_dict["key"])
