@@ -166,3 +166,13 @@ And last, but not least, we copy the topic "snacks" back to a local file "snacks
 (3, 6)
 >>> 
 ```
+
+The resulting file "snacks1.txt" looks like this:
+```
+{"name": "cookie", "calories": 500.0, "colour": "brownish"}
+{"name": "cookie", "calories": 500.0, "colour": "brownish"}
+{"name": "cake", "calories": 260.0, "colour": "whiteish"}
+{"name": "cake", "calories": 260.0, "colour": "whiteish"}
+{"name": "timtam", "calories": 80.0, "colour": "chocolateish"}
+{"name": "timtam", "calories": 80.0, "colour": "chocolateish"}
+```
