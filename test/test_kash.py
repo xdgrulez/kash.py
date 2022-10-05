@@ -87,6 +87,11 @@ class Test(unittest.TestCase):
         self.assertEqual(topic_str_size_int_dict_l, topic_str_size_int_dict_ll)
         size_int = topic_str_size_int_dict_l[topic_str]
         self.assertEqual(size_int, 3)
+        topic_str_total_size_int_size_dict_tuple_dict = cluster.topics(pattern=topic_str, size=True, partitions=True)
+        self.assertEqual(topic_str_total_size_int_size_dict_tuple_dict[topic_str][0], 3)
+        self.assertEqual(topic_str_total_size_int_size_dict_tuple_dict[topic_str][1][0], 3)
+        topic_str_total_size_int_size_dict_tuple_dict = cluster.topics(pattern=topic_str, size=False, partitions=True)
+        self.assertEqual(topic_str_total_size_int_size_dict_tuple_dict[topic_str][0], 3)
         cluster.delete(topic_str)
 
     def test_config(self):
@@ -139,6 +144,8 @@ class Test(unittest.TestCase):
         cluster.consume()
         group_str_list = cluster.groups(["test*", "test_group*"])
         self.assertIn(group_str, group_str_list)
+        group_str_list = cluster.groups("test_group*")
+        self.assertIn(group_str, group_str_list)
         group_dict = cluster.describe_groups(group_str)[group_str]
         self.assertEqual(group_dict["id"], group_str)
         cluster.delete(topic_str)
@@ -147,6 +154,10 @@ class Test(unittest.TestCase):
         cluster = Cluster(cluster_str)
         if "confluent.cloud" not in cluster.config_dict["bootstrap.servers"]:
             broker_dict = cluster.brokers()
+            broker_dict1 = cluster.brokers("0")
+            self.assertEqual(broker_dict, broker_dict1)
+            broker_dict2 = cluster.brokers([0])
+            self.assertEqual(broker_dict1, broker_dict2)
             broker_int = list(broker_dict.keys())[0]
             old_background_threads_str = cluster.broker_config(broker_int)[broker_int]["background.threads"]
             cluster.set_broker_config(broker_int, "background.threads", 5)
@@ -265,8 +276,9 @@ class Test(unittest.TestCase):
         self.assertEqual(num_lines_int, 3)
         self.assertEqual(num_messages_int, 3)
         self.assertEqual(cluster.size(topic_str)[topic_str][0], 3)
-        num_messages_int = cluster.cp(topic_str, "./snacks_value1.txt", source_value_type="avro", n=3)
-        self.assertEqual(num_messages_int, 3)
+        (message_counter_int, line_counter_int) = cluster.cp(topic_str, "./snacks_value1.txt", source_value_type="avro", n=3)
+        self.assertEqual(message_counter_int, 3)
+        self.assertEqual(line_counter_int, 3)
         self.assertTrue(filecmp.cmp("./snacks_value.txt", "./snacks_value1.txt"))
         os.remove("./snacks_value1.txt")
         cluster.delete(topic_str)
@@ -589,9 +601,15 @@ class Test(unittest.TestCase):
         #
         for i in range(3):
             print(i)
-            cluster.recreate(topic_str)
+            (num_consumed_messages_int1, num_produced_messages_int1), (num_consumed_messages_int2, num_produced_messages_int2) = cluster.recreate(topic_str)
+            self.assertEqual(num_consumed_messages_int1, 3)
+            self.assertEqual(num_produced_messages_int1, 3)
+            self.assertEqual(num_consumed_messages_int2, 3)
+            self.assertEqual(num_produced_messages_int2, 3)
+            #
             cluster.cp(topic_str, "./snacks_value1.txt", source_value_type="str", batch_size=3, n=3)
             self.assertTrue(filecmp.cmp("./snacks_value.txt", "./snacks_value1.txt"))
+            #
             os.remove("./snacks_value1.txt")
         #
         cluster.delete(topic_str)
@@ -655,7 +673,9 @@ class Test(unittest.TestCase):
         #
         def flatmap_function(message_dict):
             return [message_dict, message_dict]
-        cluster.cp(topic_str, "./snacks_value1.txt", flatmap_function=flatmap_function, target_value_type="str")
+        (message_counter_int, line_counter_int) = cluster.cp(topic_str, "./snacks_value1.txt", flatmap_function=flatmap_function, target_value_type="str")
+        self.assertEqual(message_counter_int, 3)
+        self.assertEqual(line_counter_int, 6)
         lines_count_int = count_lines("./snacks_value1.txt")
         self.assertEqual(lines_count_int, 6)
         #

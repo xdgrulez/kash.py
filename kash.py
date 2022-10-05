@@ -349,7 +349,7 @@ def groupMember_to_dict(groupMember):
 
 # Cross-cluster
 
-def flatmap(source_cluster, source_topic_str, target_cluster, target_topic_str, flatmap_function, group=None, offsets=None, source_key_type="bytes", source_value_type="bytes", target_key_type=None, target_value_type=None, target_key_schema=None, target_value_schema=None, keep_timestamps=True, n=ALL_MESSAGES, batch_size=1):
+def flatmap(source_cluster, source_topic_str, target_cluster, target_topic_str, flatmap_function, group=None, offsets=None, config={}, source_key_type="bytes", source_value_type="bytes", target_key_type=None, target_value_type=None, target_key_schema=None, target_value_schema=None, keep_timestamps=True, n=ALL_MESSAGES, batch_size=1):
     """Replicate a topic and transform the messages in a flatmap-like manner.
 
     Replicate (parts of) a topic (source_topic_str) on one cluster (source_cluster) to another topic (target_topic_str) on another (or the same) cluster (target_cluster). Each replicated message is transformed into a list of other messages in a flatmap-like manner. The source and target topics can have different message key and value types; e.g. the source topic can have value type Avro whereas the target topic will be written with value type Protobuf.
@@ -362,6 +362,7 @@ def flatmap(source_cluster, source_topic_str, target_cluster, target_topic_str, 
         flatmap_function (function): Flatmap function (takes a message dictionary and returns a list of message dictionaries)
         group (str, optional): Consumer group name used for subscribing to the source topic. If set to None, creates a new unique consumer group name. Defaults to None.
         offsets (dict, optional): Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for subscribing to the source topic. If set to None, subscribe to the topic using the offsets from the consumer group for the topic. Defaults to None.
+        config (dict(str, str), optional): Dictionary of strings (keys) and strings (values) to augment the consumer configuration for the source topic. Defaults to {}.
         source_key_type (str, optional): Source topic message key type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "bytes".
         source_value_type (str, optional): Source topic message value type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "bytes".
         target_key_type (str, optional): Target topic message key type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). If set to None, target_key_type = source_key_type. Defaults to None.
@@ -384,9 +385,9 @@ def flatmap(source_cluster, source_topic_str, target_cluster, target_topic_str, 
 
         flatmap(cluster1, "topic1", cluster2, "topic2", lambda message_dict: [message_dict], source_value_type="avro", target_value_type="protobuf", target_value_schema="message Snack { required string name = 1; required float calories = 2; optional string colour = 3; }", n=100)
             Replicate the first 100 messages from "topic1" on cluster1 to "topic2" on cluster2, changing the value schema from avro to protobuf.
-        
+
         flatmap(cluster1, "topic1", cluster2, "topic2", lambda message_dict: [message_dict], offsets={0:100}, keep_timestamps=False, n=500)
-            Replicate the messages 100-600 from "topic1" on cluster1 to "topic2" on cluster2. Create new timestamps for the messages produced to the target topic.     
+            Replicate the messages 100-600 from "topic1" on cluster1 to "topic2" on cluster2. Create new timestamps for the messages produced to the target topic.
     """
     source_key_type_str = source_key_type
     source_value_type_str = source_value_type
@@ -403,6 +404,7 @@ def flatmap(source_cluster, source_topic_str, target_cluster, target_topic_str, 
     #
     target_cluster.produced_messages_counter_int = 0
     #
+
     def foreach_function(message_dict):
         message_dict_list = flatmap_function(message_dict)
         #
@@ -429,19 +431,51 @@ def flatmap(source_cluster, source_topic_str, target_cluster, target_topic_str, 
             if target_cluster.produced_messages_counter_int % target_cluster.kash_dict["flush.num.messages"] == 0:
                 target_cluster.flush()
     #
-    num_messages_int = source_cluster.foreach(source_topic_str, foreach_function, group=group, offsets=offsets, key_type=source_key_type_str, value_type=source_value_type_str, n=n, batch_size=batch_size)
+    num_messages_int = source_cluster.foreach(source_topic_str, foreach_function, group=group, offsets=offsets, config=config, key_type=source_key_type_str, value_type=source_value_type_str, n=n, batch_size=batch_size)
     #
     target_cluster.flush()
     #
     return (num_messages_int, target_cluster.produced_messages_counter_int)
 
-def map(source_cluster, source_topic_str, target_cluster, target_topic_str, map_function, group=None, offsets=None, source_key_type="bytes", source_value_type="bytes", target_key_type=None, target_value_type=None, target_key_schema=None, target_value_schema=None, keep_timestamps=True, n=ALL_MESSAGES, batch_size=1):
+
+def map(source_cluster, source_topic_str, target_cluster, target_topic_str, map_function, group=None, offsets=None, config={}, source_key_type="bytes", source_value_type="bytes", target_key_type=None, target_value_type=None, target_key_schema=None, target_value_schema=None, keep_timestamps=True, n=ALL_MESSAGES, batch_size=1):
+    """Replicate a topic and optionally transform the messages in a map-like manner.
+
+    Replicate (parts of) a topic (source_topic_str) on one cluster (source_cluster) to another topic (target_topic_str) on another (or the same) cluster (target_cluster). Each replicated message can be transformed into another messages in a map-like manner. The source and target topics can have different message key and value types; e.g. the source topic can have value type Avro whereas the target topic will be written with value type Protobuf. Stops either if the consume timeout is exceeded on the source cluster (``consume.timeout`` in the kash.py cluster configuration) or the number of messages specified in ``n`` has been consumed.
+
+    Args:
+        source_cluster (Cluster): Source cluster
+        source_topic_str (str): Source topic
+        target_cluster (Cluster): Target cluster
+        target_topic_str (str): Target topic
+        map_function (function, optional): Map function (takes a message dictionary and returns a message dictionary). Defaults to lambda x: [x].
+        group (str, optional): Consumer group name used for subscribing to the source topic. If set to None, creates a new unique consumer group name. Defaults to None.
+        offsets (dict, optional): Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for subscribing to the source topic. If set to None, subscribe to the topic using the offsets from the consumer group for the topic. Defaults to None.
+        config (dict(str, str), optional): Dictionary of strings (keys) and strings (values) to augment the consumer configuration for the source topic. Defaults to {}.
+        source_key_type (str, optional): Source topic message key type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "bytes".
+        source_value_type (str, optional): Source topic message value type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "bytes".
+        target_key_type (str, optional): Target topic message key type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). If set to None, target_key_type = source_key_type. Defaults to None.
+        target_value_type (str, optional): Target topic message value type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). If set to None, target_value_type = source_value_type. Defaults to None.
+        target_key_schema (str, optional): Target key message type schema (for "avro", "protobuf"/"pb" or "jsonschema"). Defaults to None.
+        target_value_schema (str, optional): Target value message type schema (for "avro", "protobuf"/"pb" or "jsonschema"). Defaults to None.
+        keep_timestamps (bool, optional): Replicate the timestamps of the source messages in the target messages. Defaults to True.
+        n (int, optional): Number of messages to consume from the source topic. Defaults to ALL_MESSAGES = -1.
+        batch_size (int, optional): Maximum number of messages to consume from the source topic at a time. Defaults to 1.
+
+    Returns:
+        tuple(int, int): Pair of the number of messages consumed from the source topic and the number of messages produced to the target topic.
+
+    Examples:
+        map(cluster1, "topic1", cluster2, "topic2", lambda x: x)
+            Replicate "topic1" on cluster1 to "topic2" on cluster2.
+    """
     def flatmap_function(message_dict):
         return [map_function(message_dict)]
     #
-    return flatmap(source_cluster, source_topic_str, target_cluster, target_topic_str, flatmap_function, group=group, offsets=offsets, source_key_type=source_key_type, source_value_type=source_value_type, target_key_type=target_key_type, target_value_type=target_value_type, target_key_schema=target_key_schema, target_value_schema=target_value_schema, keep_timestamps=keep_timestamps, n=n, batch_size=batch_size)
+    return flatmap(source_cluster, source_topic_str, target_cluster, target_topic_str, flatmap_function, group=group, offsets=offsets, config=config, source_key_type=source_key_type, source_value_type=source_value_type, target_key_type=target_key_type, target_value_type=target_value_type, target_key_schema=target_key_schema, target_value_schema=target_value_schema, keep_timestamps=keep_timestamps, n=n, batch_size=batch_size)
 
-def cp(source_cluster, source_topic_str, target_cluster, target_topic_str, flatmap_function=lambda x: [x], group=None, offsets=None, source_key_type="bytes", source_value_type="bytes", target_key_type=None, target_value_type=None, target_key_schema=None, target_value_schema=None, keep_timestamps=True, n=ALL_MESSAGES, batch_size=1):
+
+def cp(source_cluster, source_topic_str, target_cluster, target_topic_str, flatmap_function=lambda x: [x], group=None, offsets=None, config={}, source_key_type="bytes", source_value_type="bytes", target_key_type=None, target_value_type=None, target_key_schema=None, target_value_schema=None, keep_timestamps=True, n=ALL_MESSAGES, batch_size=1):
     """Replicate a topic and optionally transform the messages in a flatmap-like manner.
 
     Replicate (parts of) a topic (source_topic_str) on one cluster (source_cluster) to another topic (target_topic_str) on another (or the same) cluster (target_cluster). Each replicated message can be transformed into a list of other messages in a flatmap-like manner. The source and target topics can have different message key and value types; e.g. the source topic can have value type Avro whereas the target topic will be written with value type Protobuf. Stops either if the consume timeout is exceeded on the source cluster (``consume.timeout`` in the kash.py cluster configuration) or the number of messages specified in ``n`` has been consumed.
@@ -454,6 +488,7 @@ def cp(source_cluster, source_topic_str, target_cluster, target_topic_str, flatm
         flatmap_function (function, optional): Flatmap function (takes a message dictionary and returns a list of message dictionaries). Defaults to lambda x: [x].
         group (str, optional): Consumer group name used for subscribing to the source topic. If set to None, creates a new unique consumer group name. Defaults to None.
         offsets (dict, optional): Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for subscribing to the source topic. If set to None, subscribe to the topic using the offsets from the consumer group for the topic. Defaults to None.
+        config (dict(str, str), optional): Dictionary of strings (keys) and strings (values) to augment the consumer configuration for the source topic. Defaults to {}.
         source_key_type (str, optional): Source topic message key type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "bytes".
         source_value_type (str, optional): Source topic message value type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "bytes".
         target_key_type (str, optional): Target topic message key type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). If set to None, target_key_type = source_key_type. Defaults to None.
@@ -476,11 +511,12 @@ def cp(source_cluster, source_topic_str, target_cluster, target_topic_str, flatm
 
         cp(cluster1, "topic1", cluster2, "topic2", source_value_type="avro", target_value_type="protobuf", target_value_schema="message Snack { required string name = 1; required float calories = 2; optional string colour = 3; }", n=100)
             Replicate the first 100 messages from "topic1" on cluster1 to "topic2" on cluster2, changing the value schema from avro to protobuf.
-        
+
         cp(cluster1, "topic1", cluster2, "topic2", offsets={0:100}, keep_timestamps=False, n=500)
-            Replicate the messages 100-600 from "topic1" on cluster1 to "topic2" on cluster2. Create new timestamps for the messages produced to the target topic.     
+            Replicate the messages 100-600 from "topic1" on cluster1 to "topic2" on cluster2. Create new timestamps for the messages produced to the target topic.
     """
-    return flatmap(source_cluster, source_topic_str, target_cluster, target_topic_str, flatmap_function, group=group, offsets=offsets, source_key_type=source_key_type, source_value_type=source_value_type, target_key_type=target_key_type, target_value_type=target_value_type, target_key_schema=target_key_schema, target_value_schema=target_value_schema, keep_timestamps=keep_timestamps, n=n, batch_size=batch_size)
+    return flatmap(source_cluster, source_topic_str, target_cluster, target_topic_str, flatmap_function, group=group, offsets=offsets, config=config, source_key_type=source_key_type, source_value_type=source_value_type, target_key_type=target_key_type, target_value_type=target_value_type, target_key_schema=target_key_schema, target_value_schema=target_value_schema, keep_timestamps=keep_timestamps, n=n, batch_size=batch_size)
+
 
 def zip_foldl(cluster1, topic_str1, cluster2, topic_str2, zip_foldl_function, initial_acc, group1=None, group2=None, offsets1=None, offsets2=None, config1={}, config2={}, key_type1="bytes", value_type1="bytes", key_type2="bytes", value_type2="bytes", n=ALL_MESSAGES, batch_size=1):
     """Subscribe to and consume from topic 1 on cluster 1 and topic 2 on cluster 2 and combine the messages using a foldl function.
@@ -655,22 +691,26 @@ class Cluster:
 
     The "kash" section can be used to configure the following:
 
+    * AdminClient (currently only applies to ``create()``):
+
+      * ``retention.ms``: Retention time (in milliseconds) for creating topics. Defaults to 604800000 (seven days). You can set it to -1 to create topics with infinite retention by default.
+
     * Producer (applies to all functions/methods producing messages to a cluster):
 
       * ``flush.num.messages``: Number of messages produced before calling ``confluent_kafka.Producer.flush()``. Defaults to 10000.
       * ``flush.timeout``: Timeout (in seconds) for calling ``confluent_kafka.Producer.flush()``. Defaults to -1 (no timeout).
-    
+
     * Consumer (applies to all functions/methods consuming messages from a cluster):
 
       * ``consume.timeout``: Timeout (in seconds) for calling ``confluent_kafka.Consumer.consume()``. Lower (e.g. 1.0) for local or very fast Kafka clusters, higher for remote/not-so-fast Kafka clusters (e.g. 10.0). Defaults to 3.0.
       * ``auto.offset.reset``: Either "earliest" or "latest". Directly translates to the confluent_kafka/librdkafka consumer configuration. Defaults to "earliest".
       * ``enable.auto.commit``: Either "True" or "False". Directly translates to the confluent_kafka/librdkafka consumer configuration. Defaults to "True".
-      * ``session.timeout.ms``: Timeout (in milliseconds) to detect client failures. Defaults to 10000.
-    
+      * ``session.timeout.ms``: Timeout (in milliseconds) to detect client failures. Defaults to 45000.
+
     * Progress display:
 
       * ``progress.num.messages``: Number of messages to be consumed/produced until a status print out to standard out/the console is triggered (if verbosity level > 0). Defaults to 1000.
-    
+
     * Blocking (applies to ``create()`` and ``delete()``/``rm()``)
 
       * ``block.num.retries.int``: The number of retries when blocking to wait for topics to have been created/deleted (if ``block`` is set to True). Defaults to 50.
@@ -690,7 +730,7 @@ class Cluster:
 
             [kafka]
             bootstrap.servers=localhost:9092
-            
+
             [schema_registry]
             schema.registry.url=http://localhost:8081
 
@@ -700,10 +740,11 @@ class Cluster:
             bootstrap.servers=localhost:9092
             [schema_registry]
             schema.registry.url=http://localhost:8081
-            
+
             [kash]
             flush.num.messages=10000
-            flush.timeout=-1
+            flush.timeout=-1.0
+            retention.ms=-1
             consume.timeout=1.0
             auto.offset.reset=earliest
             enable.auto.commit=true
@@ -729,7 +770,8 @@ class Cluster:
 
             [kash]
             flush.num.messages=10000
-            flush.timeout=-1
+            flush.timeout=-1.0
+            retention.ms=-1
             consume.timeout=10.0
             auto.offset.reset=earliest
             enable.auto.commit=true
@@ -749,7 +791,8 @@ class Cluster:
 
             [kash]
             flush.num.messages=10000
-            flush.timeout=-1
+            flush.timeout=-1.0
+            retention.ms=-1
             consume.timeout=5.0
             auto.offset.reset=earliest
             enable.auto.commit=true
@@ -788,13 +831,19 @@ class Cluster:
         self.verbose_int = 1 if is_interactive() else 0
         #
         # Kash cluster config
+        #
+        # Admin Client
+        if "retention.ms" not in self.kash_dict:
+            self.kash_dict["retention.ms"] = 604800000
+        else:
+            self.kash_dict["retention.ms"] = int(self.kash_dict["retention.ms"])
         # Producer
         if "flush.num.messages" not in self.kash_dict:
             self.kash_dict["flush.num.messages"] = 10000
         else:
             self.kash_dict["flush.num.messages"] = int(self.kash_dict["flush.num.messages"])
         if "flush.timeout" not in self.kash_dict:
-            self.kash_dict["flush.timeout"] = -1
+            self.kash_dict["flush.timeout"] = -1.0
         else:
             self.kash_dict["flush.timeout"] = float(self.kash_dict["flush.timeout"])
         # Consumer
@@ -812,9 +861,9 @@ class Cluster:
         else:
             self.kash_dict["enable.auto.commit"] = str_to_bool(self.kash_dict["enable.auto.commit"])
         if "session.timeout.ms" not in self.kash_dict:
-            self.kash_dict["session.timeout.ms"] = 10000
+            self.kash_dict["session.timeout.ms"] = 45000
         else:
-            self.kash_dict["session.timeout.ms"] = int(self.kash_dict["session.timeout.ms"])
+            self.kash_dict["session.timeout.ms"] = int(self.kash_dict["session.timeout.ms"])        
         # Standard output
         if "progress.num.messages" not in self.kash_dict:
             self.kash_dict["progress.num.messages"] = 1000
@@ -1057,16 +1106,16 @@ class Cluster:
 
         Args:
             pattern_str_or_str_list (str | list(str)): The pattern or a list of patterns for selecting those topics which shall be listed.
-            timeout (float, optional): The timeout for the internally used get_watermark_offsets() method calls from confluent_kafka.Consumer. Defaults to -1.0 (infinite=no timeout).
+            timeout (float, optional): The timeout (in seconds) for the internally used get_watermark_offsets() method calls from confluent_kafka.Consumer. Defaults to -1.0 (infinite=no timeout).
 
         Returns:
             dict(str, tuple(int, dict(int, int))): Dictionary of strings (topic name) and pairs of integers (total size of the topic) and dictionaries of integers (partition) and integers (size of the partition).
 
         Examples:
-            size("\*")
+            c.size("\*")
                 List all topics of the cluster, their total sizes and the sizes of their partitions.
 
-            size(["\*test", "bla"], timeout=1.0)
+            c.size(["\*test", "bla"], timeout=1.0)
                 List those topics whose name end with "test" or whose name is "bla", their total sizes and the sizes of their partitions and time out the internally used get_watermark_offsets() method after one second.
         """
         topic_str_partition_int_tuple_dict_dict = self.watermarks(pattern_str_or_str_list, timeout=timeout)
@@ -1090,16 +1139,16 @@ class Cluster:
 
         Args:
             pattern_str_or_str_list (str | list(str)): The pattern or list of patterns for selecting the topics.
-            timeout (float, optional): The timeout for the individual get_watermark_offsets() method calls from confluent_kafka.Consumer. Defaults to -1.0 (infinite=no timeout).
+            timeout (float, optional): The timeout (in seconds) for the individual get_watermark_offsets() method calls from confluent_kafka.Consumer. Defaults to -1.0 (infinite=no timeout).
 
         Returns:
             dict(str, dict(int, tuple(int, int))): Dictionary of strings (topic names) and dictionaries of integers (partition) and pairs of integers (low and high offsets of the respective partition of the respective topic)
 
         Examples:
-            watermarks("test*")
+            c.watermarks("test*")
                 Return the watermarks for all topics whose name starts with "test" and their partitions.
 
-            watermarks(["test", "bla"], timeout=1.0)
+            c.watermarks(["test", "bla"], timeout=1.0)
                 Return the watermarks for the topics "test" and "bla" and time out the internally used get_watermark_offsets() method after one second.
         """
         timeout_float = timeout
@@ -1130,22 +1179,22 @@ class Cluster:
             list(str) | dict(str, int) | dict(str, dict(int, int)) | dict(str, tuple(int, dict(int, int))): List of strings if size=False and partitions=False; dictionary of strings (topic name) and integers (total size of the topic) if size=True and partitions=False; dictionary of strings (topic name) and dictionaries of integers (partition) and integers (size of the partition) if size=False and partitions=True; dictionary of strings (topic name) and pairs of integers (total size of the topic) and dictionaries of integers (partition) and integers (size of the partition) if size=True and partitions=True.
 
         Examples:
-            topics()
+            c.topics()
                 List all topics of the cluster.
 
-            topics(size=True)
+            c.topics(size=True)
                 List all the topics of the cluster and their total sizes.
-            
-            topics(partitions=True)
+
+            c.topics(partitions=True)
                 List all the topics of the cluster and the sizes of their individual partitions.
 
-            topics(size=True, partitions=True)
+            c.topics(size=True, partitions=True)
                 List all the topics of the cluster, their total sizes and the sizes of their individual partitions.
 
-            topics("test*")
+            c.topics("test*")
                 List all those topics of the cluster whose name starts with "test".
 
-            topics(["test*", "bla*"])
+            c.topics(["test*", "bla*"])
                 List all those topics of the cluster whose name starts with "test" or "bla".
         """
         pattern_str_or_str_list = pattern
@@ -1187,22 +1236,22 @@ class Cluster:
         list(str) | dict(str, int) | dict(str, dict(int, int)) | dict(str, tuple(int, dict(int, int))): List of strings if size=False and partitions=False; dictionary of strings (topic name) and integers (total size of the topic) if size=True and partitions=False; dictionary of strings (topic name) and dictionaries of integers (partition) and integers (size of the partition) if size=False and partitions=True; dictionary of strings (topic name) and pairs of integers (total size of the topic) and dictionaries of integers (partition) and integers (size of the partition) if size=True and partitions=True.
 
     Examples:
-        ls()
+        c.ls()
             List all topics of the cluster.
 
-        ls(size=True)
+        c.ls(size=True)
             List all the topics of the cluster and their total sizes.
-        
-        ls(partitions=True)
+
+        c.ls(partitions=True)
             List all the topics of the cluster and the sizes of their individual partitions.
 
-        ls(size=True, partitions=True)
+        c.ls(size=True, partitions=True)
             List all the topics of the cluster, their total sizes and the sizes of their individual partitions.
 
-        ls("test*")
+        c.ls("test*")
             List all those topics of the cluster whose name starts with "test".
-        
-        ls(["test*", "bla*"])
+
+        c.ls(["test*", "bla*"])
             List all those topics of the cluster whose name starts with "test" or "bla".
     """
 
@@ -1220,22 +1269,22 @@ class Cluster:
             list(str) | dict(str, int) | dict(str, dict(int, int)) | dict(str, tuple(int, dict(int, int))): List of strings if size=False and partitions=False; dictionary of strings (topic name) and integers (total size of the topic) if size=True and partitions=False; dictionary of strings (topic name) and dictionaries of integers (partition) and integers (size of the partition) if size=False and partitions=True; dictionary of strings (topic name) and pairs of integers (total size of the topic) and dictionaries of integers (partition) and integers (size of the partition) if size=True and partitions=True.
 
         Examples:
-            l()
+            c.l()
                 List all the topics of the cluster and their total sizes.
-            
-            l(size=False)
+
+            c.l(size=False)
                 List all the topics of the cluster.
-            
-            l(partitions=True)
+
+            c.l(partitions=True)
                 List all the topics of the cluster, their total sizes and the sizes of their individual partitions.
 
-            l(size=False, partitions=True)
+            c.l(size=False, partitions=True)
                 List all the topics of the cluster and the sizes of their individual partitions.
-            
-            l("test*")
+
+            c.l("test*")
                 List all those topics of the cluster whose name starts with "test" and their total sizes.
 
-            l(["test*", "bla*"])
+            c.l(["test*", "bla*"])
                 List all those topics of the cluster whose name starts with "test" or "bla".
         """
         return self.topics(pattern=pattern, size=size, partitions=partitions)
@@ -1254,22 +1303,22 @@ class Cluster:
         list(str | dict(str, int) | dict(str, dict(int, int)) | dict(str, tuple(int, dict(int, int)))): List of strings if size=False and partitions=False; dictionary of strings (topic name) and integers (total size of the topic) if size=True and partitions=False; dictionary of strings (topic name) and dictionaries of integers (partition) and integers (size of the partition) if size=False and partitions=True; dictionary of strings (topic name) and pairs of integers (total size of the topic) and dictionaries of integers (partition) and integers (size of the partition) if size=True and partitions=True.
 
     Examples:
-        ll()
+        c.ll()
             List all the topics of the cluster and their total sizes.
-        
-        ll(size=False)
+
+        c.ll(size=False)
             List all the topics of the cluster.
-        
-        ll(partitions=True)
+
+        c.ll(partitions=True)
             List all the topics of the cluster, their total sizes and the sizes of their individual partitions.
 
-        ll(size=False, partitions=True)
+        c.ll(size=False, partitions=True)
             List all the topics of the cluster and the sizes of their individual partitions.
-        
-        ll("test*")
+
+        c.ll("test*")
             List all those topics of the cluster whose name starts with "test" and their total sizes.
 
-        ll(["test*", "bla*"])
+        c.ll(["test*", "bla*"])
             List all those topics of the cluster whose name starts with "test" or "bla" and their total sizes.
     """
 
@@ -1283,12 +1332,12 @@ class Cluster:
 
         Returns:
             dict(str, dict(str, str)): Dictionary of strings (topic names) and dictionaries of strings (configuration keys) and strings (configuration values).
-        
+
         Examples:
-            config("test")
+            c.config("test")
                 Return the configuration of the topic "test".
-            
-            config(["test?", "bla?"])
+
+            c.config(["test?", "bla?"])
                 Return the configuration of all topics matching the patterns "test?" or "bla?".
         """
         topic_str_list = self.topics(pattern_str_or_str_list)
@@ -1308,15 +1357,15 @@ class Cluster:
 
         Returns:
             dict(str, tuple(str, str)): Dictionary of strings (topic names) and tuples of strings (configuration keys) and strings (configuration values)
-        
+
         Examples:
-            set_config("test", "retention.ms", "4711")
+            c.set_config("test", "retention.ms", "4711")
                 Sets the configuration key "retention.ms" to configuration value "4711" for topic "test".
-            
-            set_config("test", "retention.ms", "4711", test=True)
+
+            c.set_config("test", "retention.ms", "4711", test=True)
                 Verifies if the configuration key "retention.ms" can be set to configuration value "4711" for topic "test", but does not change the configuration.
 
-            set_config(["test*", "bla*"], "42")
+            c.set_config(["test*", "bla*"], "42")
                 Sets the configuration key "retention.ms" to configuration value "42" for all topics whose names start with "test" or "bla".
         """
         test_bool = test
@@ -1328,7 +1377,7 @@ class Cluster:
         #
         topic_str_key_str_value_str_tuple_dict = {topic_str: (key_str, value_str) for topic_str in topic_str_list}
         return topic_str_key_str_value_str_tuple_dict
-    
+
     def block_topic(self, topic_str, exists=True):
         exists_bool = exists
         #
@@ -1347,7 +1396,7 @@ class Cluster:
             time.sleep(self.kash_dict["block.interval"])
         return False
 
-    def create(self, topic_str, partitions=1, config={"retention.ms": "-1"}, block=True):
+    def create(self, topic_str, partitions=1, config={}, block=True):
         """Create a topic.
 
         Create a topic.
@@ -1355,28 +1404,30 @@ class Cluster:
         Args:
             topic_str (str): The name of the topic to be created.
             partitions (int, optional): The number of partitions for the topic to be created. Defaults to 1.
-            config (dict(str, str), optional): Configuration overrides for the topic to be created. Defaults to {"retention.ms": "-1"} (unlimited retention).
+            config (dict(str, str), optional): Configuration overrides for the topic to be created. Note that the default "retention.ms" can also be set in the kash.py cluster configuration file (e.g. you can set it to -1 to have infinite retention for all topics that you create). Defaults to {}.
             block (bool, optional): Block until the topic is created. Defaults to True.
 
         Returns:
             str: Name of the created topic.
-        
-        Examples:
-            create("test")
-                Create the topic "test" with one partition, unlimited retention and block until it is created.
-            
-            create("test", partitions=2)
-                Create the topic "test" with two partitions, unlimited retention and block until it is created.
 
-            create("test", config={"retention.ms": "4711"})
+        Examples:
+            c.create("test")
+                Create the topic "test" with one partition, and block until it is created.
+
+            c.create("test", partitions=2)
+                Create the topic "test" with two partitions, and block until it is created.
+
+            c.create("test", config={"retention.ms": "4711"})
                 Create the topic "test" with one partition, a retention time of 4711ms and block until it is created.
-            
-            create("test", block=False)
-                Create the topic "test" with one partition, unlimited retention time and *do not* block until it is created.
+
+            c.create("test", block=False)
+                Create the topic "test" with one partition, and *do not* block until it is created.
         """
         partitions_int = partitions
         config_dict = config
         block_bool = block
+        #
+        config_dict["retention.ms"] = self.kash_dict["retention.ms"]
         #
         newTopic = NewTopic(topic_str, partitions_int, config=config_dict)
         self.adminClient.create_topics([newTopic])
@@ -1397,15 +1448,15 @@ class Cluster:
 
         Returns:
             list(str): List of strings of names of the deleted topics.
-        
+
         Examples:
-            delete("test")
+            c.delete("test")
                 Delete the topic "test" and block until it is deleted.
-            
-            delete("test", block=False)
+
+            c.delete("test", block=False)
                 Delete the topic "test" and *do not* block until it is deleted.
 
-            delete(["test*", "bla*"])
+            c.delete(["test*", "bla*"])
                 Delete all topics starting with "test" or "bla".
         """
         block_bool = block
@@ -1417,7 +1468,7 @@ class Cluster:
             if block_bool:
                 for topic_str in topic_str_list:
                     self.block_topic(topic_str, exists=False)
-        #    
+        #
         return topic_str_list
 
     rm = delete
@@ -1431,15 +1482,15 @@ class Cluster:
 
     Returns:
         list(str): List of strings of names of the deleted topics.
-    
+
     Examples:
-        rm("test")
+        c.rm("test")
             Delete the topic "test" and block until it is deleted.
-        
-        rm("test", block=False)
+
+        c.rm("test", block=False)
             Delete the topic "test" and *do not* block until it is deleted.
 
-        rm(["test*", "bla*"])
+        c.rm(["test*", "bla*"])
             Delete all topics starting with "test" or "bla".
     """
 
@@ -1451,16 +1502,16 @@ class Cluster:
         Args:
             pattern_str_or_str_list (str | list(str)): The pattern (or list of patterns) for selecting the topics.
             partition_int_timestamp_int_dict (dict(int, int)): Dictionary of integers (partitions) and integers (timestamps).
-            timeout (float, optional): The timeout for the individual offsets_for_times() method calls from confluent_kafka.Consumer. Defaults to -1.0 (infinite=no timeout).
+            timeout (float, optional): The timeout (in seconds) for the individual offsets_for_times() method calls from confluent_kafka.Consumer. Defaults to -1.0 (infinite=no timeout).
 
         Returns:
             dict(str, dict(int, int)): Dictionary of strings (topic names) and dictionaries of integers (partitions) and integers (offsets).
-        
+
         Examples:
-            offsets_for_times("test", {0: 1664644769886})
+            c.offsets_for_times("test", {0: 1664644769886})
                 Look up the offset of the first message in the first partition of the topic "test" which has a timestamp greater or equal to 1664644769886 milliseconds from epoch. If the provided timestamp exceeds that of the last message in the partition, a value of -1 will be returned.
 
-            offsets_for_times("te*st", {0: 1664644769886, 1: 1664645155987}, timeout=1.0)
+            c.offsets_for_times("te*st", {0: 1664644769886, 1: 1664645155987}, timeout=1.0)
                 Look up the offset of the first message in the first partition of those topics starting with "te" and ending with "st" with a timestamp greater or equal to 1664644769886 milliseconds from epoch; and look up the offset of the first message in the second partition of those topics with a timestamp greater or equal to 1664645155987 milliseconds from epoch. Time out the internally used offsets_for_times() calls after one second.
         """
         topic_str_list = self.topics(pattern_str_or_str_list)
@@ -1493,12 +1544,12 @@ class Cluster:
 
         Returns:
             dict(str, topic_dict): Dictionary of strings (topic names) and topic dictionaries describing the topic (converted from confluent_kafka.TopicMetadata objects).
-        
+
         Examples:
-            describe("test")
+            c.describe("test")
                 Describe the topic "test".
 
-            describe(["test*", "bla*"])
+            c.describe(["test*", "bla*"])
                 Describe all topics whose names start with "test" or "bla".
         """
         if isinstance(pattern_str_or_str_list, str):
@@ -1520,9 +1571,9 @@ class Cluster:
 
         Returns:
             bool: True if the topic topic_str exists, False otherwise.
-        
+
         Examples:
-            exists("test")
+            c.exists("test")
                 Test whether the topic "test" exists on the cluster.
         """
         return self.topics(topic_str) != []
@@ -1537,12 +1588,12 @@ class Cluster:
 
         Returns:
             dict(str, int): Dictionary of strings (topic names) and their respective numbers of partitions.
-        
+
         Examples:
-            partitions("test")
+            c.partitions("test")
                 Get the number of partitions of the topic "test".
 
-            partitions(["test*", "bla*"])
+            c.partitions(["test*", "bla*"])
                 Get the numbers of partitions of all topics whose names start with "test" or "bla".
         """
         if isinstance(pattern_str_or_str_list, str):
@@ -1566,13 +1617,13 @@ class Cluster:
 
         Returns:
             dict(str, int): Dictionary of strings (topic names) and their respective new numbers of partitions.
-        
-        Examples:
-            partitions("test")
-                Get the number of partitions of the topic "test".
 
-            partitions(["test*", "bla*"])
-                Get the numbers of partitions of all topics whose names start with "test" or "bla".
+        Examples:
+            c.set_partitions("test", 2)
+                Set the number of partitions for the topic "test" to 2.
+
+            c.set_partitions(["test*", "bla*"], 4)
+                Set the numbers of partitions of all topics whose names start with "test" or "bla" to 4.
         """
         test_bool = test
         #
@@ -1601,13 +1652,13 @@ class Cluster:
             list(str): List of strings (consumer group names).
 
         Examples:
-            groups()
+            c.groups()
                 List all consumer groups of the cluster.
 
-            groups("test*")
+            c.groups("test*")
                 List all those consumer groups of the cluster whose name starts with "test".
 
-            groups(["test*", "bla*"])
+            c.groups(["test*", "bla*"])
                 List all those consumer groups of the cluster whose name starts with "test" or "bla".
         """
         pattern_str_or_str_list = pattern
@@ -1635,10 +1686,10 @@ class Cluster:
             dict(str, group_dict): Dictionary of strings (consumer group names) and group dictionaries describing the consumer group (converted from confluent_kafka.GroupMetadata objects).
 
         Examples:
-            describe_groups("test*")
+            c.describe_groups("test*")
                 Describe all those consumer groups of the cluster whose name starts with "test".
 
-            describe_groups(["test*", "bla*"])
+            c.describe_groups(["test*", "bla*"])
                 Describe all those consumer groups of the cluster whose name starts with "test" or "bla".
         """
         groupMetadata_list = self.adminClient.list_groups()
@@ -1656,7 +1707,7 @@ class Cluster:
         """List brokers of the cluster.
 
         List brokers of the cluster. Optionally only list those brokers whose identifiers match the pattern (or list of patterns) pattern.
-        
+
         Args:
             pattern (str | list(str), optional): The pattern or list of patterns for selecting those brokers which shall be listed. Defaults to None.
 
@@ -1664,10 +1715,10 @@ class Cluster:
             dict(int, str): Dictionary of integers (broker identifiers) and strings (broker URLs and ports).
 
         Examples:
-            brokers()
+            c.brokers()
                 List all brokers of the cluster.
 
-            brokers([0, 1])
+            c.brokers([0, 1])
                 List only the brokers 0 and 1 of the cluster.
         """
         pattern_int_or_str_or_int_or_str_list = pattern
@@ -1690,7 +1741,7 @@ class Cluster:
         """List the configurations of brokers of the cluster.
 
         List the configurations of brokers of the cluster. Optionally only list those brokers whose identifiers match the pattern (or list of patterns) pattern.
-        
+
         Args:
             pattern_int_or_str_or_int_or_str_list (str | list(str), optional): The pattern or list of patterns for selecting those brokers which shall be listed. Defaults to None.
 
@@ -1698,10 +1749,10 @@ class Cluster:
             dict(int, dict(str, str)): Dictionary of integers (broker identifiers) and configuration dictionaries (dictionaries of strings (keys) and strings (values)).
 
         Examples:
-            broker_config(0)
+            c.broker_config(0)
                 List the configuration of broker 0 of the cluster.
 
-            broker_config([0, 1])
+            c.broker_config([0, 1])
                 List the configurations of brokers 0 and 1 of the cluster.
         """
         broker_dict = self.brokers(pattern_int_or_str_or_int_or_str_list)
@@ -1725,13 +1776,13 @@ class Cluster:
             dict(int, tuple(str, str)): Dictionary of integers (broker identifiers) and tuples of strings (configuration keys) and strings (configuration values)
 
         Examples:
-            set_broker_config(0, "background.threads", "5")
+            c.set_broker_config(0, "background.threads", "5")
                 Sets the configuration key "background.threads" to configuration value "5" for broker 0.
-            
-            set_broker_config(0, "background.threads", "5", test=True)
+
+            c.set_broker_config(0, "background.threads", "5", test=True)
                 Verifies if the configuration key "background.threads" can be set to configuration value "5" for broker 0, but does not change the configuration.
 
-            set_broker_config("[0-2]", "background.threads", "5")
+            c.set_broker_config("[0-2]", "background.threads", "5")
                 Sets the configuration key "background.threads" to configuration value "5" for brokers 0, 1 and 2.
         """
         test_bool = test
@@ -1764,10 +1815,10 @@ class Cluster:
             list(aclBinding_dict): List of ACL Binding dictionaries (converted from confluent_kafka.AclBinding objects) of the selected ACLs.
 
         Examples:
-            acls():
+            c.acls():
                 List all ACLs of the cluster.
 
-            acls(restype="topic"):
+            c.acls(restype="topic"):
                 List all ACLs for the topics of the cluster.
         """
         resourceType = str_to_resourceType(restype)
@@ -1801,7 +1852,7 @@ class Cluster:
             aclBinding_dict: ACL Binding dictionary (converted from an confluent_kafka.AclBinding object) of the created ACL.
 
         Examples:
-            create_acl(restype="topic", name="test", resource_pattern_type="literal", principal="User:abc", host="*", operation="read", permission_type="allow"):
+            c.create_acl(restype="topic", name="test", resource_pattern_type="literal", principal="User:abc", host="*", operation="read", permission_type="allow"):
                 Grant user "abc" read permission on topic "test".
         """
         resourceType = str_to_resourceType(restype)
@@ -1835,7 +1886,7 @@ class Cluster:
             List(aclBinding_dict): List of ACL Binding dictionaries (converted from confluent_kafka.AclBinding objects) of the deleted ACLs.
 
         Examples:
-            delete_acl(restype="topic", name="test", resource_pattern_type="literal", principal="User:abc", host="*", operation="read", permission_type="allow"):
+            c.delete_acl(restype="topic", name="test", resource_pattern_type="literal", principal="User:abc", host="*", operation="read", permission_type="allow"):
                 Delete the ACL which granted user "abc" read permission on topic "test".
         """
         resourceType = str_to_resourceType(restype)
@@ -1874,31 +1925,31 @@ class Cluster:
             tuple(bytes | str, bytes | str): Pair of bytes or string and bytes or string (=the key and the value of the produced message).
 
         Examples:
-            produce("test", "value 1")
+            c.produce("test", "value 1")
                 Produce a message with value = "value 1" and key = None to the topic "test".
 
-            produce("test", "value 1", key="key 1")
+            c.produce("test", "value 1", key="key 1")
                 Produce a message with value = "value 1" and key = "key 1" to the topic "test".
 
-            produce("test", "value 1", key="key 1", partition=0)
+            c.produce("test", "value 1", key="key 1", partition=0)
                 Produce a message with value = "value 1" and key = "key 1" to partition 0 of the topic "test".
 
-            produce("test", "value 1", key="key 1", timestamp=1664902656169)
+            c.produce("test", "value 1", key="key 1", timestamp=1664902656169)
                 Produce a message with value = "value 1" and key = "key 1" to the topic "test", set the timestamp of this message to 1664902656169.
 
-            produce("test", "value 1", headers={"bla": "blups"})
+            c.produce("test", "value 1", headers={"bla": "blups"})
                 Produce a message with value = "value 1" and key = None to the topic "test", set the headers of this message to {"bla": "blups"}.
 
-            produce("test", {'name': 'cookie', 'calories': 500.0, 'colour': 'brown'}, value_type="json")
+            c.produce("test", {'name': 'cookie', 'calories': 500.0, 'colour': 'brown'}, value_type="json")
                 Produce a message with value = {'name': 'cookie', 'calories': 500.0, 'colour': 'brown'} and key = None to the topic "test", using JSON without schema.
 
-            produce("test", {'name': 'cookie', 'calories': 500.0, 'colour': 'brown'}, value_type="avro", value_schema='{ "type": "record", "name": "myrecord", "fields": [{"name": "name",  "type": "string" }, {"name": "calories", "type": "float" }, {"name": "colour", "type": "string" }] }')
+            c.produce("test", {'name': 'cookie', 'calories': 500.0, 'colour': 'brown'}, value_type="avro", value_schema='{ "type": "record", "name": "myrecord", "fields": [{"name": "name",  "type": "string" }, {"name": "calories", "type": "float" }, {"name": "colour", "type": "string" }] }')
                 Produce a message with value = {'name': 'cookie', 'calories': 500.0, 'colour': 'brown'} and key = None to the topic "test", using Avro with the schema '{ "type": "record", "name": "myrecord", "fields": [{"name": "name",  "type": "string" }, {"name": "calories", "type": "float" }, {"name": "colour", "type": "string" }] }'.
 
-            produce("test", {'name': 'cookie', 'calories': 500.0, 'colour': 'brown'}, value_type="protobuf", value_schema='message Snack { required string name = 1; required float calories = 2; optional string colour = 3; }')
+            c.produce("test", {'name': 'cookie', 'calories': 500.0, 'colour': 'brown'}, value_type="protobuf", value_schema='message Snack { required string name = 1; required float calories = 2; optional string colour = 3; }')
                 Produce a message with value = {'name': 'cookie', 'calories': 500.0, 'colour': 'brown'} and key = None to the topic "test", using Protobuf with the schema 'message Snack { required string name = 1; required float calories = 2; optional string colour = 3; }'.
 
-            produce("test", {'name': 'cookie', 'calories': 500.0, 'colour': 'brown'}, value_type="jsonschema", value_schema='{ "title": "abc", "definitions" : { "record:myrecord" : { "type" : "object", "required" : [ "name", "calories" ], "additionalProperties" : false, "properties" : { "name" : {"type" : "string"}, "calories" : {"type" : "number"}, "colour" : {"type" : "string"} } } }, "$ref" : "#/definitions/record:myrecord" }')
+            c.produce("test", {'name': 'cookie', 'calories': 500.0, 'colour': 'brown'}, value_type="jsonschema", value_schema='{ "title": "abc", "definitions" : { "record:myrecord" : { "type" : "object", "required" : [ "name", "calories" ], "additionalProperties" : false, "properties" : { "name" : {"type" : "string"}, "calories" : {"type" : "number"}, "colour" : {"type" : "string"} } } }, "$ref" : "#/definitions/record:myrecord" }')
                 Produce a message with value = {'name': 'cookie', 'calories': 500.0, 'colour': 'brown'} and key = None to the topic "test", using JSONSchema with the schema '{ "title": "abc", "definitions" : { "record:myrecord" : { "type" : "object", "required" : [ "name", "calories" ], "additionalProperties" : false, "properties" : { "name" : {"type" : "string"}, "calories" : {"type" : "number"}, "colour" : {"type" : "string"} } } }, "$ref" : "#/definitions/record:myrecord" }'.
         """
         key_type_str = key_type
@@ -1955,7 +2006,7 @@ class Cluster:
         #
         self.produced_messages_counter_int += 1
         #
-        return key_str_or_bytes, value_str_or_bytes 
+        return key_str_or_bytes, value_str_or_bytes
 
     def flatmap_from_file(self, path_str, topic_str, flatmap_function, key_type="str", value_type="str", key_schema=None, value_schema=None, partition=RD_KAFKA_PARTITION_UA, key_value_separator=None, message_separator="\n", n=ALL_MESSAGES, bufsize=4096):
         """Read messages from a local file and produce them to a topic, while transforming the messages in a flatmap-like manner.
@@ -1971,7 +2022,7 @@ class Cluster:
             key_schema (str, optional): The schema of the key of the message to be produced (if key_type is either "avro", "protobuf" or "pb", or "jsonschema"). Defaults to None.
             value_schema (str, optional): The schema of the value of the message to be produced (if key_type is either "avro", "protobuf" or "pb", or "jsonschema"). Defaults to None.
             partition (int, optional): The partition to produce to. Defaults to RD_KAFKA_PARTITION_UA = -1, i.e., the partition is selected by configured built-in partitioner.
-            key_value_separator (str, optional): The separator between the keys and the values in the local file to read from, e.g. ":". Defaults to None.
+            key_value_separator (str, optional): The separator between the keys and the values in the local file to read from, e.g. ":". If set to None, only read the values, not the keys. Defaults to None.
             message_separator (str, optional): The separator between individual messages in the local file to read from. Defaults to the newline character.
             n (int, optional): The number of messages to read from the local file. Defaults to ALL_MESSAGES = -1.
             bufsize (int, optional): The buffer size for reading from the local file. Defaults to 4096.
@@ -1980,13 +2031,13 @@ class Cluster:
             (int, int): Pair of the number of messages read from the local file (integer) and the number of messages produced to the topic (integer).
 
         Examples:
-            flatmap("./snacks_value.txt", "test", flatmap_function=lambda x: [x])
+            c.flatmap("./snacks_value.txt", "test", flatmap_function=lambda x: [x])
                 Read all messages from the local file "./snacks_value.txt" and produce them to the topic "test".
 
-            flatmap("./snacks_value.txt", "test", flatmap_function=lambda x: [x, x])
+            c.flatmap("./snacks_value.txt", "test", flatmap_function=lambda x: [x, x])
                 Read all messages from the local file "./snacks_value.txt" and duplicate each of them in the topic "test".
-            
-            flatmap("./snacks_value.txt", "test", flatmap_function=lambda x: [x], value_type="protobuf", value_schema='message Snack { required string name = 1; required float calories = 2; optional string colour = 3; }')
+
+            c.flatmap("./snacks_value.txt", "test", flatmap_function=lambda x: [x], value_type="protobuf", value_schema='message Snack { required string name = 1; required float calories = 2; optional string colour = 3; }')
                 Read all messages from the local file "./snacks_value.txt" and produce them to the topic "test" in Protobuf using schema 'message Snack { required string name = 1; required float calories = 2; optional string colour = 3; }'.
         """
         key_value_separator_str = key_value_separator
@@ -2030,7 +2081,7 @@ class Cluster:
         return (lines_counter_int, self.produced_messages_counter_int)
 
     def upload(self, path_str, topic_str, flatmap_function=lambda x: [x], key_type="str", value_type="str", key_schema=None, value_schema=None, key_value_separator=None, message_separator="\n", n=ALL_MESSAGES, bufsize=4096):
-        """Read messages from a local file and produce them to a topic, while optionally transforming the messages in a flatmap-like manner.
+        """Upload messages from a local file to a topic, while optionally transforming the messages in a flatmap-like manner.
 
         Read messages from a local file with path path_str and produce them to topic topic_str, while optionally transforming the messages in a flatmap-like manner.
 
@@ -2043,7 +2094,7 @@ class Cluster:
             key_schema (str, optional): The schema of the key of the message to be produced (if key_type is either "avro", "protobuf" or "pb", or "jsonschema"). Defaults to None.
             value_schema (str, optional): The schema of the value of the message to be produced (if key_type is either "avro", "protobuf" or "pb", or "jsonschema"). Defaults to None.
             partition (int, optional): The partition to produce to. Defaults to RD_KAFKA_PARTITION_UA = -1, i.e., the partition is selected by configured built-in partitioner.
-            key_value_separator (str, optional): The separator between the keys and the values in the local file to read from, e.g. ":". Defaults to None.
+            key_value_separator (str, optional): The separator between the keys and the values in the local file to read from, e.g. ":". If set to None, only read the values, not the keys. Defaults to None.
             message_separator (str, optional): The separator between individual messages in the local file to read from. Defaults to the newline character.
             n (int, optional): The number of messages to read from the local file. Defaults to ALL_MESSAGES = -1.
             bufsize (int, optional): The buffer size for reading from the local file. Defaults to 4096.
@@ -2052,20 +2103,20 @@ class Cluster:
             (int, int): Pair of the number of messages read from the local file (integer) and the number of messages produced to the topic (integer).
 
         Examples:
-            upload("./snacks_value.txt", "test")
+            c.upload("./snacks_value.txt", "test")
                 Read all messages from the local file "./snacks_value.txt" and produce them to the topic "test".
 
-            upload("./snacks_value.txt", "test", flatmap_function=lambda x: [x, x])
+            c.upload("./snacks_value.txt", "test", flatmap_function=lambda x: [x, x])
                 Read all messages from the local file "./snacks_value.txt" and duplicate each of them in the topic "test".
-            
-            upload("./snacks_value.txt", "test", value_type="protobuf", value_schema='message Snack { required string name = 1; required float calories = 2; optional string colour = 3; }')
+
+            c.upload("./snacks_value.txt", "test", value_type="protobuf", value_schema='message Snack { required string name = 1; required float calories = 2; optional string colour = 3; }')
                 Read all messages from the local file "./snacks_value.txt" and produce them to the topic "test" in Protobuf using schema 'message Snack { required string name = 1; required float calories = 2; optional string colour = 3; }'.
         """
         return self.flatmap_from_file(path_str, topic_str, flatmap_function, key_type=key_type, value_type=value_type, key_schema=key_schema, value_schema=value_schema, key_value_separator=key_value_separator, message_separator=message_separator, n=n, bufsize=bufsize)
 
     def flush(self):
         """Wait for all messages in the Producer queue to be delivered.
-        
+
         Wait for all messages in the Producer queue to be delivered. Uses the "flush.timeout" setting from the cluster configuration file ("kash"-section).
         """
         self.producer.flush(self.kash_dict["flush.timeout"])
@@ -2073,7 +2124,7 @@ class Cluster:
     # Consumer
 
     def subscribe(self, topic_str, group=None, offsets=None, config={}, key_type="str", value_type="str"):
-        """Subscribe to a topic. 
+        """Subscribe to a topic.
 
         Subscribe to a topic, optionally explicitly set the consumer group, initial offsets, and augment the consumer configuration. Prerequisite for consuming from a topic. Set "auto.offset.reset" to the configured "auto.offset.value" in the configuration ("kash"-section), and "enable.auto.commit" and "session.timeout.ms" as well.
 
@@ -2089,21 +2140,21 @@ class Cluster:
             (str, str): Pair of the topic subscribed to (string) and the used consumer group name (string).
 
         Examples:
-            subscribe("test")
+            c.subscribe("test")
                 Subscribe to the topic "test" using an automatically created new unique consumer group.
 
-            subscribe("test", group="test_group")
+            c.subscribe("test", group="test_group")
                 Susbcribe to the topic "test" using the consumer group name "test_group".
 
-            subscribe("test", offsets={0: 42, 1: 4711})
+            c.subscribe("test", offsets={0: 42, 1: 4711})
                 Subscribe to the topic "test" using an automatically created new unique consumer group. Set the initial offset for the first partition to 42, and for the second partition to 4711.
 
-            subscribe("test", config={"enable.auto.commit": "False"})
+            c.subscribe("test", config={"enable.auto.commit": "False"})
                 Subscribe to the topic "test" using an automatically created new unique consumer group. Set the configuration key "enable.auto.commit" to "False".
-            
-            subscribe("test", key_type="avro", value_type="avro")
+
+            c.subscribe("test", key_type="avro", value_type="avro")
                 Subscribe to the topic "test" using an automatically created new unique consumer group. Consume with key and value type "avro".
-        """    
+        """
         offsets_dict = offsets
         config_dict = config
         #
@@ -2171,10 +2222,10 @@ class Cluster:
             list(message_dict): List of message dictionaries (converted from confluent_kafka.Message).
 
         Examples:
-            consume()
+            c.consume()
                 Consume the next message from the topic subscribed to before.
 
-            consume(n=100)
+            c.consume(n=100)
                 Consume the next 100 messages from the topic subscribed to before.
         """
         num_messages_int = n
@@ -2202,23 +2253,23 @@ class Cluster:
         #
         return self.last_consumed_message
 
-    def offsets(self, timeout=-1):
+    def offsets(self, timeout=-1.0):
         """Get committed offsets of the subscribed topic.
-        
+
         Get committed offsets of the subscribed topic.
 
         Args:
-            n (int, optional): Maximum number of messages to return. Defaults to 1.
+            timeout (float, optional): Timeout (in seconds) for calling confluent_kafka.committed(). Defaults to -1.0 (no timeout).
 
         Returns:
-            list(message_dict): List of message dictionaries (converted from confluent_kafka.Message).
+            offsets_dict: Dictionary of partitions (integers) and offsets (integers).
 
         Examples:
-            consume()
-                Consume the next message from the topic subscribed to before.
+            c.offsets()
+                Get the offsets of the subscribed topic.
 
-            consume(n=100)
-                Consume the next 100 messages from the topic subscribed to before.
+            c.offsets(timeout=1.0)
+                Get the offsets of the subscribed topic, using a timeout of 1 second.
         """
         timeout_float = timeout
         #
@@ -2240,7 +2291,7 @@ class Cluster:
             topic_str (str): The topic to subscribe to and consume from.
             foldl_function (function): Foldl function (takes an accumulator (any type) and a message dictionary and returns the updated accumulator).
             initial_acc: Initial value of the accumulator (any type).
-            group (str, optional): Consumer group name used for subscribing to the topic. If set to None, creates a new unique consumer group name. Defaults to None.
+            group (str, optional): Consumer group name used for subscribing to the topic. Creates a new unique consumer group name if set to None. Defaults to None.
             offsets (dict, optional): Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for subscribing to the topic. If set to None, subscribe to the topic using the offsets from the consumer group. Defaults to None.
             config (dict(str, str), optional): Dictionary of strings (keys) and strings (values) to augment the consumer configuration for the topic. Defaults to {}.
             key_type (str, optional): Message key type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "str".
@@ -2252,10 +2303,10 @@ class Cluster:
             tuple(acc, int): Pair of the accumulator (any type) and the number of messages consumed from the topic (integer).
 
         Examples:
-            foldl("test", lambda acc, message_dict: acc + [message_dict], [])
+            c.foldl("test", lambda acc, message_dict: acc + [message_dict], [])
                 Consume topic "test" and return a list of all its messages as message dictionaries.
 
-            foldl("test", lambda acc, x: acc + x["value"]["calories"], 0, value_type="json")
+            c.foldl("test", lambda acc, x: acc + x["value"]["calories"], 0, value_type="json")
                 Consume topic "test" and sum up the "calories" value of the individual messages.
         """
         num_messages_int = n
@@ -2304,10 +2355,10 @@ class Cluster:
             tuple(list(message_dict), int): Pair of the list of message dictionaries and the number of messages consumed from the topic (integer).
 
         Examples:
-            flatmap("test", lambda x: [x])
+            c.flatmap("test", lambda x: [x])
                 Consume topic "test" and return a list of all its messages as message dictionaries.
 
-            flatmap("test", lambda x: [x, x, x])
+            c.flatmap("test", lambda x: [x, x, x])
                 Consume topic "test" and return a list of all its messages repeated three times.
         """
         def foldl_function(acc, message_dict):
@@ -2338,10 +2389,10 @@ class Cluster:
             tuple(list(message_dict), int): Pair of the list of message dictionaries and the number of messages consumed from the topic (integer).
 
         Examples:
-            map("test", lambda x: x)
+            c.map("test", lambda x: x)
                 Consume topic "test" and return a list of all its messages as message dictionaries.
 
-            map("test", lambda x: x["value"].update({"colour": "yellow"}) or x, value_type="json")
+            c.map("test", lambda x: x["value"].update({"colour": "yellow"}) or x, value_type="json")
 
                 Consume topic "test" and return a list of all its messages where the "colour" is set to "yellow".
         """
@@ -2372,7 +2423,7 @@ class Cluster:
             int: Number of messages consumed from the topic (integer).
 
         Examples:
-            foreach("test", print)
+            c.foreach("test", print)
                 Consume topic "test" and print out all the consumed messages to standard out/the console.
         """
         num_messages_int = n
@@ -2409,7 +2460,7 @@ class Cluster:
             int: Number of messages consumed from the topic (integer).
 
         Examples:
-            cat("test")
+            c.cat("test")
                 Consume topic "test" and print out all the consumed messages to standard out/the console.
         """
         return self.foreach(topic_str, foreach_function, group=group, offsets=offsets, config=config, key_type=key_type, value_type=value_type, n=n, batch_size=batch_size)
@@ -2436,7 +2487,7 @@ class Cluster:
             tuple(list(message_dict), int, int): Tuple of the list of message dictionaries of the matching messages, the number of matching messages (integer), and the number of messages consumed from the topic (integer).
 
         Examples:
-            grep_fun("test", lambda x: x["value"]["name"] == "cake", value_type="json")
+            c.grep_fun("test", lambda x: x["value"]["name"] == "cake", value_type="json")
                 Consume topic "test" and return all messages whose value is a JSON with the "name" attribute set to "cake".
         """
         num_messages_int = n
@@ -2457,7 +2508,7 @@ class Cluster:
         #
         return matching_message_dict_list, len(matching_message_dict_list), message_counter_int
 
-    def grep(self, topic_str, re_pattern_str, group=None, offsets=None, key_type="str", value_type="str", n=ALL_MESSAGES, batch_size=1):
+    def grep(self, topic_str, re_pattern_str, group=None, offsets=None, config={}, key_type="str", value_type="str", n=ALL_MESSAGES, batch_size=1):
         """Find matching messages in a topic (regular expression matching).
 
         Find matching messages in a topic using regular expression matching. Optionally explicitly set the consumer group, initial offsets, and augment the consumer configuration. Stops either if the consume timeout is exceeded (``consume.timeout`` in the kash.py cluster configuration) or the number of messages specified in ``n`` has been consumed.
@@ -2477,20 +2528,41 @@ class Cluster:
             tuple(list(message_dict), int, int): Tuple of the list of message dictionaries of the matching messages, the number of matching messages (integer), and the number of messages consumed from the topic (integer).
 
         Examples:
-            grep("test", ".*name.*cake")
+            c.grep("test", ".*name.*cake")
                 Consume topic "test" and return all messages whose value matches the regular expression ".*name.*cake".
         """
         def match_function(message_dict):
             pattern = re.compile(re_pattern_str)
             key_str = str(message_dict["key"])
             value_str = str(message_dict["value"])
-            return pattern.match(key_str) != None or pattern.match(value_str) != None
+            return pattern.match(key_str) is not None or pattern.match(value_str) is not None
         #
-        return self.grep_fun(topic_str, match_function, group=group, offsets=offsets, key_type=key_type, value_type=value_type, n=n, batch_size=batch_size)
+        return self.grep_fun(topic_str, match_function, group=group, offsets=offsets, config=config, key_type=key_type, value_type=value_type, n=n, batch_size=batch_size)
 
     #
 
-    def wc(self, topic_str, group=None, offsets=None, key_type="str", value_type="str", n=ALL_MESSAGES, batch_size=1):
+    def wc(self, topic_str, group=None, offsets=None, config={}, key_type="str", value_type="str", n=ALL_MESSAGES, batch_size=1):
+        """Count the number of messages, words, and bytes in a topic.
+
+        Count the number of messages, words, and bytes in a topic. Optionally explicitly set the consumer group, initial offsets, and augment the consumer configuration. Stops either if the consume timeout is exceeded (``consume.timeout`` in the kash.py cluster configuration) or the number of messages specified in ``n`` has been consumed.
+
+        Args:
+            topic_str (str): The topic to subscribe to and consume from.
+            group (str, optional): Consumer group name used for subscribing to the topic. If set to None, creates a new unique consumer group name. Defaults to None.
+            offsets (dict, optional): Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for subscribing to the topic. If set to None, subscribe to the topic using the offsets from the consumer group. Defaults to None.
+            config (dict(str, str), optional): Dictionary of strings (keys) and strings (values) to augment the consumer configuration for the topic. Defaults to {}.
+            key_type (str, optional): Message key type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "str".
+            value_type (str, optional): Message value type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "str".
+            n (int, optional): Number of messages to consume from the topic. Defaults to ALL_MESSAGES = -1.
+            batch_size (int, optional): Maximum number of messages to consume from the topic at a time. Defaults to 1.
+
+        Returns:
+            tuple(int, int, int): Tuple of the number of messages (integer), the number of words (integer) and the number of bytes (int) in the topic.
+
+        Examples:
+            c.wc("test")
+                Consume topic "test" and return the number of messages, words and bytes.
+        """
         def foldl_function(acc, message_dict):
             if message_dict["key"] is None:
                 key_str = ""
@@ -2510,21 +2582,49 @@ class Cluster:
             acc_num_bytes_int = acc[1] + num_bytes_key_int + num_bytes_value_int
             return (acc_num_words_int, acc_num_bytes_int)
     #
-        ((acc_num_words_int, acc_num_bytes_int), num_messages_int) = self.foldl(topic_str, foldl_function, (0, 0), group=group, offsets=offsets, key_type=key_type, value_type=value_type, n=n, batch_size=batch_size)
+        ((acc_num_words_int, acc_num_bytes_int), num_messages_int) = self.foldl(topic_str, foldl_function, (0, 0), group=group, offsets=offsets, config=config, key_type=key_type, value_type=value_type, n=n, batch_size=batch_size)
         return (num_messages_int, acc_num_words_int, acc_num_bytes_int)
 
     #
 
-    def flatmap_to_file(self, topic_str, path_str, flatmap_function, group=None, offsets=None, key_type="str", value_type="str", key_value_separator=None, message_separator="\n", overwrite=True, n=ALL_MESSAGES, batch_size=1):
+    def flatmap_to_file(self, topic_str, path_str, flatmap_function, group=None, offsets=None, config={}, key_type="str", value_type="str", key_value_separator=None, message_separator="\n", overwrite=True, n=ALL_MESSAGES, batch_size=1):
+        """Subscribe to and consume messages from a topic, transform them in a flatmap-like manner and write the resulting messages to a local file.
+
+        Subscribe to and consume messages from a topic, transform them in a flatmap-like manner and write the resulting messages to a local file, optionally explicitly set the consumer group, initial offsets, and augment the consumer configuration. Stops either if the consume timeout is exceeded (``consume.timeout`` in the kash.py cluster configuration) or the number of messages specified in ``n`` has been consumed.
+
+        Args:
+            topic_str (str): The topic to subscribe to and consume from.
+            flatmap_function (function): Flatmap function (takes a message dictionary and returns a list of message dictionaries).
+            group (str, optional): Consumer group name used for subscribing to the topic. If set to None, creates a new unique consumer group name. Defaults to None.
+            offsets (dict, optional): Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for subscribing to the topic. If set to None, subscribe to the topic using the offsets from the consumer group. Defaults to None.
+            config (dict(str, str), optional): Dictionary of strings (keys) and strings (values) to augment the consumer configuration for the topic. Defaults to {}.
+            key_type (str, optional): Message key type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "str".
+            value_type (str, optional): Message value type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "str".
+            key_value_separator (str, optional): The separator between the keys and the values in the local file to write to, e.g. ":". If set to None, only write the values, not the keys. Defaults to None.
+            message_separator (str, optional): The separator between individual messages in the local file to write to. Defaults to the newline character.
+            overwrite (bool, optional): Overwrite the local file if set to True, append to it otherwise. Defaults to True.
+            n (int, optional): Number of messages to consume from the topic. Defaults to ALL_MESSAGES = -1.
+            batch_size (int, optional): Maximum number of messages to consume from the topic at a time. Defaults to 1.
+
+        Returns:
+            tuple(int, int): Pair of integers of the number of messages consumed from the topic, and the number of lines/messages written to the local file.
+
+        Examples:
+            c.flatmap_to_file("test", "./test.txt", lambda x: [x])
+                Consume all the messages from topic "test" and write them to the local file "./test.txt".
+
+            c.flatmap_to_file("test", "./test3.txt", lambda x: [x, x, x])
+                Consume all the messages from topic "test" and write three messages for each of them to the local file "./test3.txt".
+        """
         key_value_separator_str = key_value_separator
         message_separator_str = message_separator
         overwrite_bool = overwrite
         #
         mode_str = "w" if overwrite_bool else "a"
         #
-        
+
         def foldl_function(acc, message_dict):
-            textIOWrapper = acc
+            (textIOWrapper, line_counter_int) = acc
             #
             message_dict_list = flatmap_function(message_dict)
             #
@@ -2546,38 +2646,114 @@ class Cluster:
                 output_str_list.append(output_str)
             #
             textIOWrapper.writelines(output_str_list)
+            line_counter_int += len(output_str_list)
             #
-            return textIOWrapper
+            return (textIOWrapper, line_counter_int)
         #
         with open(path_str, mode_str) as textIOWrapper:
-            (_, message_counter_int) = self.foldl(topic_str, foldl_function, textIOWrapper, group=group, offsets=offsets, key_type=key_type, value_type=value_type, n=n, batch_size=batch_size)
+            ((_, line_counter_int), message_counter_int) = self.foldl(topic_str, foldl_function, (textIOWrapper, 0), group=group, offsets=offsets, config=config, key_type=key_type, value_type=value_type, n=n, batch_size=batch_size)
         self.unsubscribe()
         #
-        return message_counter_int
+        return message_counter_int, line_counter_int
 
-    def download(self, topic_str, path_str, flatmap_function=lambda message_dict: [message_dict], group=None, offsets=None, key_type="str", value_type="str", key_value_separator=None, message_separator="\n", overwrite=True, n=ALL_MESSAGES, batch_size=1):
-        return self.flatmap_to_file(topic_str, path_str, flatmap_function, group=group, offsets=offsets, key_type=key_type, value_type=value_type, key_value_separator=key_value_separator, message_separator=message_separator, overwrite=overwrite, n=n, batch_size=batch_size)
+    def download(self, topic_str, path_str, flatmap_function=lambda x: [x], group=None, offsets=None, config={}, key_type="str", value_type="str", key_value_separator=None, message_separator="\n", overwrite=True, n=ALL_MESSAGES, batch_size=1):
+        """Download messages from a topic to a local file while optionally transforming them in a flatmap-like manner.
 
-    def cp(self, source_str, target_str, group=None, offsets=None, flatmap_function=lambda x: [x], source_key_type="str", source_value_type="str", target_key_type="str", target_value_type="str", target_key_schema=None, target_value_schema=None, key_value_separator=None, message_separator="\n", overwrite=True, keep_timestamps=True, n=ALL_MESSAGES, batch_size=1, bufsize=4096):
-        #
+        Subscribe to and consume messages from a topic, optionally transform them in a flatmap-like manner and write the resulting messages to a local file, optionally explicitly set the consumer group, initial offsets, and augment the consumer configuration. Stops either if the consume timeout is exceeded (``consume.timeout`` in the kash.py cluster configuration) or the number of messages specified in ``n`` has been consumed.
+
+        Args:
+            topic_str (str): The topic to subscribe to and consume from.
+            flatmap_function (function, optional): Flatmap function (takes a message dictionary and returns a list of message dictionaries). Defaults to lambda x: [x] (=the identify function for flatmap, leading to a one-to-one copy from the messages in the topic to the messages in the file).
+            group (str, optional): Consumer group name used for subscribing to the topic. If set to None, creates a new unique consumer group name. Defaults to None.
+            offsets (dict, optional): Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for subscribing to the topic. If set to None, subscribe to the topic using the offsets from the consumer group. Defaults to None.
+            config (dict(str, str), optional): Dictionary of strings (keys) and strings (values) to augment the consumer configuration for the topic. Defaults to {}.
+            key_type (str, optional): Message key type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "str".
+            value_type (str, optional): Message value type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "str".
+            key_value_separator (str, optional): The separator between the keys and the values in the local file to write to, e.g. ":". If set to None, only write the values, not the keys. Defaults to None.
+            message_separator (str, optional): The separator between individual messages in the local file to write to. Defaults to the newline character.
+            overwrite (bool, optional): Overwrite the local file if set to True, append to it otherwise. Defaults to True.
+            n (int, optional): Number of messages to consume from the topic. Defaults to ALL_MESSAGES = -1.
+            batch_size (int, optional): Maximum number of messages to consume from the topic at a time. Defaults to 1.
+
+        Returns:
+            tuple(int, int): Pair of integers of the number of messages consumed from the topic, and the number of lines/messages written to the local file.
+
+        Examples:
+            c.download("test", "./test.txt")
+                Download the messages from topic "test" to the local file "./test.txt".
+        """
+        return self.flatmap_to_file(topic_str, path_str, flatmap_function, group=group, offsets=offsets, config=config, key_type=key_type, value_type=value_type, key_value_separator=key_value_separator, message_separator=message_separator, overwrite=overwrite, n=n, batch_size=batch_size)
+
+    def cp(self, source_str, target_str, group=None, offsets=None, config={}, flatmap_function=lambda x: [x], source_key_type="str", source_value_type="str", target_key_type="str", target_value_type="str", target_key_schema=None, target_value_schema=None, key_value_separator=None, message_separator="\n", overwrite=True, keep_timestamps=True, n=ALL_MESSAGES, batch_size=1, bufsize=4096):
+        """Copy local files to topics, topics to local files, or topics to topics.
+
+        Copy files to topics, topics to files, or topics to topics. Uses ``Cluster.upload()`` for copying files to topics, ``Cluster.download()`` for copying topics to files, and ``cp`` for copying topics to topics. Paths to local files are distinguished from topics by having a forward slash "/" in their path.
+
+        Args:
+            source_str (str): The source local file/topic.
+            target_str (str): The target local file/topic.
+            group (str, optional): Consumer group name used for subscribing to the topic to consume from. If set to None, creates a new unique consumer group name. Defaults to None.
+            offsets (dict, optional): Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for subscribing to the topic to consume from. If set to None, subscribe to the topic using the offsets from the consumer group. Defaults to None.
+            config (dict(str, str), optional): Dictionary of strings (keys) and strings (values) to augment the consumer configuration for the topic. Defaults to {}.
+            flatmap_function (function, optional): Flatmap function (either takes a message dictionary and returns a list of message dictionaries if source_str points to a topic, or takes a pair of strings (keys and values) of the messages read from the local file if source_str points to a local file). Defaults to lambda x: [x] (=the identify function for flatmap, leading to a one-to-one copy).
+            source_key_type (str, optional): Source message key type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "str".
+            source_value_type (str, optional): Source message value type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "str".
+            target_key_type (str, optional): Target message key type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "str".
+            target_value_type (str, optional): Target message value type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "str".
+            target_key_schema (str, optional): Target key message type schema (for "avro", "protobuf"/"pb" or "jsonschema"). Defaults to None.
+            target_value_schema (str, optional): Target value message type schema (for "avro", "protobuf"/"pb" or "jsonschema"). Defaults to None.
+            key_value_separator (str, optional): The separator between the keys and the values in the local file to read from/write to, e.g. ":". If set to None, only read/write the values, not the keys. Defaults to None.
+            message_separator (str, optional): The separator between individual messages in the local file to read from/write to. Defaults to the newline character.
+            overwrite (bool, optional): Overwrite the target local file if set to True, append to it otherwise. Defaults to True.
+            keep_timestamps (bool, optional): Replicate the timestamps of the source messages in the target messages. Defaults to True.
+            n (int, optional): Number of messages to consume from the topic. Defaults to ALL_MESSAGES = -1.
+            batch_size (int, optional): Maximum number of messages to consume from the topic at a time. Defaults to 1.
+            bufsize (int, optional): The buffer size for reading from the local file. Defaults to 4096.
+
+        Returns:
+            tuple(int, int): Pair of the number of messages consumed from the source topic/read from the source local file and the number of messages produced to the target topic/written to the target local file.
+
+        Examples:
+            c.cp("./test.txt", "test")
+                Upload the messages from the local file "./test.txt" to the topic "test".
+
+            c.cp("test", "./test.txt")
+                Download the messages from topic "test" to the local file "./test.txt".
+
+            c.cp("test1", "test2")
+                Replicate the messages from topic "test1" to topic "test2".
+        """
         if is_file(source_str) and not is_file(target_str):
             return self.upload(source_str, target_str, flatmap_function=flatmap_function, key_type=target_key_type, value_type=target_value_type, key_schema=target_key_schema, value_schema=target_value_schema, key_value_separator=key_value_separator, message_separator=message_separator, n=n, bufsize=bufsize)
         elif not is_file(source_str) and is_file(target_str):
-            return self.download(source_str, target_str, flatmap_function=flatmap_function, group=group, offsets=offsets, key_type=source_key_type, value_type=source_value_type, key_value_separator=key_value_separator, message_separator=message_separator, overwrite=overwrite, n=n, batch_size=batch_size)
+            return self.download(source_str, target_str, flatmap_function=flatmap_function, group=group, offsets=offsets, config=config, key_type=source_key_type, value_type=source_value_type, key_value_separator=key_value_separator, message_separator=message_separator, overwrite=overwrite, n=n, batch_size=batch_size)
         elif (not is_file(source_str)) and (not is_file(target_str)):
-            return cp(self, source_str, self, target_str, flatmap_function=flatmap_function, group=group, offsets=offsets, source_key_type=source_key_type, source_value_type=source_value_type, target_key_type=target_key_type, target_value_type=target_value_type, target_key_schema=target_key_schema, target_value_schema=target_value_schema, keep_timestamps=keep_timestamps, n=n, batch_size=batch_size)
+            return cp(self, source_str, self, target_str, flatmap_function=flatmap_function, group=group, offsets=offsets, config=config, source_key_type=source_key_type, source_value_type=source_value_type, target_key_type=target_key_type, target_value_type=target_value_type, target_key_schema=target_key_schema, target_value_schema=target_value_schema, keep_timestamps=keep_timestamps, n=n, batch_size=batch_size)
         elif is_file(source_str) and is_file(target_str):
             print("Please use a shell or file manager to copy files.")
 
     def recreate(self, topic_str):
+        """Recreate a topic.
+
+        Recreate a topic by 1) replicating it to a temporary topic, 2) deleting the original topic, 3) re-creating the original topic, and 4) replicating the temporary topic back to the original topic.
+
+        Args:
+            topic_str (str): The topic to recreate.
+
+        Returns:
+            tuple(tuple(int, int), tuple(int, int)): Pair of pairs of the number of messages; the first pair indicating the number of messages consumed from the original topic and produced to the temporary topic, the second pair indicating the number of messages consumed from the temporary topic and produced back to the re-created original topic.
+
+        Examples:
+            c.recreate("test")
+                Recreate the topic "test".
+        """
         temp_topic_str = f"{topic_str}_{get_millis()}"
-        cp(self, topic_str, self, temp_topic_str)
+        (num_consumed_messages_int1, num_produced_messages_int1) = cp(self, topic_str, self, temp_topic_str)
         #
-        produced_messages_int = 0
         if self.size(temp_topic_str)[temp_topic_str][1] == self.size(topic_str)[topic_str][1]:
             self.delete(topic_str)
-            produced_messages_int = cp(self, temp_topic_str, self, topic_str)
+            (num_consumed_messages_int2, num_produced_messages_int2) = cp(self, temp_topic_str, self, topic_str)
             if self.size(topic_str)[topic_str][1] == self.size(temp_topic_str)[temp_topic_str][1]:
                 self.delete(temp_topic_str)
         #
-        return produced_messages_int
+        return (num_consumed_messages_int1, num_produced_messages_int1), (num_consumed_messages_int2, num_produced_messages_int2)
