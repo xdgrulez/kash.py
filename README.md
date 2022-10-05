@@ -1,12 +1,12 @@
 # kash.py
 
-*kash.py* is a Python-based shell based on [confluent-kafka-python](https://github.com/confluentinc/confluent-kafka-python) by Magnus Edenhill, which is itself based on the native Kafka client library [librdkafka](https://github.com/edenhill/librdkafka) by the same author.
+*kash.py* is a Python-based client library for Kafka based on [confluent-kafka-python](https://github.com/confluentinc/confluent-kafka-python) by Magnus Edenhill, which is itself based on the native Kafka client library [librdkafka](https://github.com/edenhill/librdkafka) by the same author.
 
-The aim of *kash.py* is to gift you with a wonderful Kafka scripting experience, both interactively and non-interactively. It is both like a *shell* for bash fans (you have *ls*, *touch*, *rm*, *cp*, *grep*, *wc* etc.) and *functional* for those who once fell in love with Haskell, Scala or Mozart-Oz (there are *foldl*s, *flatmap*s and *map*s for you to explore). You can use *kash.py* either way :-)
+*kash.py* has been developed in the context of [Forecasty.AI](https://forecasty.ai) and its flagship product, [Commodity Desk](https://forecasty.ai/offerings/commodity-desk/) - *the* AI-based SaaS platform for *Commodity Price Forecasting as a Service*.
+
+The aim of *kash.py* is to gift you with a wonderful Kafka scripting experience, both interactively and non-interactively. It is both like a *shell* for bash fans (you have *ls*, *touch*, *rm*, *cp*, *grep*, *wc* etc.) and a *functional* Kafka client for those who once fell in love with Haskell, Scala or Mozart-Oz (there are various *foldl*s, *flatmap*s and *map*s for you to explore). You can use *kash.py* either way, and experience Kafka like never before :-)
 
 ## Tutorial
-
-This little tutorial shows you how *kash.py* can help you unlock the Kafka black box.
 
 TODO
 
