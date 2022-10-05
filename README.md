@@ -6,6 +6,23 @@
 * For *developers and devops engineers* to view and manipulate Kafka topics using familiar shell syntax (you have *ls*, *touch*, *rm*, *cp*, *cat*, *grep*, *wc* etc.), interactively or non-interactively.
 * For *data scientists* to bridge the gap between batch and stream processing, using functions to upload/download files to/from topics, and even functional abstractions a la Databricks/Apache Spark (there are various *foldl*s, *flatmap*s and *map*s for you to explore).
 
+## Installation
+
+Just install the dependencies...
+```
+pip install -r requirements.txt
+```
+
+...and off you go. For interactive use, e.g. using your local cluster configured in the file "clusters_unsecured/local.conf", just do the following to list the topics:
+```
+$ python3
+>> from kash import *
+>> c = Cluster("local")
+>> c.ls()
+['__consumer_offsets', '_schemas']
+>>
+```
+
 ## Tutorial
 
 This is a tutorial showcasing *kash.py* in interactive mode.
@@ -144,25 +161,6 @@ And last, but not least, we copy the topic "snacks" back to a local file "snacks
 >>> c.flatmap_to_file("snacks", "./snacks1.txt", flatmap_function, value_type="json")
 (3, 6)
 >>> 
-```
-
-There is more for you to explore - just browse the full [kash.py documentation](https://github.com/xdgrulez/kash.py/blob/main/docs/_build/markdown/source/kash.md) to see all the functionality of *kash.py*.
-
-## Installation
-
-Just install the dependencies...
-```
-pip install -r requirements.txt
-```
-
-...and off you go. For interactive use, e.g. using your local cluster configured in the file "clusters_unsecured/local.conf", just do the following to list the topics:
-```
-$ python3
->> from kash import *
->> c = Cluster("local")
->> c.ls()
-['__consumer_offsets', '_schemas']
->>
 ```
 
 ## Documentation
