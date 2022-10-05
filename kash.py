@@ -651,6 +651,119 @@ def diff(cluster1, topic_str1, cluster2, topic_str2, group1=None, group2=None, o
 # Main kash.py class
 
 class Cluster:
+    """Initialize a kash.py Cluster object.
+
+    Initialize a kash.py Cluster object based on a kash.py cluster configuration file.
+
+    kash.py cluster configuration files have up to three sections: "kafka", "schema_registry", and "kash".
+
+    The "kafka" and "schema_registry" sections configure the Kafka cluster and Schema Registry according to the confluent_kafka/librdkafka configuration.
+
+    The "kash" section can be used to configure the following:
+
+    * Producer (applies to all functions/methods producing messages to a cluster):
+
+      * ``flush.num.messages``: Number of messages produced before calling ``confluent_kafka.Producer.flush()``. Defaults to 10000.
+      * ``flush.timeout``: Timeout (in seconds) for calling ``confluent_kafka.Producer.flush()``. Defaults to -1 (no timeout).
+    
+    * Consumer (applies to all functions/methods consuming messages from a cluster):
+
+      * ``consume.timeout``: Timeout (in seconds) for calling ``confluent_kafka.Consumer.consume()``. Lower (e.g. 1.0) for local or very fast Kafka clusters, higher for remote/not-so-fast Kafka clusters (e.g. 10.0). Defaults to 3.0.
+      * ``auto.offset.reset``: Either "earliest" or "latest". Directly translates to the confluent_kafka/librdkafka consumer configuration. Defaults to "earliest".
+      * ``enable.auto.commit``: Either "True" or "False". Directly translates to the confluent_kafka/librdkafka consumer configuration. Defaults to "True".
+      * ``session.timeout.ms``: Timeout (in milliseconds) to detect client failures. Defaults to 10000.
+    
+    * Progress display:
+
+      * ``progress.num.messages``: Number of messages to be consumed/produced until a status print out to standard out is triggered (if verbosity level > 0). Defaults to 1000.
+    
+    * Blocking (applies to ``create()`` and ``delete()``/``rm()``)
+
+      * ``block.num.retries.int``: The number of retries when blocking to wait for topics to have been created/deleted (if ``block`` is set to True). Defaults to 50.
+      * ``block.interval``: Time (in seconds) between retries when blocking to wait for topics to have been created/deleted (if ``block`` is set to True). Defaults to 0.1.
+
+    Args:
+        cluster_str (str): Name of the cluster; kash.py searches the two folders "clusters_secured" and "clusters_unsecured" for kash.py configuration files named "<cluster.str>.conf".
+
+    Examples:
+
+        Simplest kash.py configuration file example (just "bootstrap.servers" is set)::
+
+            [kafka]
+            bootstrap.servers=localhost:9092
+
+        Simple kash.py configuration file example with additional Schema Registry URL::
+
+            [kafka]
+            bootstrap.servers=localhost:9092
+            
+            [schema_registry]
+            schema.registry.url=http://localhost:8081
+
+        kash.py configuration file with all bells and whistles - all that can currently be configured::
+
+            [kafka]
+            bootstrap.servers=localhost:9092
+            [schema_registry]
+            schema.registry.url=http://localhost:8081
+            
+            [kash]
+            flush.num.messages=10000
+            flush.timeout=-1
+            consume.timeout=1.0
+            auto.offset.reset=earliest
+            enable.auto.commit=true
+            session.timeout.ms=10000
+            progress.num.messages=1000
+            block.num.retries.int=50
+            block.interval=0.1
+
+
+        kash.py configuration file for a typical Confluent Cloud cluster (including Schema Registry)::
+
+            [kafka]
+            bootstrap.servers=CLUSTER.confluent.cloud:9092
+            security.protocol=SASL_SSL
+            sasl.mechanisms=PLAIN
+            sasl.username=CLUSTER_USERNAME
+            sasl.password=CLUSTER_PASSWORD
+
+            [schema_registry]
+            schema.registry.url=https://SCHEMA_REGISTRY.confluent.cloud
+            basic.auth.credentials.source=USER_INFO
+            basic.auth.user.info=SCHEMA_REGISTRY_USERNAME:SCHEMA_REGISTRY_PASSWORD
+
+            [kash]
+            flush.num.messages=10000
+            flush.timeout=-1
+            consume.timeout=10.0
+            auto.offset.reset=earliest
+            enable.auto.commit=true
+            session.timeout.ms=10000
+            progress.num.messages=1000
+            block.num.retries.int=50
+            block.interval=0.1
+
+        kash.py configuration file for a self-hosted Redpanda cluster (without Schema Registry)::
+
+            [kafka]
+            bootstrap.servers=CLUSTER:9094
+            security.protocol=sasl_plaintext
+            sasl.mechanisms=SCRAM-SHA-256
+            sasl.username=CLUSTER_USERNAME
+            sasl.password=CLUSTER_PASSWORD
+
+            [kash]
+            flush.num.messages=10000
+            flush.timeout=-1
+            consume.timeout=5.0
+            auto.offset.reset=earliest
+            enable.auto.commit=true
+            session.timeout.ms=10000
+            progress.num.messages=1000
+            block.num.retries.int=50
+            block.interval=0.1
+    """
     def __init__(self, cluster_str):
         self.cluster_str = cluster_str
         self.config_dict, self.schema_registry_config_dict, self.kash_dict, self.cluster_dir_str = get_config_dict(cluster_str)
@@ -665,6 +778,7 @@ class Cluster:
             self.schemaRegistryClient = None
         #
         self.subscribed_topic_str = None
+        self.subscribed_group_str = None
         self.subscribed_key_type_str = None
         self.subscribed_value_type_str = None
         self.last_consumed_message = None
@@ -712,15 +826,15 @@ class Cluster:
             self.kash_dict["progress.num.messages"] = 1000
         else:
             self.kash_dict["progress.num.messages"] = int(self.kash_dict["progress.num.messages"])
-        # Await
-        if "await.num.retries" not in self.kash_dict:
-            self.kash_dict["await.num.retries"] = 50
+        # Block
+        if "block.num.retries" not in self.kash_dict:
+            self.kash_dict["block.num.retries"] = 50
         else:
-            self.kash_dict["await.num.retries"] = int(self.kash_dict["await.num.retries"])
-        if "await.interval" not in self.kash_dict:
-            self.kash_dict["await.interval"] = 0.1
+            self.kash_dict["block.num.retries"] = int(self.kash_dict["block.num.retries"])
+        if "block.interval" not in self.kash_dict:
+            self.kash_dict["block.interval"] = 0.1
         else:
-            self.kash_dict["await.interval"] = float(self.kash_dict["await.interval"])
+            self.kash_dict["block.interval"] = float(self.kash_dict["block.interval"])
 
     #
 
@@ -1221,7 +1335,7 @@ class Cluster:
         topic_str_key_str_value_str_tuple_dict = {topic_str: (key_str, value_str) for topic_str in topic_str_list}
         return topic_str_key_str_value_str_tuple_dict
     
-    def await_topic(self, topic_str, exists=True):
+    def block_topic(self, topic_str, exists=True):
         exists_bool = exists
         #
         num_retries_int = 0
@@ -1234,9 +1348,9 @@ class Cluster:
                     return True
             #
             num_retries_int += 1
-            if num_retries_int >= self.kash_dict["await.num.retries"]:
+            if num_retries_int >= self.kash_dict["block.num.retries"]:
                 break
-            time.sleep(self.kash_dict["await.interval"])
+            time.sleep(self.kash_dict["block.interval"])
         return False
 
     def create(self, topic_str, partitions=1, config={"retention.ms": "-1"}, block=True):
@@ -1274,7 +1388,7 @@ class Cluster:
         self.adminClient.create_topics([newTopic])
         #
         if block_bool:
-            self.await_topic(topic_str, exists=True)
+            self.block_topic(topic_str, exists=True)
         #
         return topic_str
 
@@ -1308,7 +1422,7 @@ class Cluster:
             self.adminClient.delete_topics(topic_str_list)
             if block_bool:
                 for topic_str in topic_str_list:
-                    self.await_topic(topic_str, exists=False)
+                    self.block_topic(topic_str, exists=False)
         #    
         return topic_str_list
 
@@ -1869,7 +1983,7 @@ class Cluster:
             bufsize (int, optional): The buffer size for reading from the local file. Defaults to 4096.
 
         Returns:
-            (int, int): Pair of the number of messages read from the local file and the number of messages produced to the topic.
+            (int, int): Pair of the number of messages read from the local file (integer) and the number of messages produced to the topic (integer).
 
         Examples:
             flatmap("./snacks_value.txt", "test", flatmap_function=lambda x: [x])
@@ -1941,7 +2055,7 @@ class Cluster:
             bufsize (int, optional): The buffer size for reading from the local file. Defaults to 4096.
 
         Returns:
-            (int, int): Pair of the number of messages read from the local file and the number of messages produced to the topic.
+            (int, int): Pair of the number of messages read from the local file (integer) and the number of messages produced to the topic (integer).
 
         Examples:
             upload("./snacks_value.txt", "test")
@@ -1965,6 +2079,37 @@ class Cluster:
     # Consumer
 
     def subscribe(self, topic_str, group=None, offsets=None, config={}, key_type="str", value_type="str"):
+        """Subscribe to a topic. 
+
+        Subscribe to a topic, optionally explicitly set the consumer group, initial offsets, and augment the consumer configuration. Prerequisite for consuming from a topic. Set "auto.offset.reset" to the configured "auto.offset.value" in the configuration ("kash"-section), and "enable.auto.commit" and "session.timeout.ms" as well.
+
+        Args:
+            topic_str (str): The topic to subscribe to.
+            group (str, optional): The consumer group name. If set to None, automatically create a new unique consumer group name. Defaults to None.
+            offsets (dict(int, int), optional): Dictionary of integers (partitions) and integers (initial offsets for the individual partitions of the topic). If set to None, does not set any initial offsets. Defaults to None.
+            config (dict(str, str), optional): Dictionary of strings (keys) and strings (values) to augment the consumer configuration. Defaults to {}.
+            key_type (str, optional): The key type ("bytes", "str", "json", "avro", "protobuf" or "pb", or "jsonschema"). Defaults to "str".
+            value_type (str, optional): The value type ("bytes", "str", "json", "avro", "protobuf" or "pb", or "jsonschema"). Defaults to "str".
+
+        Returns:
+            (str, str): Pair of the topic subscribed to (string) and the used consumer group name (string).
+
+        Examples:
+            subscribe("test")
+                Subscribe to the topic "test" using an automatically created new unique consumer group.
+
+            subscribe("test", group="test_group")
+                Susbcribe to the topic "test" using the consumer group name "test_group".
+
+            subscribe("test", offsets={0: 42, 1: 4711})
+                Subscribe to the topic "test" using an automatically created new unique consumer group. Set the initial offset for the first partition to 42, and for the second partition to 4711.
+
+            subscribe("test", config={"enable.auto.commit": "False"})
+                Subscribe to the topic "test" using an automatically created new unique consumer group. Set the configuration key "enable.auto.commit" to "False".
+            
+            subscribe("test", key_type="avro", value_type="avro")
+                Subscribe to the topic "test" using an automatically created new unique consumer group. Consume with key and value type "avro".
+        """    
         offsets_dict = offsets
         config_dict = config
         #
@@ -1994,18 +2139,50 @@ class Cluster:
                 consumer.assign(topicPartition_list)
         self.consumer.subscribe([topic_str], on_assign=on_assign)
         self.subscribed_topic_str = topic_str
+        self.subscribed_group_str = group_str
         self.subscribed_key_type_str = key_type
         self.subscribed_value_type_str = value_type
         #
         return topic_str, group_str
 
     def unsubscribe(self):
+        """Unsubscribe from a topic.
+
+        Unsubscribe from a topic.
+
+        Returns:
+            (str, str): Pair of the topic unsubscribed from (string) and the used consumer group (string).
+        """
         self.consumer.unsubscribe()
+        #
+        topic_str = self.subscribed_topic_str
+        group_str = self.subscribed_group_str
+        #
         self.subscribed_topic_str = None
+        self.subscribed_group_str = None
         self.subscribed_key_type_str = None
         self.subscribed_value_type_str = None
+        #
+        return topic_str, group_str
 
     def consume(self, n=1):
+        """Consume messages from a subscribed topic.
+
+        Consume messages from a subscribed topic.
+
+        Args:
+            n (int, optional): Maximum number of messages to return. Defaults to 1.
+
+        Returns:
+            list(message_dict): List of message dictionaries (converted from confluent_kafka.Message).
+
+        Examples:
+            consume()
+                Consume the next message from the topic subscribed to before.
+
+            consume(n=100)
+                Consume the next 100 messages from the topic subscribed to before.
+        """
         num_messages_int = n
         #
         if self.subscribed_topic_str is None:
@@ -2020,11 +2197,35 @@ class Cluster:
         return message_dict_list
 
     def commit(self):
+        """Commit the last consumed message from the topic subscribed to.
+
+        Commit the last consumed message from the topic subscribed to.
+
+        Returns:
+            message_dict: Last consumed message dictionary (converted from confluent_kafka.Message).
+        """
         self.consumer.commit(self.last_consumed_message)
         #
         return self.last_consumed_message
 
     def offsets(self, timeout=-1):
+        """Get committed offsets of the subscribed topic.
+        
+        Get committed offsets of the subscribed topic.
+
+        Args:
+            n (int, optional): Maximum number of messages to return. Defaults to 1.
+
+        Returns:
+            list(message_dict): List of message dictionaries (converted from confluent_kafka.Message).
+
+        Examples:
+            consume()
+                Consume the next message from the topic subscribed to before.
+
+            consume(n=100)
+                Consume the next 100 messages from the topic subscribed to before.
+        """
         timeout_float = timeout
         #
         topicPartition_list = self.consumer.committed(self.topicPartition_list, timeout=timeout_float)

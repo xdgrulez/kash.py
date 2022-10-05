@@ -335,7 +335,7 @@ class Test(unittest.TestCase):
         cluster.produce(topic_str, "message 3")
         cluster.flush()
         cluster.cat(topic_str, n=3)
-        cluster.subscribe(topic_str, config={"enable.auto.commit": False})
+        cluster.subscribe(topic_str, config={"enable.auto.commit": "False"})
         cluster.consume()
         offsets_dict = cluster.offsets()
         self.assertEqual(offsets_dict[0], "OFFSET_INVALID")
