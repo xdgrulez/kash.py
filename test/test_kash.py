@@ -640,7 +640,7 @@ class Test(unittest.TestCase):
         self.assertEqual(num_messages_int1, 3)
         self.assertEqual(num_messages_int2, 3)
         #
-        differing_message_dict_tuple_list1, num_messages_int1, num_messages_int2 = diff(cluster, topic_str, cluster2, f"{topic_str}_2", value_type1="json", value_type2="json")
+        differing_message_dict_tuple_list1, num_messages_int1, num_messages_int2 = cluster.diff(topic_str, f"{topic_str}_2", value_type1="json", value_type2="json")
         self.assertEqual(len(differing_message_dict_tuple_list1), 1)
         self.assertEqual(num_messages_int1, 3)
         self.assertEqual(num_messages_int2, 3)

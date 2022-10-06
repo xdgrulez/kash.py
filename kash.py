@@ -521,7 +521,7 @@ def cp(source_cluster, source_topic_str, target_cluster, target_topic_str, flatm
 def zip_foldl(cluster1, topic_str1, cluster2, topic_str2, zip_foldl_function, initial_acc, group1=None, group2=None, offsets1=None, offsets2=None, config1={}, config2={}, key_type1="bytes", value_type1="bytes", key_type2="bytes", value_type2="bytes", n=ALL_MESSAGES, batch_size=1):
     """Subscribe to and consume from topic 1 on cluster 1 and topic 2 on cluster 2 and combine the messages using a foldl function.
 
-    Consume (parts of) a topic (topic_str1) on one cluster (cluster1) and another topic (topic_str2) on another (or the same) cluster (cluster2) and combine them using a foldl function. Stops on either topic/cluster if either the consume timeout is exceeded (``consume.timeout`` in the kash.py cluster configuration) or the number of messages specified in ``n`` has been consumed.
+    Consume (parts of) a topic (topic_str1) on one cluster (cluster1) and another topic (topic_str2) on another (or the same) cluster (cluster2) and combine them using a foldl function. Stops on either topic/cluster if either the consume timeout is exceeded (``consume.timeout`` in the kash.py cluster configuration) or the number of messages specified in ``n`` has been consumed. If cluster 1 and cluster 2 are the same, a new temporary Cluster object is created under the covers.
 
     Args:
         cluster1 (Cluster): Cluster 1
@@ -552,6 +552,9 @@ def zip_foldl(cluster1, topic_str1, cluster2, topic_str2, zip_foldl_function, in
     """
     num_messages_int = n
     batch_size_int = batch_size
+    #
+    if cluster1 == cluster2:
+        cluster2 = Cluster(cluster1.cluster_str)
     #
     cluster1.subscribe(topic_str1, group=group1, offsets=offsets1, config=config1, key_type=key_type1, value_type=value_type1)
     cluster2.subscribe(topic_str2, group=group2, offsets=offsets2, config=config2, key_type=key_type2, value_type=value_type2)
@@ -603,7 +606,7 @@ def zip_foldl(cluster1, topic_str1, cluster2, topic_str2, zip_foldl_function, in
 def diff_fun(cluster1, topic_str1, cluster2, topic_str2, diff_function, group1=None, group2=None, offsets1=None, offsets2=None, key_type1="bytes", value_type1="bytes", key_type2="bytes", value_type2="bytes", n=ALL_MESSAGES, batch_size=1):
     """Create a diff of topic 1 on cluster 1 and topic 2 on cluster 2 using a diff function.
 
-    Create a diff of (parts of) a topic (topic_str1) on one cluster (cluster1) and another topic (topic_str2) on another (or the same) cluster (cluster2) using a diff function (diff_function). Stops on either topic/cluster if either the consume timeout is exceeded (``consume.timeout`` in the kash.py cluster configuration) or the number of messages specified in ``n`` has been consumed.
+    Create a diff of (parts of) a topic (topic_str1) on one cluster (cluster1) and another topic (topic_str2) on another (or the same) cluster (cluster2) using a diff function (diff_function). Stops on either topic/cluster if either the consume timeout is exceeded (``consume.timeout`` in the kash.py cluster configuration) or the number of messages specified in ``n`` has been consumed. If cluster 1 and cluster 2 are the same, a new temporary Cluster object is created under the covers.
 
     Args:
         cluster1 (Cluster): Cluster 1
@@ -648,7 +651,7 @@ def diff_fun(cluster1, topic_str1, cluster2, topic_str2, diff_function, group1=N
 def diff(cluster1, topic_str1, cluster2, topic_str2, group1=None, group2=None, offsets1=None, offsets2=None, key_type1="bytes", value_type1="bytes", key_type2="bytes", value_type2="bytes", n=ALL_MESSAGES, batch_size=1):
     """Create a diff of topic 1 on cluster 1 and topic 2 on cluster 2 using a diff function.
 
-    Create a diff of (parts of) a topic (topic_str1) on one cluster (cluster1) and another topic (topic_str2) on another (or the same) cluster (cluster2) with respect to their keys and values. Stops on either topic/cluster if either the consume timeout is exceeded (``consume.timeout`` in the kash.py cluster configuration) or the number of messages specified in ``n`` has been consumed.
+    Create a diff of (parts of) a topic (topic_str1) on one cluster (cluster1) and another topic (topic_str2) on another (or the same) cluster (cluster2) with respect to their keys and values. Stops on either topic/cluster if either the consume timeout is exceeded (``consume.timeout`` in the kash.py cluster configuration) or the number of messages specified in ``n`` has been consumed. If cluster 1 and cluster 2 are the same, a new temporary Cluster object is created under the covers.
 
     Args:
         cluster1 (Cluster): Cluster 1
@@ -2785,3 +2788,92 @@ class Cluster:
                 self.delete(temp_topic_str)
         #
         return (num_consumed_messages_int1, num_produced_messages_int1), (num_consumed_messages_int2, num_produced_messages_int2)
+
+    def zip_foldl(self, topic_str1, topic_str2, zip_foldl_function, initial_acc, group1=None, group2=None, offsets1=None, offsets2=None, config1={}, config2={}, key_type1="bytes", value_type1="bytes", key_type2="bytes", value_type2="bytes", n=ALL_MESSAGES, batch_size=1):
+        """Subscribe to and consume from topic 1 and topic 2 and combine the messages using a foldl function.
+
+        Consume (parts of) a topic (topic_str1) and another topic (topic_str2) and combine them using a foldl function. Stops on either topic/cluster if either the consume timeout is exceeded (``consume.timeout`` in the kash.py cluster configuration) or the number of messages specified in ``n`` has been consumed.
+
+        Args:
+            topic_str1 (str): Topic 1
+            topic_str2 (str): Topic 2
+            zip_foldl_function (function): Foldl function (takes an accumulator (any type) and a message dictionary and returns the updated accumulator).
+            initial_acc: Initial value of the accumulator (any type).
+            group1 (str, optional): Consumer group name used for consuming from topic 1. If set to None, creates a new unique consumer group name. Defaults to None.
+            group2 (str, optional): Consumer group name used for consuming from topic 2. If set to None, creates a new unique consumer group name. Defaults to None.
+            offsets1 (dict, optional): Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for consuming from topic 1. If set to None, consume topic 1 using the offsets from the consumer group for topic 1. Defaults to None.
+            offsets2 (dict, optional): Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for consuming from topic 2. If set to None, consume topic 2 using the offsets from the consumer group for topic 2. Defaults to None.
+            config1 (dict(str, str), optional): Dictionary of strings (keys) and strings (values) to augment the consumer configuration for topic 1 on cluster 1. Defaults to {}.
+            config2 (dict(str, str), optional): Dictionary of strings (keys) and strings (values) to augment the consumer configuration for topic 2 on cluster 2. Defaults to {}.
+            key_type1 (str, optional): Topic 1 message key type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "bytes".
+            value_type1 (str, optional): Topic 1 message value type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "bytes".
+            key_type2 (str, optional): Topic 2 message key type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). If set to None, target_key_type = source_key_type. Defaults to None.
+            value_type2 (str, optional): Topic 2 message value type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). If set to None, target_value_type = source_value_type. Defaults to None.
+            n (int, optional): Number of messages to consume from topic 1 and topic 2. Defaults to ALL_MESSAGES = -1.
+            batch_size (int, optional): Maximum number of messages to consume from topic 1 and topic 2 at a time. Defaults to 1.
+
+        Returns:
+            tuple(acc, int, int): Tuple of the accumulator (any type), the number of messages consumed from topic 1 and the number of messages consumed from topic 2.
+
+        Examples:
+            c.zip_foldl("topic1", "topic2", lambda acc, message_dict1, message_dict2: acc + [(message_dict1, message_dict2)], [])
+                Consume "topic1" and "topic2" and return a list of pairs of message dictionaries from topic 1 and topic 2, respectively.
+        """
+        return zip_foldl(self, topic_str1, self, topic_str2, zip_foldl_function, initial_acc, group1=group1, group2=group2, offsets1=offsets1, offsets2=offsets2, config1=config1, config2=config2, key_type1=key_type1, value_type1=value_type1, key_type2=key_type2, value_type2=value_type2, n=n, batch_size=batch_size)
+
+    def diff_fun(self, topic_str1, topic_str2, diff_function, group1=None, group2=None, offsets1=None, offsets2=None, key_type1="bytes", value_type1="bytes", key_type2="bytes", value_type2="bytes", n=ALL_MESSAGES, batch_size=1):
+        """Create a diff of topic 1 and topic 2 using a diff function.
+
+        Create a diff of (parts of) a topic (topic_str1) and another topic (topic_str2) using a diff function (diff_function). Stops on either topic/cluster if either the consume timeout is exceeded (``consume.timeout`` in the kash.py cluster configuration) or the number of messages specified in ``n`` has been consumed.
+
+        Args:
+            topic_str1 (str): Topic 1
+            topic_str2 (str): Topic 2
+            diff_function (function): Diff function (takes a message dictionary from topic 1 and a message dictionary from topic 2 and returns the updated accumulator)
+            group1 (str, optional): Consumer group name used for consuming from topic 1. If set to None, creates a new unique consumer group name. Defaults to None.
+            group2 (str, optional): Consumer group name used for consuming from topic 2. If set to None, creates a new unique consumer group name. Defaults to None.
+            offsets1 (dict, optional): Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for consuming from topic 1. If set to None, consume topic 1 using the offsets from the consumer group for topic 1. Defaults to None.
+            offsets2 (dict, optional): Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for consuming from topic 2. If set to None, consume topic 2 using the offsets from the consumer group for topic 2. Defaults to None.
+            key_type1 (str, optional): Topic 1 message key type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "bytes".
+            value_type1 (str, optional): Topic 1 message value type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "bytes".
+            key_type2 (str, optional): Topic 2 message key type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). If set to None, target_key_type = source_key_type. Defaults to None.
+            value_type2 (str, optional): Topic 2 message value type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). If set to None, target_value_type = source_value_type. Defaults to None.
+            n (int, optional): Number of messages to consume from the topic 1 and topic 2. Defaults to ALL_MESSAGES = -1.
+            batch_size (int, optional): Maximum number of messages to consume from topic 1 and topic 2 at a time. Defaults to 1.
+
+        Returns:
+            list(tuple(message_dict, message_dict)): Tuple of message dictionaries from topic 1 and topic 2 which are different according to the diff_function (=where diff_function(message_dict1, message_dict2) returned True).
+
+        Examples:
+            c.diff_fun("topic1", "topic2", lambda message_dict1, message_dict2: message_dict1["value"] != message_dict2["value"])
+                Create a diff of "topic1" and "topic2" by comparing the message values.
+        """
+        return diff_fun(self, topic_str1, self, topic_str2, diff_function, group1=group1, group2=group2, offsets1=offsets1, offsets2=offsets2, key_type1=key_type1, value_type1=value_type1, key_type2=key_type2, value_type2=value_type2, n=n, batch_size=batch_size)
+
+    def diff(self, topic_str1, topic_str2, group1=None, group2=None, offsets1=None, offsets2=None, key_type1="bytes", value_type1="bytes", key_type2="bytes", value_type2="bytes", n=ALL_MESSAGES, batch_size=1):
+        """Create a diff of topic 1 and topic 2 using a diff function.
+
+        Create a diff of (parts of) a topic (topic_str1) and another topic (topic_str2) with respect to their keys and values. Stops on either topic/cluster if either the consume timeout is exceeded (``consume.timeout`` in the kash.py cluster configuration) or the number of messages specified in ``n`` has been consumed.
+
+        Args:
+            topic_str1 (str): Topic 1
+            topic_str2 (str): Topic 2
+            group1 (str, optional): Consumer group name used for consuming from topic 1. If set to None, creates a new unique consumer group name. Defaults to None.
+            group2 (str, optional): Consumer group name used for consuming from topic 2. If set to None, creates a new unique consumer group name. Defaults to None.
+            offsets1 (dict, optional): Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for consuming from topic 1. If set to None, consume topic 1 using the offsets from the consumer group for topic 1. Defaults to None.
+            offsets2 (dict, optional): Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for consuming from topic 2. If set to None, consume topic 2 using the offsets from the consumer group for topic 2. Defaults to None.
+            key_type1 (str, optional): Topic 1 message key type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "bytes".
+            value_type1 (str, optional): Topic 1 message value type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "bytes".
+            key_type2 (str, optional): Topic 2 message key type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). If set to None, target_key_type = source_key_type. Defaults to None.
+            value_type2 (str, optional): Topic 2 message value type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). If set to None, target_value_type = source_value_type. Defaults to None.
+            n (int, optional): Number of messages to consume from the topic 1 and topic 2. Defaults to ALL_MESSAGES = -1.
+            batch_size (int, optional): Maximum number of messages to consume from topic 1 and topic 2 at a time. Defaults to 1.
+
+        Returns:
+            list(tuple(message_dict, message_dict)): Tuple of message dictionaries from topic 1 and topic 2 which are different with respect to their keys and values.
+
+        Examples:
+            diff(cluster1, "topic1", cluster2, "topic2")
+                Create a diff of "topic1" and "topic2" with respect to their keys and values.
+        """
+        return diff(self, topic_str1, self, topic_str2, group1=group1, group2=group2, offsets1=offsets2, offsets2=offsets2, key_type1=key_type1, value_type1=value_type1, key_type2=key_type2, value_type2=value_type2, n=n, batch_size=batch_size)
