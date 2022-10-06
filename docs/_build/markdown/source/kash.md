@@ -2592,7 +2592,7 @@ c.zip_foldl(“topic1”, “topic2”, lambda acc, message_dict1, message_dict2
     Consume “topic1” and “topic2” and return a list of pairs of message dictionaries from topic 1 and topic 2, respectively.
 
 
-### kash.cp(source_cluster, source_topic_str, target_cluster, target_topic_str, flatmap_function=<function <lambda>>, group=None, offsets=None, config={}, source_key_type='str', source_value_type='str', target_key_type=None, target_value_type=None, target_key_schema=None, target_value_schema=None, keep_timestamps=True, n=-1, batch_size=1)
+### kash.cp(source_cluster, source_topic_str, target_cluster, target_topic_str, flatmap_function=<function <lambda>>, group=None, offsets=None, config={}, source_key_type='bytes', source_value_type='bytes', target_key_type=None, target_value_type=None, target_key_schema=None, target_value_schema=None, keep_timestamps=True, n=-1, batch_size=1)
 Replicate a topic and optionally transform the messages in a flatmap-like manner.
 
 Replicate (parts of) a topic (source_topic_str) on one cluster (source_cluster) to another topic (target_topic_str) on another (or the same) cluster (target_cluster). Each replicated message can be transformed into a list of other messages in a flatmap-like manner. The source and target topics can have different message key and value types; e.g. the source topic can have value type Avro whereas the target topic will be written with value type Protobuf. Stops either if the consume timeout is exceeded on the source cluster (`consume.timeout` in the kash.py cluster configuration) or the number of messages specified in `n` has been consumed.
@@ -2625,10 +2625,10 @@ Replicate (parts of) a topic (source_topic_str) on one cluster (source_cluster) 
     * **config** (*dict**(**str**, **str**)**, **optional*) – Dictionary of strings (keys) and strings (values) to augment the consumer configuration for the source topic. Defaults to {}.
 
 
-    * **source_key_type** (*str**, **optional*) – Source topic message key type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to “str”.
+    * **source_key_type** (*str**, **optional*) – Source topic message key type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to “bytes”.
 
 
-    * **source_value_type** (*str**, **optional*) – Source topic message value type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to “str”.
+    * **source_value_type** (*str**, **optional*) – Source topic message value type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to “bytes”.
 
 
     * **target_key_type** (*str**, **optional*) – Target topic message key type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). If set to None, target_key_type = source_key_type. Defaults to None.
@@ -2722,10 +2722,10 @@ Create a diff of (parts of) a topic (topic_str1) on one cluster (cluster1) and a
     * **value_type1** (*str**, **optional*) – Topic 1 message value type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to “bytes”.
 
 
-    * **key_type2** (*str**, **optional*) – Topic 2 message key type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). If set to None, target_key_type = source_key_type. Defaults to None.
+    * **key_type2** (*str**, **optional*) – Topic 2 message key type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). If set to None, target_key_type = source_key_type. Defaults to “bytes”.
 
 
-    * **value_type2** (*str**, **optional*) – Topic 2 message value type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). If set to None, target_value_type = source_value_type. Defaults to None.
+    * **value_type2** (*str**, **optional*) – Topic 2 message value type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). If set to None, target_value_type = source_value_type. Defaults to “bytes”.
 
 
     * **n** (*int**, **optional*) – Number of messages to consume from the topic 1 and topic 2. Defaults to ALL_MESSAGES = -1.
@@ -2795,10 +2795,10 @@ Create a diff of (parts of) a topic (topic_str1) on one cluster (cluster1) and a
     * **value_type1** (*str**, **optional*) – Topic 1 message value type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to “bytes”.
 
 
-    * **key_type2** (*str**, **optional*) – Topic 2 message key type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). If set to None, target_key_type = source_key_type. Defaults to None.
+    * **key_type2** (*str**, **optional*) – Topic 2 message key type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). If set to None, target_key_type = source_key_type. Defaults to “bytes”.
 
 
-    * **value_type2** (*str**, **optional*) – Topic 2 message value type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). If set to None, target_value_type = source_value_type. Defaults to None.
+    * **value_type2** (*str**, **optional*) – Topic 2 message value type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). If set to None, target_value_type = source_value_type. Defaults to “bytes”.
 
 
     * **n** (*int**, **optional*) – Number of messages to consume from the topic 1 and topic 2. Defaults to ALL_MESSAGES = -1.
@@ -2826,7 +2826,7 @@ diff_fun(cluster1, “topic1”, cluster2, “topic2”, lambda message_dict1, m
     Create a diff of “topic1” on cluster1 and “topic2” on cluster2 by comparing the message values.
 
 
-### kash.flatmap(source_cluster, source_topic_str, target_cluster, target_topic_str, flatmap_function, group=None, offsets=None, config={}, source_key_type='str', source_value_type='str', target_key_type=None, target_value_type=None, target_key_schema=None, target_value_schema=None, keep_timestamps=True, n=-1, batch_size=1)
+### kash.flatmap(source_cluster, source_topic_str, target_cluster, target_topic_str, flatmap_function, group=None, offsets=None, config={}, source_key_type='bytes', source_value_type='bytes', target_key_type=None, target_value_type=None, target_key_schema=None, target_value_schema=None, keep_timestamps=True, n=-1, batch_size=1)
 Replicate a topic and transform the messages in a flatmap-like manner.
 
 Replicate (parts of) a topic (source_topic_str) on one cluster (source_cluster) to another topic (target_topic_str) on another (or the same) cluster (target_cluster). Each replicated message is transformed into a list of other messages in a flatmap-like manner. The source and target topics can have different message key and value types; e.g. the source topic can have value type Avro whereas the target topic will be written with value type Protobuf.
@@ -2859,10 +2859,10 @@ Replicate (parts of) a topic (source_topic_str) on one cluster (source_cluster) 
     * **config** (*dict**(**str**, **str**)**, **optional*) – Dictionary of strings (keys) and strings (values) to augment the consumer configuration for the source topic. Defaults to {}.
 
 
-    * **source_key_type** (*str**, **optional*) – Source topic message key type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to “str”.
+    * **source_key_type** (*str**, **optional*) – Source topic message key type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to “bytes”.
 
 
-    * **source_value_type** (*str**, **optional*) – Source topic message value type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to “str”.
+    * **source_value_type** (*str**, **optional*) – Source topic message value type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to “bytes”.
 
 
     * **target_key_type** (*str**, **optional*) – Target topic message key type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). If set to None, target_key_type = source_key_type. Defaults to None.
@@ -2917,7 +2917,7 @@ flatmap(cluster1, “topic1”, cluster2, “topic2”, lambda message_dict: [me
     Replicate the messages 100-600 from “topic1” on cluster1 to “topic2” on cluster2. Create new timestamps for the messages produced to the target topic.
 
 
-### kash.map(source_cluster, source_topic_str, target_cluster, target_topic_str, map_function, group=None, offsets=None, config={}, source_key_type='str', source_value_type='str', target_key_type=None, target_value_type=None, target_key_schema=None, target_value_schema=None, keep_timestamps=True, n=-1, batch_size=1)
+### kash.map(source_cluster, source_topic_str, target_cluster, target_topic_str, map_function, group=None, offsets=None, config={}, source_key_type='bytes', source_value_type='bytes', target_key_type=None, target_value_type=None, target_key_schema=None, target_value_schema=None, keep_timestamps=True, n=-1, batch_size=1)
 Replicate a topic and optionally transform the messages in a map-like manner.
 
 Replicate (parts of) a topic (source_topic_str) on one cluster (source_cluster) to another topic (target_topic_str) on another (or the same) cluster (target_cluster). Each replicated message can be transformed into another messages in a map-like manner. The source and target topics can have different message key and value types; e.g. the source topic can have value type Avro whereas the target topic will be written with value type Protobuf. Stops either if the consume timeout is exceeded on the source cluster (`consume.timeout` in the kash.py cluster configuration) or the number of messages specified in `n` has been consumed.
@@ -2950,10 +2950,10 @@ Replicate (parts of) a topic (source_topic_str) on one cluster (source_cluster) 
     * **config** (*dict**(**str**, **str**)**, **optional*) – Dictionary of strings (keys) and strings (values) to augment the consumer configuration for the source topic. Defaults to {}.
 
 
-    * **source_key_type** (*str**, **optional*) – Source topic message key type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to “str”.
+    * **source_key_type** (*str**, **optional*) – Source topic message key type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to “bytes”.
 
 
-    * **source_value_type** (*str**, **optional*) – Source topic message value type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to “str”.
+    * **source_value_type** (*str**, **optional*) – Source topic message value type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to “bytes”.
 
 
     * **target_key_type** (*str**, **optional*) – Target topic message key type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). If set to None, target_key_type = source_key_type. Defaults to None.
@@ -3047,10 +3047,10 @@ Consume (parts of) a topic (topic_str1) on one cluster (cluster1) and another to
     * **value_type1** (*str**, **optional*) – Topic 1 message value type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to “bytes”.
 
 
-    * **key_type2** (*str**, **optional*) – Topic 2 message key type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). If set to None, target_key_type = source_key_type. Defaults to None.
+    * **key_type2** (*str**, **optional*) – Topic 2 message key type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). If set to None, target_key_type = source_key_type. Defaults to “bytes”.
 
 
-    * **value_type2** (*str**, **optional*) – Topic 2 message value type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). If set to None, target_value_type = source_value_type. Defaults to None.
+    * **value_type2** (*str**, **optional*) – Topic 2 message value type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). If set to None, target_value_type = source_value_type. Defaults to “bytes”.
 
 
     * **n** (*int**, **optional*) – Number of messages to consume from topic 1 and topic 2. Defaults to ALL_MESSAGES = -1.

@@ -1,14 +1,14 @@
 # kash.py
 
-*kash.py* is a Python-based client library for Kafka based on [confluent-kafka-python](https://github.com/confluentinc/confluent-kafka-python) by Magnus Edenhill, which is itself based on the native Kafka client library [librdkafka](https://github.com/edenhill/librdkafka) by the same author.
+*kash.py* is a Kafka shell based on Python, or, in other words, a Python-based client library for Kafka based on [confluent-kafka-python](https://github.com/confluentinc/confluent-kafka-python) by Magnus Edenhill, which is itself based on the native Kafka client library [librdkafka](https://github.com/edenhill/librdkafka) by the same author.
+
+The idea behind *kash.py* is to make it as easy as possible to interact with Kafka using Python, without having to know any of the implementation details of the underlying [confluent-kafka-python](https://github.com/confluentinc/confluent-kafka-python) module. To this end, not only the functions/methods are simpler to use, but also all classes are converted to simple Python dictionaries.
 
 *kash.py* has been built for Kafka users of all kinds:
 * For *developers and devops engineers* to view and manipulate Kafka topics using familiar shell syntax (you have *ls*, *touch*, *rm*, *cp*, *cat*, *grep*, *wc* etc.), interactively or non-interactively.
 * For *data scientists* to bridge the gap between batch and stream processing, using functions to upload/download files to/from topics, and even functional abstractions a la Databricks/Apache Spark (there are various *foldl*s, *flatmap*s and *map*s for you to explore).
 
-*kash.py* supports *Avro*, *Protobuf* and *JSONSchema*, Confluent Cloud, Redpanda, etc.
-
-...and it will give you *Kafka superpowers* of a kind you have never experienced before. Honestly :)
+*kash.py* supports *Avro*, *Protobuf* and *JSONSchema*, Confluent Cloud, Redpanda, etc...and it will give you *Kafka superpowers* of a kind you have never experienced before. Honestly :)
 
 Check out the full [kash module documentation](https://github.com/xdgrulez/kash.py/blob/main/docs/_build/markdown/source/kash.md) if you are interested in seeing the entire functionality of *kash.py*.
 
@@ -33,7 +33,7 @@ $ python3
 
 This is the first tutorial, showcasing *kash.py* in interactive mode on one Kafka cluster.
 
-Let's start Python, import kash.py and create a `Cluster` object c:
+Let's start Python, import kash.py and create a `Cluster` object `c`:
 ```
 $ python3
 >>> from kash import *
@@ -41,7 +41,7 @@ $ python3
 >>>
 ```
 
-List topics:
+List the topics on the cluster:
 ```
 >>> c.ls()
 ['__consumer_offsets', '_schemas']
@@ -55,12 +55,18 @@ Create a new topic "snacks":
 >>> 
 ```
 
+List the topics on the cluster again:
+```
+>>> c.ls()
+['__consumer_offsets', '_schemas', 'snacks']
+>>>
+```
+
 Upload the following local file "snacks.txt" to the topic "snacks" (examples inspired by the great blog [Kafka with AVRO vs., Kafka with Protobuf vs., Kafka with JSON Schema](https://simon-aubury.medium.com/kafka-with-avro-vs-kafka-with-protobuf-vs-kafka-with-json-schema-667494cbb2af) by Simon Aubury):
 ```
 {"name": "cookie", "calories": 500.0, "colour": "brown"}
 {"name": "cake", "calories": 260.0, "colour": "white"}
 {"name": "timtam", "calories": 80.0, "colour": "chocolate"}
->>>
 ```
 
 ```
@@ -79,14 +85,14 @@ Show the contents of topic "snacks":
 >>> 
 ```
 
-Count the number of messages, words and bytes in the topic "snacks":
+Count the number of messages, words and bytes of the topic "snacks":
 ```
 >>> c.wc("snacks")
 (3, 18, 169)
 >>>
 ```
 
-Find those messages matching the regular expression `".*cake.*"`:
+Find those messages whose values matches the regular expression `".*cake.*"`:
 ```
 >>> c.grep("snacks", ".*cake.*")
 Found matching message on partition 0, offset 1.
@@ -101,7 +107,7 @@ Create a new topic "snacks_protobuf":
 >>>
 ```
 
-Copy the topic "snacks" onto another topic "snacks_protobuf" using Protobuf:
+Copy the topic "snacks" onto another topic "snacks_protobuf" using Protobuf (and storing the schema in the Schema Registry):
 
 ```
 >>> c.cp("snacks", "snacks_protobuf", target_value_type="protobuf", target_value_schema='message Snack { required string name = 1; required float calories = 2; optional string colour = 3; }')
@@ -119,7 +125,7 @@ Show the contents of topic "snacks_protobuf" (showing the values directly as "by
 >>>
 ```
 
-Show the contents of the topic "snacks_protobuf" again (decoding the values using Protobuf):
+Show the contents of the topic "snacks_protobuf" again (decoding the values using Protobuf and the Schema Registry):
 ```
 >>> c.cat("snacks_protobuf", value_type="protobuf")
 {'headers': None, 'partition': 0, 'offset': 0, 'timestamp': (1, 1664989815680), 'key': None, 'value': {'name': 'cookie', 'calories': 500.0, 'colour': 'brown'}}
@@ -129,7 +135,7 @@ Show the contents of the topic "snacks_protobuf" again (decoding the values usin
 >>>
 ```
 
-Do a diff of the two topics "snacks" and "snacks_protobuf":
+Get a diff of the two topics "snacks" and "snacks_protobuf", comparing the dictionaries obtained by converting the strings in "snacks" to JSONs and consequently Python dictionaries, and converting the Protobuf payload in "snacks_protobuf" to Python dictionaries as well:
 
 ```
 >>> c.diff("snacks", "snacks_protobuf", value_type1="json", value_type2="protobuf")
@@ -144,7 +150,7 @@ Now we are getting functional - using a *foldl* operation to sum up the calories
 >>>
 ```
 
-We can also use a *flatmap* operation to get a list of all messages in "snacks" duplicated:
+We can also use a *flatmap* operation to get a list of all messages in "snacks" where each message is duplicated:
 ```
 >>> c.flatmap("snacks", lambda x: [x, x])
 ([{'headers': None, 'partition': 0, 'offset': 0, 'timestamp': (1, 1664989815680), 'key': None, 'value': '{"name": "cookie", "calories": 500.0, "colour": "brown"}'}, {'headers': None, 'partition': 0, 'offset': 0, 'timestamp': (1, 1664989815680), 'key': None, 'value': '{"name": "cookie", "calories": 500.0, "colour": "brown"}'}, {'headers': None, 'partition': 0, 'offset': 1, 'timestamp': (1, 1664989815680), 'key': None, 'value': '{"name": "cake", "calories": 260.0, "colour": "white"}'}, {'headers': None, 'partition': 0, 'offset': 1, 'timestamp': (1, 1664989815680), 'key': None, 'value': '{"name": "cake", "calories": 260.0, "colour": "white"}'}, {'headers': None, 'partition': 0, 'offset': 2, 'timestamp': (1, 1664989815680), 'key': None, 'value': '{"name": "timtam", "calories": 80.0, "colour": "chocolate"}'}, {'headers': None, 'partition': 0, 'offset': 2, 'timestamp': (1, 1664989815680), 'key': None, 'value': '{"name": "timtam", "calories": 80.0, "colour": "chocolate"}'}], 3)
@@ -187,7 +193,7 @@ The resulting file "snacks1.txt" looks like this:
 
 This is the second tutorial, showcasing *kash.py* in interactive mode on two Kafka clusters.
 
-Again, let's start Python, import kash.py and create a `Cluster` object c1:
+Again, let's start Python, import kash.py and create a `Cluster` object `c1`:
 ```
 $ python3
 >>> from kash import *
