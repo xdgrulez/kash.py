@@ -2766,7 +2766,7 @@ class Cluster:
     def recreate(self, topic_str):
         """Recreate a topic.
 
-        Recreate a topic by 1) replicating it to a temporary topic, 2) deleting the original topic, 3) re-creating the original topic, and 4) replicating the temporary topic back to the original topic.
+        Recreate a topic by 1) replicating it to a temporary topic, 2) deleting the original topic, 3) re-creating the original topic, and 4) replicating the temporary topic back to the original topic. Can be very useful if you happen to come across a consumer that is not able to consume from the beginning of a topic - and you still wish to read the entire topic.
 
         Args:
             topic_str (str): The topic to recreate.

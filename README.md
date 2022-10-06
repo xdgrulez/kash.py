@@ -8,6 +8,8 @@
 
 *kash.py* supports *Avro*, *Protobuf* and *JSONSchema*, Confluent Cloud, Redpanda, etc.
 
+...and it will give you *Kafka superpowers* of a kind you have never experienced before. Honestly :)
+
 Check out the full [kash module documentation](https://github.com/xdgrulez/kash.py/blob/main/docs/_build/markdown/source/kash.md) if you are interested in seeing the entire functionality of *kash.py*.
 
 ## Installation
@@ -130,7 +132,7 @@ Show the contents of the topic "snacks_protobuf" again (decoding the values usin
 Do a diff of the two topics "snacks" and "snacks_protobuf":
 
 ```
->>>> c.diff("snacks", "snacks_protobuf", value_type1="json", value_type2="protobuf")
+>>> c.diff("snacks", "snacks_protobuf", value_type1="json", value_type2="protobuf")
 ([], 3, 3)
 >>>
 ```
@@ -252,7 +254,7 @@ Next, we use a cross-cluster *map* operation to add the suffix "ish" to all the 
 ...   x["value"]["colour"] += "ish"
 ...   return x
 ... 
->>>> map(c1, "snacks1", c2, "snacks2_ish", map_function, source_value_type="json")
+>>> map(c1, "snacks1", c2, "snacks2_ish", map_function, source_value_type="json")
 (3, 3)
 >>>
 ```
