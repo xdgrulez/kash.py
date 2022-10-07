@@ -377,16 +377,20 @@ def flatmap(source_cluster, source_topic_str, target_cluster, target_topic_str, 
         :obj:`tuple(int, int)`: Pair of the number of messages consumed from the source topic and the number of messages produced to the target topic.
 
     Examples:
-        Replicate "topic1" on cluster1 to "topic2" on cluster2:
+        Replicate "topic1" on cluster1 to "topic2" on cluster2::
+
             flatmap(cluster1, "topic1", cluster2, "topic2", lambda message_dict: [message_dict])
 
-        Replicate "topic1" on cluster1 to "topic2" on cluster2, while duplicating each message from topic1 in topic2:
+        Replicate "topic1" on cluster1 to "topic2" on cluster2, while duplicating each message from topic1 in topic2::
+
             flatmap(cluster1, "topic1", cluster2, "topic2", lambda message_dict: [message_dict, message_dict])
 
-        Replicate "topic1" on cluster1 to "topic2" on cluster2, while duplicating each message from topic1 in topic2:
+        Replicate "topic1" on cluster1 to "topic2" on cluster2, while duplicating each message from topic1 in topic2::
+
             flatmap(cluster1, "topic1", cluster2, "topic2", lambda message_dict: [message_dict], source_value_type="avro", target_value_type="protobuf", target_value_schema="message Snack { required string name = 1; required float calories = 2; optional string colour = 3; }", n=100)
 
-        Replicate the messages 100-600 from "topic1" on cluster1 to "topic2" on cluster2. Create new timestamps for the messages produced to the target topic:
+        Replicate the messages 100-600 from "topic1" on cluster1 to "topic2" on cluster2. Create new timestamps for the messages produced to the target topic::
+
             flatmap(cluster1, "topic1", cluster2, "topic2", lambda message_dict: [message_dict], offsets={0:100}, keep_timestamps=False, n=500)
     """
     source_key_type_str = source_key_type
@@ -466,8 +470,9 @@ def map(source_cluster, source_topic_str, target_cluster, target_topic_str, map_
         :obj:`tuple(int, int)`: Pair of the number of messages consumed from the source topic and the number of messages produced to the target topic.
 
     Examples:
-        map(cluster1, "topic1", cluster2, "topic2", lambda x: x)
-            Replicate "topic1" on cluster1 to "topic2" on cluster2.
+        Replicate "topic1" on cluster1 to "topic2" on cluster2::
+
+            map(cluster1, "topic1", cluster2, "topic2", lambda x: x)
     """
     def flatmap_function(message_dict):
         return [map_function(message_dict)]
@@ -503,17 +508,21 @@ def cp(source_cluster, source_topic_str, target_cluster, target_topic_str, flatm
         :obj:`tuple(int, int)`: Pair of the number of messages consumed from the source topic and the number of messages produced to the target topic.
 
     Examples:
-        cp(cluster1, "topic1", cluster2, "topic2")
-            Replicate "topic1" on cluster1 to "topic2" on cluster2.
+        Replicate "topic1" on cluster1 to "topic2" on cluster2::
 
-        cp(cluster1, "topic1", cluster2, "topic2", flatmap_function=lambda message_dict: [message_dict, message_dict])
-            Replicate "topic1" on cluster1 to "topic2" on cluster2, while duplicating each message from topic1 in topic2.
+            cp(cluster1, "topic1", cluster2, "topic2")
 
-        cp(cluster1, "topic1", cluster2, "topic2", source_value_type="avro", target_value_type="protobuf", target_value_schema="message Snack { required string name = 1; required float calories = 2; optional string colour = 3; }", n=100)
-            Replicate the first 100 messages from "topic1" on cluster1 to "topic2" on cluster2, changing the value schema from avro to protobuf.
+        Replicate "topic1" on cluster1 to "topic2" on cluster2, while duplicating each message from topic1 in topic2::
 
-        cp(cluster1, "topic1", cluster2, "topic2", offsets={0:100}, keep_timestamps=False, n=500)
-            Replicate the messages 100-600 from "topic1" on cluster1 to "topic2" on cluster2. Create new timestamps for the messages produced to the target topic.
+            cp(cluster1, "topic1", cluster2, "topic2", flatmap_function=lambda message_dict: [message_dict, message_dict])
+
+        Replicate the first 100 messages from "topic1" on cluster1 to "topic2" on cluster2, changing the value schema from avro to protobuf::
+
+            cp(cluster1, "topic1", cluster2, "topic2", source_value_type="avro", target_value_type="protobuf", target_value_schema="message Snack { required string name = 1; required float calories = 2; optional string colour = 3; }", n=100)
+
+        Replicate the messages 100-600 from "topic1" on cluster1 to "topic2" on cluster2. Create new timestamps for the messages produced to the target topic::
+
+            cp(cluster1, "topic1", cluster2, "topic2", offsets={0:100}, keep_timestamps=False, n=500)
     """
     return flatmap(source_cluster, source_topic_str, target_cluster, target_topic_str, flatmap_function, group=group, offsets=offsets, config=config, source_key_type=source_key_type, source_value_type=source_value_type, target_key_type=target_key_type, target_value_type=target_value_type, target_key_schema=target_key_schema, target_value_schema=target_value_schema, keep_timestamps=keep_timestamps, n=n, batch_size=batch_size)
 
@@ -547,8 +556,9 @@ def zip_foldl(cluster1, topic_str1, cluster2, topic_str2, zip_foldl_function, in
         :obj:`tuple(acc, int, int)`: Tuple of the accumulator (any type), the number of messages consumed from topic 1 and the number of messages consumed from topic 2.
 
     Examples:
-        zip_foldl(cluster1, "topic1", cluster2, "topic2", lambda acc, message_dict1, message_dict2: acc + [(message_dict1, message_dict2)], [])
-            Consume "topic1" on cluster1 and "topic2" on cluster2 and return a list of pairs of message dictionaries from topic 1 and topic 2, respectively.
+        Consume "topic1" on cluster1 and "topic2" on cluster2 and return a list of pairs of message dictionaries from topic 1 and topic 2, respectively::
+    
+            zip_foldl(cluster1, "topic1", cluster2, "topic2", lambda acc, message_dict1, message_dict2: acc + [(message_dict1, message_dict2)], [])
     """
     num_messages_int = n
     batch_size_int = batch_size
@@ -629,8 +639,9 @@ def diff_fun(cluster1, topic_str1, cluster2, topic_str2, diff_function, group1=N
         :obj:`list(tuple(message_dict, message_dict))`: Tuple of message dictionaries from topic 1 and topic 2 which are different according to the diff_function (=where diff_function(message_dict1, message_dict2) returned True).
 
     Examples:
-        diff_fun(cluster1, "topic1", cluster2, "topic2", lambda message_dict1, message_dict2: message_dict1["value"] != message_dict2["value"])
-            Create a diff of "topic1" on cluster1 and "topic2" on cluster2 by comparing the message values.
+        Create a diff of "topic1" on cluster1 and "topic2" on cluster2 by comparing the message values::
+    
+            diff_fun(cluster1, "topic1", cluster2, "topic2", lambda message_dict1, message_dict2: message_dict1["value"] != message_dict2["value"])
     """
     def zip_foldl_function(acc, message_dict1, message_dict2):
         if diff_function(message_dict1, message_dict2):
@@ -673,8 +684,9 @@ def diff(cluster1, topic_str1, cluster2, topic_str2, group1=None, group2=None, o
         :obj:`list(tuple(message_dict, message_dict))`: Tuple of message dictionaries from topic 1 and topic 2 which are different with respect to their keys and values.
 
     Examples:
-        diff(cluster1, "topic1", cluster2, "topic2")
-            Create a diff of "topic1" on cluster1 and "topic2" on cluster2 with respect to their keys and values.
+        Create a diff of "topic1" on cluster1 and "topic2" on cluster2 with respect to their keys and values::
+
+            diff(cluster1, "topic1", cluster2, "topic2")
     """
     def diff_function(message_dict1, message_dict2):
         return message_dict1["key"] != message_dict2["key"] or message_dict1["value"] != message_dict2["value"]
@@ -1115,11 +1127,13 @@ class Cluster:
             :obj:`dict(str, tuple(int, dict(int, int)))`: Dictionary of strings (topic name) and pairs of integers (total size of the topic) and dictionaries of integers (partition) and integers (size of the partition).
 
         Examples:
-            c.size("\*")
-                List all topics of the cluster, their total sizes and the sizes of their partitions.
+            List all topics of the cluster, their total sizes and the sizes of their partitions::
 
-            c.size(["\*test", "bla"], timeout=1.0)
-                List those topics whose name end with "test" or whose name is "bla", their total sizes and the sizes of their partitions and time out the internally used get_watermark_offsets() method after one second.
+                c.size("\*")
+
+            List those topics whose name end with "test" or whose name is "bla", their total sizes and the sizes of their partitions and time out the internally used get_watermark_offsets() method after one second::
+
+                c.size(["\*test", "bla"], timeout=1.0)
         """
         topic_str_partition_int_tuple_dict_dict = self.watermarks(pattern_str_or_str_list, timeout=timeout)
         #
@@ -1148,11 +1162,13 @@ class Cluster:
             :obj:`dict(str, dict(int, tuple(int, int)))`: Dictionary of strings (topic names) and dictionaries of integers (partition) and pairs of integers (low and high offsets of the respective partition of the respective topic)
 
         Examples:
-            c.watermarks("test*")
-                Return the watermarks for all topics whose name starts with "test" and their partitions.
+            Return the watermarks for all topics whose name starts with "test" and their partitions::
 
-            c.watermarks(["test", "bla"], timeout=1.0)
-                Return the watermarks for the topics "test" and "bla" and time out the internally used get_watermark_offsets() method after one second.
+                c.watermarks("test*")
+
+            Return the watermarks for the topics "test" and "bla" and time out the internally used get_watermark_offsets() method after one second::
+
+                c.watermarks(["test", "bla"], timeout=1.0)
         """
         timeout_float = timeout
         #
@@ -1182,23 +1198,29 @@ class Cluster:
             :obj:`list(str)` | :obj:`dict(str, int)` | :obj:`dict(str, dict(int, int))` | :obj:`dict(str, tuple(int, dict(int, int)))`: List of strings if size=False and partitions=False; dictionary of strings (topic name) and integers (total size of the topic) if size=True and partitions=False; dictionary of strings (topic name) and dictionaries of integers (partition) and integers (size of the partition) if size=False and partitions=True; dictionary of strings (topic name) and pairs of integers (total size of the topic) and dictionaries of integers (partition) and integers (size of the partition) if size=True and partitions=True.
 
         Examples:
-            c.topics()
-                List all topics of the cluster.
+            List all topics of the cluster::
 
-            c.topics(size=True)
-                List all the topics of the cluster and their total sizes.
+                c.topics()
 
-            c.topics(partitions=True)
-                List all the topics of the cluster and the sizes of their individual partitions.
+            List all the topics of the cluster and their total sizes::
 
-            c.topics(size=True, partitions=True)
-                List all the topics of the cluster, their total sizes and the sizes of their individual partitions.
+                c.topics(size=True)
 
-            c.topics("test*")
-                List all those topics of the cluster whose name starts with "test".
+            List all the topics of the cluster and the sizes of their individual partitions::
 
-            c.topics(["test*", "bla*"])
-                List all those topics of the cluster whose name starts with "test" or "bla".
+                c.topics(partitions=True)
+
+            List all the topics of the cluster, their total sizes and the sizes of their individual partitions::
+
+                c.topics(size=True, partitions=True)
+
+            List all those topics of the cluster whose name starts with "test"::
+
+                c.topics("test*")
+
+            List all those topics of the cluster whose name starts with "test" or "bla"::
+
+                c.topics(["test*", "bla*"])
         """
         pattern_str_or_str_list = pattern
         size_bool = size
@@ -1239,23 +1261,29 @@ class Cluster:
         :obj:`list(str)` | :obj:`dict(str, int)` | :obj:`dict(str, dict(int, int))` | :obj:`dict(str, tuple(int, dict(int, int)))`: List of strings if size=False and partitions=False; dictionary of strings (topic name) and integers (total size of the topic) if size=True and partitions=False; dictionary of strings (topic name) and dictionaries of integers (partition) and integers (size of the partition) if size=False and partitions=True; dictionary of strings (topic name) and pairs of integers (total size of the topic) and dictionaries of integers (partition) and integers (size of the partition) if size=True and partitions=True.
 
     Examples:
-        c.ls()
-            List all topics of the cluster.
+        List all topics of the cluster::
 
-        c.ls(size=True)
-            List all the topics of the cluster and their total sizes.
+            c.ls()
 
-        c.ls(partitions=True)
-            List all the topics of the cluster and the sizes of their individual partitions.
+        List all the topics of the cluster and their total sizes::
 
-        c.ls(size=True, partitions=True)
-            List all the topics of the cluster, their total sizes and the sizes of their individual partitions.
+            c.ls(size=True)
 
-        c.ls("test*")
-            List all those topics of the cluster whose name starts with "test".
+        List all the topics of the cluster and the sizes of their individual partitions::
 
-        c.ls(["test*", "bla*"])
-            List all those topics of the cluster whose name starts with "test" or "bla".
+            c.ls(partitions=True)
+
+        List all the topics of the cluster, their total sizes and the sizes of their individual partitions::
+
+            c.ls(size=True, partitions=True)
+
+        List all those topics of the cluster whose name starts with "test"::
+
+            c.ls("test*")
+
+        List all those topics of the cluster whose name starts with "test" or "bla"::
+
+            c.ls(["test*", "bla*"])
     """
 
     def l(self, pattern=None, size=True, partitions=False):
@@ -1272,23 +1300,29 @@ class Cluster:
             :obj:`list(str)` | :obj:`dict(str, int)` | :obj:`dict(str, dict(int, int))` | :obj:`dict(str, tuple(int, dict(int, int)))`: List of strings if size=False and partitions=False; dictionary of strings (topic name) and integers (total size of the topic) if size=True and partitions=False; dictionary of strings (topic name) and dictionaries of integers (partition) and integers (size of the partition) if size=False and partitions=True; dictionary of strings (topic name) and pairs of integers (total size of the topic) and dictionaries of integers (partition) and integers (size of the partition) if size=True and partitions=True.
 
         Examples:
-            c.l()
-                List all the topics of the cluster and their total sizes.
+            List all the topics of the cluster and their total sizes::
 
-            c.l(size=False)
-                List all the topics of the cluster.
+                c.l()
 
-            c.l(partitions=True)
-                List all the topics of the cluster, their total sizes and the sizes of their individual partitions.
+            List all the topics of the cluster::
 
-            c.l(size=False, partitions=True)
-                List all the topics of the cluster and the sizes of their individual partitions.
+                c.l(size=False)
 
-            c.l("test*")
-                List all those topics of the cluster whose name starts with "test" and their total sizes.
+            List all the topics of the cluster, their total sizes and the sizes of their individual partitions::
 
-            c.l(["test*", "bla*"])
-                List all those topics of the cluster whose name starts with "test" or "bla".
+                c.l(partitions=True)
+
+            List all the topics of the cluster and the sizes of their individual partitions::
+
+                c.l(size=False, partitions=True)
+
+            List all those topics of the cluster whose name starts with "test" and their total sizes::
+
+                c.l("test*")
+
+            List all those topics of the cluster whose name starts with "test" or "bla"::
+
+                c.l(["test*", "bla*"])
         """
         return self.topics(pattern=pattern, size=size, partitions=partitions)
 
@@ -1306,23 +1340,29 @@ class Cluster:
         :obj:`list(str)` | :obj:`dict(str, int)` | :obj:`dict(str, dict(int, int))` | :obj:`dict(str, tuple(int, dict(int, int)))`: List of strings if size=False and partitions=False; dictionary of strings (topic name) and integers (total size of the topic) if size=True and partitions=False; dictionary of strings (topic name) and dictionaries of integers (partition) and integers (size of the partition) if size=False and partitions=True; dictionary of strings (topic name) and pairs of integers (total size of the topic) and dictionaries of integers (partition) and integers (size of the partition) if size=True and partitions=True.
 
     Examples:
-        c.ll()
-            List all the topics of the cluster and their total sizes.
+        List all the topics of the cluster and their total sizes::
 
-        c.ll(size=False)
-            List all the topics of the cluster.
+            c.ll()
 
-        c.ll(partitions=True)
-            List all the topics of the cluster, their total sizes and the sizes of their individual partitions.
+        List all the topics of the cluster::
 
-        c.ll(size=False, partitions=True)
-            List all the topics of the cluster and the sizes of their individual partitions.
+            c.ll(size=False)
 
-        c.ll("test*")
-            List all those topics of the cluster whose name starts with "test" and their total sizes.
+        List all the topics of the cluster, their total sizes and the sizes of their individual partitions::
 
-        c.ll(["test*", "bla*"])
-            List all those topics of the cluster whose name starts with "test" or "bla" and their total sizes.
+            c.ll(partitions=True)
+
+        List all the topics of the cluster and the sizes of their individual partitions::
+
+            c.ll(size=False, partitions=True)
+
+        List all those topics of the cluster whose name starts with "test" and their total sizes::
+
+            c.ll("test*")
+
+        List all those topics of the cluster whose name starts with "test" or "bla" and their total sizes::
+
+            c.ll(["test*", "bla*"])
     """
 
     def config(self, pattern_str_or_str_list):
@@ -1337,11 +1377,13 @@ class Cluster:
             dict(str, dict(str, str)): Dictionary of strings (topic names) and dictionaries of strings (configuration keys) and strings (configuration values).
 
         Examples:
-            c.config("test")
-                Return the configuration of the topic "test".
+            Return the configuration of the topic "test"::
 
-            c.config(["test?", "bla?"])
-                Return the configuration of all topics matching the patterns "test?" or "bla?".
+                c.config("test")
+
+            Return the configuration of all topics matching the patterns "test?" or "bla?"::
+
+                c.config(["test?", "bla?"])
         """
         topic_str_list = self.topics(pattern_str_or_str_list)
         #
@@ -1362,14 +1404,17 @@ class Cluster:
             :obj:`dict(str, tuple(str, str))`: Dictionary of strings (topic names) and tuples of strings (configuration keys) and strings (configuration values)
 
         Examples:
-            c.set_config("test", "retention.ms", "4711")
-                Sets the configuration key "retention.ms" to configuration value "4711" for topic "test".
+            Sets the configuration key "retention.ms" to configuration value "4711" for topic "test"::
 
-            c.set_config("test", "retention.ms", "4711", test=True)
-                Verifies if the configuration key "retention.ms" can be set to configuration value "4711" for topic "test", but does not change the configuration.
+                c.set_config("test", "retention.ms", "4711")
 
-            c.set_config(["test*", "bla*"], "42")
-                Sets the configuration key "retention.ms" to configuration value "42" for all topics whose names start with "test" or "bla".
+            Verifies if the configuration key "retention.ms" can be set to configuration value "4711" for topic "test", but does not change the configuration::
+
+                c.set_config("test", "retention.ms", "4711", test=True)
+
+            Sets the configuration key "retention.ms" to configuration value "42" for all topics whose names start with "test" or "bla"::
+
+                c.set_config(["test*", "bla*"], "42")
         """
         test_bool = test
         #
@@ -1414,17 +1459,21 @@ class Cluster:
             :obj:`str`: Name of the created topic.
 
         Examples:
-            c.create("test")
-                Create the topic "test" with one partition, and block until it is created.
+            Create the topic "test" with one partition, and block until it is created::
 
-            c.create("test", partitions=2)
-                Create the topic "test" with two partitions, and block until it is created.
+                c.create("test")
 
-            c.create("test", config={"retention.ms": "4711"})
-                Create the topic "test" with one partition, a retention time of 4711ms and block until it is created.
+            Create the topic "test" with two partitions, and block until it is created::
 
-            c.create("test", block=False)
-                Create the topic "test" with one partition, and *do not* block until it is created.
+                c.create("test", partitions=2)
+
+            Create the topic "test" with one partition, a retention time of 4711ms and block until it is created::
+
+                c.create("test", config={"retention.ms": "4711"})
+
+            Create the topic "test" with one partition, and *do not* block until it is created::
+
+                c.create("test", block=False)
         """
         partitions_int = partitions
         config_dict = config
@@ -1455,17 +1504,21 @@ class Cluster:
         :obj:`str`: Name of the created topic.
 
     Examples:
-        c.touch("test")
-            Create the topic "test" with one partition, and block until it is created.
+        Create the topic "test" with one partition, and block until it is created::
 
-        c.touch("test", partitions=2)
-            Create the topic "test" with two partitions, and block until it is created.
+            c.touch("test")
 
-        c.touch("test", config={"retention.ms": "4711"})
-            Create the topic "test" with one partition, a retention time of 4711ms and block until it is created.
+        Create the topic "test" with two partitions, and block until it is created::
 
-        c.touch("test", block=False)
-            Create the topic "test" with one partition, and *do not* block until it is created.
+            c.touch("test", partitions=2)
+
+        Create the topic "test" with one partition, a retention time of 4711ms and block until it is created::
+
+            c.touch("test", config={"retention.ms": "4711"})
+
+        Create the topic "test" with one partition, and *do not* block until it is created::
+
+            c.touch("test", block=False)
     """
 
     def delete(self, pattern_str_or_str_list, block=True):
@@ -1481,14 +1534,17 @@ class Cluster:
             :obj:`list(str)`: List of strings of names of the deleted topics.
 
         Examples:
-            c.delete("test")
-                Delete the topic "test" and block until it is deleted.
+            Delete the topic "test" and block until it is deleted::
 
-            c.delete("test", block=False)
-                Delete the topic "test" and *do not* block until it is deleted.
+                c.delete("test")
 
-            c.delete(["test*", "bla*"])
-                Delete all topics starting with "test" or "bla".
+            Delete the topic "test" and *do not* block until it is deleted::
+
+                c.delete("test", block=False)
+
+            Delete all topics starting with "test" or "bla"::
+
+                c.delete(["test*", "bla*"])
         """
         block_bool = block
         #
@@ -1515,14 +1571,17 @@ class Cluster:
         obj:`list(str)`: List of strings of names of the deleted topics.
 
     Examples:
-        c.rm("test")
-            Delete the topic "test" and block until it is deleted.
+        Delete the topic "test" and block until it is deleted::
 
-        c.rm("test", block=False)
-            Delete the topic "test" and *do not* block until it is deleted.
+            c.rm("test")
 
-        c.rm(["test*", "bla*"])
-            Delete all topics starting with "test" or "bla".
+        Delete the topic "test" and *do not* block until it is deleted::
+
+            c.rm("test", block=False)
+
+        Delete all topics starting with "test" or "bla"::
+
+            c.rm(["test*", "bla*"])
     """
 
     def offsets_for_times(self, pattern_str_or_str_list, partition_int_timestamp_int_dict, timeout=-1.0):
@@ -1539,11 +1598,13 @@ class Cluster:
             :obj:`dict(str, dict(int, int))`: Dictionary of strings (topic names) and dictionaries of integers (partitions) and integers (offsets).
 
         Examples:
-            c.offsets_for_times("test", {0: 1664644769886})
-                Look up the offset of the first message in the first partition of the topic "test" which has a timestamp greater or equal to 1664644769886 milliseconds from epoch. If the provided timestamp exceeds that of the last message in the partition, a value of -1 will be returned.
+            Look up the offset of the first message in the first partition of the topic "test" which has a timestamp greater or equal to 1664644769886 milliseconds from epoch. If the provided timestamp exceeds that of the last message in the partition, a value of -1 will be returned::
 
-            c.offsets_for_times("te*st", {0: 1664644769886, 1: 1664645155987}, timeout=1.0)
-                Look up the offset of the first message in the first partition of those topics starting with "te" and ending with "st" with a timestamp greater or equal to 1664644769886 milliseconds from epoch; and look up the offset of the first message in the second partition of those topics with a timestamp greater or equal to 1664645155987 milliseconds from epoch. Time out the internally used offsets_for_times() calls after one second.
+                c.offsets_for_times("test", {0: 1664644769886})
+
+            Look up the offset of the first message in the first partition of those topics starting with "te" and ending with "st" with a timestamp greater or equal to 1664644769886 milliseconds from epoch; and look up the offset of the first message in the second partition of those topics with a timestamp greater or equal to 1664645155987 milliseconds from epoch. Time out the internally used offsets_for_times() calls after one second::
+
+                c.offsets_for_times("te*st", {0: 1664644769886, 1: 1664645155987}, timeout=1.0)
         """
         topic_str_list = self.topics(pattern_str_or_str_list)
         #
@@ -1577,11 +1638,13 @@ class Cluster:
             :obj:`dict(str, topic_dict)`: Dictionary of strings (topic names) and topic dictionaries describing the topic (converted from confluent_kafka.TopicMetadata objects).
 
         Examples:
-            c.describe("test")
-                Describe the topic "test".
+            Describe the topic "test"::
 
-            c.describe(["test*", "bla*"])
-                Describe all topics whose names start with "test" or "bla".
+                c.describe("test")
+
+            Describe all topics whose names start with "test" or "bla"::
+
+                c.describe(["test*", "bla*"])
         """
         if isinstance(pattern_str_or_str_list, str):
             pattern_str_or_str_list = [pattern_str_or_str_list]
@@ -1604,8 +1667,9 @@ class Cluster:
             :obj:`bool`: True if the topic topic_str exists, False otherwise.
 
         Examples:
-            c.exists("test")
-                Test whether the topic "test" exists on the cluster.
+            Test whether the topic "test" exists on the cluster::
+            
+                c.exists("test")
         """
         return self.topics(topic_str) != []
 
@@ -1621,11 +1685,13 @@ class Cluster:
             :obj:`dict(str, int)`: Dictionary of strings (topic names) and their respective numbers of partitions.
 
         Examples:
-            c.partitions("test")
-                Get the number of partitions of the topic "test".
+            Get the number of partitions of the topic "test"::
 
-            c.partitions(["test*", "bla*"])
-                Get the numbers of partitions of all topics whose names start with "test" or "bla".
+                c.partitions("test")
+
+            Get the numbers of partitions of all topics whose names start with "test" or "bla"::
+
+                c.partitions(["test*", "bla*"])
         """
         if isinstance(pattern_str_or_str_list, str):
             pattern_str_or_str_list = [pattern_str_or_str_list]
@@ -1650,11 +1716,13 @@ class Cluster:
             :obj:`dict(str, int)`: Dictionary of strings (topic names) and their respective new numbers of partitions.
 
         Examples:
-            c.set_partitions("test", 2)
-                Set the number of partitions for the topic "test" to 2.
+            Set the number of partitions for the topic "test" to 2::
 
-            c.set_partitions(["test*", "bla*"], 4)
-                Set the numbers of partitions of all topics whose names start with "test" or "bla" to 4.
+                c.set_partitions("test", 2)
+
+            Set the numbers of partitions of all topics whose names start with "test" or "bla" to 4::
+
+                c.set_partitions(["test*", "bla*"], 4)
         """
         test_bool = test
         #
@@ -1683,14 +1751,17 @@ class Cluster:
             :obj:`list(str)`): List of strings (consumer group names).
 
         Examples:
-            c.groups()
-                List all consumer groups of the cluster.
+            List all consumer groups of the cluster::
 
-            c.groups("test*")
-                List all those consumer groups of the cluster whose name starts with "test".
+                c.groups()
 
-            c.groups(["test*", "bla*"])
-                List all those consumer groups of the cluster whose name starts with "test" or "bla".
+            List all those consumer groups of the cluster whose name starts with "test"::
+
+                c.groups("test*")
+
+            List all those consumer groups of the cluster whose name starts with "test" or "bla"::
+
+                c.groups(["test*", "bla*"])
         """
         pattern_str_or_str_list = pattern
         #
@@ -1717,11 +1788,13 @@ class Cluster:
             :obj:`dict(str, group_dict)`: Dictionary of strings (consumer group names) and group dictionaries describing the consumer group (converted from confluent_kafka.GroupMetadata objects).
 
         Examples:
-            c.describe_groups("test*")
-                Describe all those consumer groups of the cluster whose name starts with "test".
+            Describe all those consumer groups of the cluster whose name starts with "test"::
 
-            c.describe_groups(["test*", "bla*"])
-                Describe all those consumer groups of the cluster whose name starts with "test" or "bla".
+                c.describe_groups("test*")
+
+            Describe all those consumer groups of the cluster whose name starts with "test" or "bla"::
+
+                c.describe_groups(["test*", "bla*"])
         """
         groupMetadata_list = self.adminClient.list_groups()
         #
@@ -1746,11 +1819,13 @@ class Cluster:
             :obj:`dict(int, str)`: Dictionary of integers (broker identifiers) and strings (broker URLs and ports).
 
         Examples:
-            c.brokers()
-                List all brokers of the cluster.
+            List all brokers of the cluster::
 
-            c.brokers([0, 1])
-                List only the brokers 0 and 1 of the cluster.
+                c.brokers()
+
+            List only the brokers 0 and 1 of the cluster::
+
+                c.brokers([0, 1])
         """
         pattern_int_or_str_or_int_or_str_list = pattern
         #
@@ -1780,11 +1855,13 @@ class Cluster:
             :obj:`dict(int, dict(str, str))`: Dictionary of integers (broker identifiers) and configuration dictionaries (dictionaries of strings (keys) and strings (values)).
 
         Examples:
-            c.broker_config(0)
-                List the configuration of broker 0 of the cluster.
+            List the configuration of broker 0 of the cluster::
 
-            c.broker_config([0, 1])
-                List the configurations of brokers 0 and 1 of the cluster.
+                c.broker_config(0)
+
+            List the configurations of brokers 0 and 1 of the cluster::
+
+                c.broker_config([0, 1])
         """
         broker_dict = self.brokers(pattern_int_or_str_or_int_or_str_list)
         #
@@ -1807,14 +1884,17 @@ class Cluster:
             :obj:`dict(int, tuple(str, str))`: Dictionary of integers (broker identifiers) and tuples of strings (configuration keys) and strings (configuration values)
 
         Examples:
-            c.set_broker_config(0, "background.threads", "5")
-                Sets the configuration key "background.threads" to configuration value "5" for broker 0.
+            Sets the configuration key "background.threads" to configuration value "5" for broker 0::
 
-            c.set_broker_config(0, "background.threads", "5", test=True)
-                Verifies if the configuration key "background.threads" can be set to configuration value "5" for broker 0, but does not change the configuration.
+                c.set_broker_config(0, "background.threads", "5")
 
-            c.set_broker_config("[0-2]", "background.threads", "5")
-                Sets the configuration key "background.threads" to configuration value "5" for brokers 0, 1 and 2.
+            Verifies if the configuration key "background.threads" can be set to configuration value "5" for broker 0, but does not change the configuration::
+
+                c.set_broker_config(0, "background.threads", "5", test=True)
+
+            Sets the configuration key "background.threads" to configuration value "5" for brokers 0, 1 and 2::
+
+                c.set_broker_config("[0-2]", "background.threads", "5")
         """
         test_bool = test
         #
@@ -1846,11 +1926,13 @@ class Cluster:
             :obj:`list(aclBinding_dict)`: List of ACL Binding dictionaries (converted from confluent_kafka.AclBinding objects) of the selected ACLs.
 
         Examples:
-            c.acls():
-                List all ACLs of the cluster.
+            List all ACLs of the cluster::
 
-            c.acls(restype="topic"):
-                List all ACLs for the topics of the cluster.
+                c.acls()
+
+            List all ACLs for the topics of the cluster::
+
+                c.acls(restype="topic")
         """
         resourceType = str_to_resourceType(restype)
         name_str = name
@@ -1883,8 +1965,9 @@ class Cluster:
             :obj:`aclBinding_dict`: ACL Binding dictionary (converted from an confluent_kafka.AclBinding object) of the created ACL.
 
         Examples:
-            c.create_acl(restype="topic", name="test", resource_pattern_type="literal", principal="User:abc", host="*", operation="read", permission_type="allow"):
-                Grant user "abc" read permission on topic "test".
+            Grant user "abc" read permission on topic "test"::
+
+                c.create_acl(restype="topic", name="test", resource_pattern_type="literal", principal="User:abc", host="*", operation="read", permission_type="allow")
         """
         resourceType = str_to_resourceType(restype)
         name_str = name
@@ -1917,8 +2000,9 @@ class Cluster:
             :obj:`list(aclBinding_dict)`: List of ACL Binding dictionaries (converted from confluent_kafka.AclBinding objects) of the deleted ACLs.
 
         Examples:
-            c.delete_acl(restype="topic", name="test", resource_pattern_type="literal", principal="User:abc", host="*", operation="read", permission_type="allow"):
-                Delete the ACL which granted user "abc" read permission on topic "test".
+            Delete the ACL which granted user "abc" read permission on topic "test"::
+
+                c.delete_acl(restype="topic", name="test", resource_pattern_type="literal", principal="User:abc", host="*", operation="read", permission_type="allow")
         """
         resourceType = str_to_resourceType(restype)
         name_str = name
@@ -1956,32 +2040,41 @@ class Cluster:
             :obj:`tuple(bytes | str, bytes | str)`: Pair of bytes or string and bytes or string (=the key and the value of the produced message).
 
         Examples:
-            c.produce("test", "value 1")
-                Produce a message with value = "value 1" and key = None to the topic "test".
+            Produce a message with value = "value 1" and key = None to the topic "test"::
 
-            c.produce("test", "value 1", key="key 1")
-                Produce a message with value = "value 1" and key = "key 1" to the topic "test".
+                c.produce("test", "value 1")
 
-            c.produce("test", "value 1", key="key 1", partition=0)
-                Produce a message with value = "value 1" and key = "key 1" to partition 0 of the topic "test".
+            Produce a message with value = "value 1" and key = "key 1" to the topic "test"::
 
-            c.produce("test", "value 1", key="key 1", timestamp=1664902656169)
-                Produce a message with value = "value 1" and key = "key 1" to the topic "test", set the timestamp of this message to 1664902656169.
+                c.produce("test", "value 1", key="key 1")
 
-            c.produce("test", "value 1", headers={"bla": "blups"})
-                Produce a message with value = "value 1" and key = None to the topic "test", set the headers of this message to {"bla": "blups"}.
+            Produce a message with value = "value 1" and key = "key 1" to partition 0 of the topic "test"::
 
-            c.produce("test", {'name': 'cookie', 'calories': 500.0, 'colour': 'brown'}, value_type="json")
-                Produce a message with value = {'name': 'cookie', 'calories': 500.0, 'colour': 'brown'} and key = None to the topic "test", using JSON without schema.
+                c.produce("test", "value 1", key="key 1", partition=0)
 
-            c.produce("test", {'name': 'cookie', 'calories': 500.0, 'colour': 'brown'}, value_type="avro", value_schema='{ "type": "record", "name": "myrecord", "fields": [{"name": "name",  "type": "string" }, {"name": "calories", "type": "float" }, {"name": "colour", "type": "string" }] }')
-                Produce a message with value = {'name': 'cookie', 'calories': 500.0, 'colour': 'brown'} and key = None to the topic "test", using Avro with the schema '{ "type": "record", "name": "myrecord", "fields": [{"name": "name",  "type": "string" }, {"name": "calories", "type": "float" }, {"name": "colour", "type": "string" }] }'.
+            Produce a message with value = "value 1" and key = "key 1" to the topic "test", set the timestamp of this message to 1664902656169::
 
-            c.produce("test", {'name': 'cookie', 'calories': 500.0, 'colour': 'brown'}, value_type="protobuf", value_schema='message Snack { required string name = 1; required float calories = 2; optional string colour = 3; }')
-                Produce a message with value = {'name': 'cookie', 'calories': 500.0, 'colour': 'brown'} and key = None to the topic "test", using Protobuf with the schema 'message Snack { required string name = 1; required float calories = 2; optional string colour = 3; }'.
+                c.produce("test", "value 1", key="key 1", timestamp=1664902656169)
 
-            c.produce("test", {'name': 'cookie', 'calories': 500.0, 'colour': 'brown'}, value_type="jsonschema", value_schema='{ "title": "abc", "definitions" : { "record:myrecord" : { "type" : "object", "required" : [ "name", "calories" ], "additionalProperties" : false, "properties" : { "name" : {"type" : "string"}, "calories" : {"type" : "number"}, "colour" : {"type" : "string"} } } }, "$ref" : "#/definitions/record:myrecord" }')
-                Produce a message with value = {'name': 'cookie', 'calories': 500.0, 'colour': 'brown'} and key = None to the topic "test", using JSONSchema with the schema '{ "title": "abc", "definitions" : { "record:myrecord" : { "type" : "object", "required" : [ "name", "calories" ], "additionalProperties" : false, "properties" : { "name" : {"type" : "string"}, "calories" : {"type" : "number"}, "colour" : {"type" : "string"} } } }, "$ref" : "#/definitions/record:myrecord" }'.
+            Produce a message with value = "value 1" and key = None to the topic "test", set the headers of this message to {"bla": "blups"}::
+
+                c.produce("test", "value 1", headers={"bla": "blups"})
+
+            Produce a message with value = {'name': 'cookie', 'calories': 500.0, 'colour': 'brown'} and key = None to the topic "test", using JSON without schema::
+
+                c.produce("test", {'name': 'cookie', 'calories': 500.0, 'colour': 'brown'}, value_type="json")
+
+            Produce a message with value = {'name': 'cookie', 'calories': 500.0, 'colour': 'brown'} and key = None to the topic "test", using Avro with the schema '{ "type": "record", "name": "myrecord", "fields": [{"name": "name",  "type": "string" }, {"name": "calories", "type": "float" }, {"name": "colour", "type": "string" }] }'::
+
+                c.produce("test", {'name': 'cookie', 'calories': 500.0, 'colour': 'brown'}, value_type="avro", value_schema='{ "type": "record", "name": "myrecord", "fields": [{"name": "name",  "type": "string" }, {"name": "calories", "type": "float" }, {"name": "colour", "type": "string" }] }')
+
+            Produce a message with value = {'name': 'cookie', 'calories': 500.0, 'colour': 'brown'} and key = None to the topic "test", using Protobuf with the schema 'message Snack { required string name = 1; required float calories = 2; optional string colour = 3; }'::
+
+                c.produce("test", {'name': 'cookie', 'calories': 500.0, 'colour': 'brown'}, value_type="protobuf", value_schema='message Snack { required string name = 1; required float calories = 2; optional string colour = 3; }')
+
+            Produce a message with value = {'name': 'cookie', 'calories': 500.0, 'colour': 'brown'} and key = None to the topic "test", using JSONSchema with the schema '{ "title": "abc", "definitions" : { "record:myrecord" : { "type" : "object", "required" : [ "name", "calories" ], "additionalProperties" : false, "properties" : { "name" : {"type" : "string"}, "calories" : {"type" : "number"}, "colour" : {"type" : "string"} } } }, "$ref" : "#/definitions/record:myrecord" }'::
+
+                c.produce("test", {'name': 'cookie', 'calories': 500.0, 'colour': 'brown'}, value_type="jsonschema", value_schema='{ "title": "abc", "definitions" : { "record:myrecord" : { "type" : "object", "required" : [ "name", "calories" ], "additionalProperties" : false, "properties" : { "name" : {"type" : "string"}, "calories" : {"type" : "number"}, "colour" : {"type" : "string"} } } }, "$ref" : "#/definitions/record:myrecord" }')
         """
         key_type_str = key_type
         value_type_str = value_type
@@ -2062,14 +2155,17 @@ class Cluster:
             :obj:`tuple(int, int)` Pair of the number of messages read from the local file (integer) and the number of messages produced to the topic (integer).
 
         Examples:
-            c.flatmap("./snacks_value.txt", "test", flatmap_function=lambda x: [x])
-                Read all messages from the local file "./snacks_value.txt" and produce them to the topic "test".
+            Read all messages from the local file "./snacks_value.txt" and produce them to the topic "test"::
 
-            c.flatmap("./snacks_value.txt", "test", flatmap_function=lambda x: [x, x])
-                Read all messages from the local file "./snacks_value.txt" and duplicate each of them in the topic "test".
+                c.flatmap("./snacks_value.txt", "test", flatmap_function=lambda x: [x])
 
-            c.flatmap("./snacks_value.txt", "test", flatmap_function=lambda x: [x], value_type="protobuf", value_schema='message Snack { required string name = 1; required float calories = 2; optional string colour = 3; }')
-                Read all messages from the local file "./snacks_value.txt" and produce them to the topic "test" in Protobuf using schema 'message Snack { required string name = 1; required float calories = 2; optional string colour = 3; }'.
+            Read all messages from the local file "./snacks_value.txt" and duplicate each of them in the topic "test"::
+
+                c.flatmap("./snacks_value.txt", "test", flatmap_function=lambda x: [x, x])
+
+            Read all messages from the local file "./snacks_value.txt" and produce them to the topic "test" in Protobuf using schema 'message Snack { required string name = 1; required float calories = 2; optional string colour = 3; }'::
+
+                c.flatmap("./snacks_value.txt", "test", flatmap_function=lambda x: [x], value_type="protobuf", value_schema='message Snack { required string name = 1; required float calories = 2; optional string colour = 3; }')
         """
         key_value_separator_str = key_value_separator
         message_separator_str = message_separator
@@ -2134,14 +2230,17 @@ class Cluster:
             :obj:`tuple(int, int)` Pair of the number of messages read from the local file (integer) and the number of messages produced to the topic (integer).
 
         Examples:
-            c.upload("./snacks_value.txt", "test")
-                Read all messages from the local file "./snacks_value.txt" and produce them to the topic "test".
+            Read all messages from the local file "./snacks_value.txt" and produce them to the topic "test"::
+    
+                c.upload("./snacks_value.txt", "test")
 
-            c.upload("./snacks_value.txt", "test", flatmap_function=lambda x: [x, x])
-                Read all messages from the local file "./snacks_value.txt" and duplicate each of them in the topic "test".
+            Read all messages from the local file "./snacks_value.txt" and duplicate each of them in the topic "test"::
+    
+                c.upload("./snacks_value.txt", "test", flatmap_function=lambda x: [x, x])
 
-            c.upload("./snacks_value.txt", "test", value_type="protobuf", value_schema='message Snack { required string name = 1; required float calories = 2; optional string colour = 3; }')
-                Read all messages from the local file "./snacks_value.txt" and produce them to the topic "test" in Protobuf using schema 'message Snack { required string name = 1; required float calories = 2; optional string colour = 3; }'.
+            Read all messages from the local file "./snacks_value.txt" and produce them to the topic "test" in Protobuf using schema 'message Snack { required string name = 1; required float calories = 2; optional string colour = 3; }'::
+
+                c.upload("./snacks_value.txt", "test", value_type="protobuf", value_schema='message Snack { required string name = 1; required float calories = 2; optional string colour = 3; }')
         """
         return self.flatmap_from_file(path_str, topic_str, flatmap_function, key_type=key_type, value_type=value_type, key_schema=key_schema, value_schema=value_schema, key_value_separator=key_value_separator, message_separator=message_separator, n=n, bufsize=bufsize)
 
@@ -2171,20 +2270,25 @@ class Cluster:
             :obj:`tuple(str, str)` Pair of the topic subscribed to (string) and the used consumer group name (string).
 
         Examples:
-            c.subscribe("test")
-                Subscribe to the topic "test" using an automatically created new unique consumer group.
+            Subscribe to the topic "test" using an automatically created new unique consumer group::
 
-            c.subscribe("test", group="test_group")
-                Susbcribe to the topic "test" using the consumer group name "test_group".
+                c.subscribe("test")
 
-            c.subscribe("test", offsets={0: 42, 1: 4711})
-                Subscribe to the topic "test" using an automatically created new unique consumer group. Set the initial offset for the first partition to 42, and for the second partition to 4711.
+            Susbcribe to the topic "test" using the consumer group name "test_group"::
 
-            c.subscribe("test", config={"enable.auto.commit": "False"})
-                Subscribe to the topic "test" using an automatically created new unique consumer group. Set the configuration key "enable.auto.commit" to "False".
+                c.subscribe("test", group="test_group")
 
-            c.subscribe("test", key_type="avro", value_type="avro")
-                Subscribe to the topic "test" using an automatically created new unique consumer group. Consume with key and value type "avro".
+            Subscribe to the topic "test" using an automatically created new unique consumer group. Set the initial offset for the first partition to 42, and for the second partition to 4711::
+
+                c.subscribe("test", offsets={0: 42, 1: 4711})
+
+            Subscribe to the topic "test" using an automatically created new unique consumer group. Set the configuration key "enable.auto.commit" to "False"::
+
+                c.subscribe("test", config={"enable.auto.commit": "False"})
+
+            Subscribe to the topic "test" using an automatically created new unique consumer group. Consume with key and value type "avro"::
+
+                c.subscribe("test", key_type="avro", value_type="avro")
         """
         offsets_dict = offsets
         config_dict = config
@@ -2253,11 +2357,13 @@ class Cluster:
             :obj:`list(message_dict)`: List of message dictionaries (converted from confluent_kafka.Message).
 
         Examples:
-            c.consume()
-                Consume the next message from the topic subscribed to before.
+            Consume the next message from the topic subscribed to before::
 
-            c.consume(n=100)
-                Consume the next 100 messages from the topic subscribed to before.
+                c.consume()
+
+            Consume the next 100 messages from the topic subscribed to before::
+
+                c.consume(n=100)
         """
         num_messages_int = n
         #
@@ -2296,11 +2402,13 @@ class Cluster:
             :obj:`offsets_dict`: Dictionary of partitions (integers) and offsets (integers).
 
         Examples:
-            c.offsets()
-                Get the offsets of the subscribed topic.
+            Get the offsets of the subscribed topic::
 
-            c.offsets(timeout=1.0)
-                Get the offsets of the subscribed topic, using a timeout of 1 second.
+                c.offsets()
+
+            Get the offsets of the subscribed topic, using a timeout of 1 second::
+
+                c.offsets(timeout=1.0)
         """
         timeout_float = timeout
         #
@@ -2334,11 +2442,13 @@ class Cluster:
             :obj:`tuple(acc, int)`: Pair of the accumulator (any type) and the number of messages consumed from the topic (integer).
 
         Examples:
-            c.foldl("test", lambda acc, message_dict: acc + [message_dict], [])
-                Consume topic "test" and return a list of all its messages as message dictionaries.
+            Consume topic "test" and return a list of all its messages as message dictionaries::
 
-            c.foldl("test", lambda acc, x: acc + x["value"]["calories"], 0, value_type="json")
-                Consume topic "test" and sum up the "calories" value of the individual messages.
+                c.foldl("test", lambda acc, message_dict: acc + [message_dict], [])
+
+            Consume topic "test" and sum up the "calories" value of the individual messages::
+
+                c.foldl("test", lambda acc, x: acc + x["value"]["calories"], 0, value_type="json")
         """
         num_messages_int = n
         batch_size_int = batch_size
@@ -2386,11 +2496,13 @@ class Cluster:
             :obj:`tuple(list(message_dict), int)`: Pair of the list of message dictionaries and the number of messages consumed from the topic (integer).
 
         Examples:
-            c.flatmap("test", lambda x: [x])
-                Consume topic "test" and return a list of all its messages as message dictionaries.
+            Consume topic "test" and return a list of all its messages as message dictionaries::
 
-            c.flatmap("test", lambda x: [x, x, x])
-                Consume topic "test" and return a list of all its messages repeated three times.
+                c.flatmap("test", lambda x: [x])
+
+            Consume topic "test" and return a list of all its messages repeated three times::
+
+                c.flatmap("test", lambda x: [x, x, x])
         """
         def foldl_function(acc, message_dict):
             acc += flatmap_function(message_dict)
@@ -2420,12 +2532,13 @@ class Cluster:
             :obj:`tuple(list(message_dict), int)`: Pair of the list of message dictionaries and the number of messages consumed from the topic (integer).
 
         Examples:
-            c.map("test", lambda x: x)
-                Consume topic "test" and return a list of all its messages as message dictionaries.
+            Consume topic "test" and return a list of all its messages as message dictionaries::
 
-            c.map("test", lambda x: x["value"].update({"colour": "yellow"}) or x, value_type="json")
+                c.map("test", lambda x: x)
 
-                Consume topic "test" and return a list of all its messages where the "colour" is set to "yellow".
+            Consume topic "test" and return a list of all its messages where the "colour" is set to "yellow"::
+
+                c.map("test", lambda x: x["value"].update({"colour": "yellow"}) or x, value_type="json")
         """
         def flatmap_function(message_dict):
             return [map_function(message_dict)]
@@ -2454,8 +2567,9 @@ class Cluster:
             :obj:`int`: Number of messages consumed from the topic (integer).
 
         Examples:
-            c.foreach("test", print)
-                Consume topic "test" and print out all the consumed messages to standard out/the console.
+            Consume topic "test" and print out all the consumed messages to standard out/the console::
+
+                c.foreach("test", print)
         """
         num_messages_int = n
         batch_size_int = batch_size
@@ -2491,8 +2605,9 @@ class Cluster:
             :obj:`int`: Number of messages consumed from the topic (integer).
 
         Examples:
-            c.cat("test")
-                Consume topic "test" and print out all the consumed messages to standard out/the console.
+            Consume topic "test" and print out all the consumed messages to standard out/the console::
+
+                c.cat("test")
         """
         return self.foreach(topic_str, foreach_function, group=group, offsets=offsets, config=config, key_type=key_type, value_type=value_type, n=n, batch_size=batch_size)
 
@@ -2518,8 +2633,9 @@ class Cluster:
             :obj:`tuple(list(message_dict), int, int)`: Tuple of the list of message dictionaries of the matching messages, the number of matching messages (integer), and the number of messages consumed from the topic (integer).
 
         Examples:
-            c.grep_fun("test", lambda x: x["value"]["name"] == "cake", value_type="json")
-                Consume topic "test" and return all messages whose value is a JSON with the "name" attribute set to "cake".
+            Consume topic "test" and return all messages whose value is a JSON with the "name" attribute set to "cake"::
+
+                c.grep_fun("test", lambda x: x["value"]["name"] == "cake", value_type="json")
         """
         num_messages_int = n
         batch_size_int = batch_size
@@ -2559,8 +2675,9 @@ class Cluster:
             :obj:`tuple(list(message_dict), int, int)`: Tuple of the list of message dictionaries of the matching messages, the number of matching messages (integer), and the number of messages consumed from the topic (integer).
 
         Examples:
-            c.grep("test", ".*name.*cake")
-                Consume topic "test" and return all messages whose value matches the regular expression ".*name.*cake".
+            Consume topic "test" and return all messages whose value matches the regular expression ".*name.*cake"::
+
+                c.grep("test", ".*name.*cake")
         """
         def match_function(message_dict):
             pattern = re.compile(re_pattern_str)
@@ -2591,8 +2708,9 @@ class Cluster:
             :obj:`tuple(int, int, int)`: Tuple of the number of messages (integer), the number of words (integer) and the number of bytes (int) in the topic.
 
         Examples:
-            c.wc("test")
-                Consume topic "test" and return the number of messages, words and bytes.
+            Consume topic "test" and return the number of messages, words and bytes::
+
+                c.wc("test")
         """
         def foldl_function(acc, message_dict):
             if message_dict["key"] is None:
@@ -2641,11 +2759,13 @@ class Cluster:
             :obj:`tuple(int, int)`: Pair of integers of the number of messages consumed from the topic, and the number of lines/messages written to the local file.
 
         Examples:
-            c.flatmap_to_file("test", "./test.txt", lambda x: [x])
-                Consume all the messages from topic "test" and write them to the local file "./test.txt".
+            Consume all the messages from topic "test" and write them to the local file "./test.txt"::
 
-            c.flatmap_to_file("test", "./test3.txt", lambda x: [x, x, x])
-                Consume all the messages from topic "test" and write three messages for each of them to the local file "./test3.txt".
+                c.flatmap_to_file("test", "./test.txt", lambda x: [x])
+
+            Consume all the messages from topic "test" and write three messages for each of them to the local file "./test3.txt"::
+
+                c.flatmap_to_file("test", "./test3.txt", lambda x: [x, x, x])
         """
         key_value_separator_str = key_value_separator
         message_separator_str = message_separator
@@ -2710,8 +2830,9 @@ class Cluster:
             :obj:`tuple(int, int)`: Pair of integers of the number of messages consumed from the topic, and the number of lines/messages written to the local file.
 
         Examples:
-            c.download("test", "./test.txt")
-                Download the messages from topic "test" to the local file "./test.txt".
+            Download the messages from topic "test" to the local file "./test.txt"::
+
+                c.download("test", "./test.txt")
         """
         return self.flatmap_to_file(topic_str, path_str, flatmap_function, group=group, offsets=offsets, config=config, key_type=key_type, value_type=value_type, key_value_separator=key_value_separator, message_separator=message_separator, overwrite=overwrite, n=n, batch_size=batch_size)
 
@@ -2745,14 +2866,17 @@ class Cluster:
             :obj:`tuple(int, int)`: Pair of the number of messages consumed from the source topic/read from the source local file and the number of messages produced to the target topic/written to the target local file.
 
         Examples:
-            c.cp("./test.txt", "test")
-                Upload the messages from the local file "./test.txt" to the topic "test".
+            Upload the messages from the local file "./test.txt" to the topic "test"::
 
-            c.cp("test", "./test.txt")
-                Download the messages from topic "test" to the local file "./test.txt".
+                c.cp("./test.txt", "test")
 
-            c.cp("test1", "test2")
-                Replicate the messages from topic "test1" to topic "test2".
+            Download the messages from topic "test" to the local file "./test.txt"::
+
+                c.cp("test", "./test.txt")
+
+            Replicate the messages from topic "test1" to topic "test2"::
+
+                c.cp("test1", "test2")
         """
         if is_file(source_str) and not is_file(target_str):
             return self.upload(source_str, target_str, flatmap_function=flatmap_function, key_type=target_key_type, value_type=target_value_type, key_schema=target_key_schema, value_schema=target_value_schema, key_value_separator=key_value_separator, message_separator=message_separator, n=n, bufsize=bufsize)
@@ -2775,8 +2899,9 @@ class Cluster:
             :obj:`tuple(tuple(int, int), tuple(int, int))`: Pair of pairs of the number of messages; the first pair indicating the number of messages consumed from the original topic and produced to the temporary topic, the second pair indicating the number of messages consumed from the temporary topic and produced back to the re-created original topic.
 
         Examples:
-            c.recreate("test")
-                Recreate the topic "test".
+            Recreate the topic "test"::
+
+                c.recreate("test")
         """
         temp_topic_str = f"{topic_str}_{get_millis()}"
         (num_consumed_messages_int1, num_produced_messages_int1) = cp(self, topic_str, self, temp_topic_str)
@@ -2816,8 +2941,9 @@ class Cluster:
             :obj:`tuple(acc, int, int)`: Tuple of the accumulator (any type), the number of messages consumed from topic 1 and the number of messages consumed from topic 2.
 
         Examples:
-            c.zip_foldl("topic1", "topic2", lambda acc, message_dict1, message_dict2: acc + [(message_dict1, message_dict2)], [])
-                Consume "topic1" and "topic2" and return a list of pairs of message dictionaries from topic 1 and topic 2, respectively.
+            Consume "topic1" and "topic2" and return a list of pairs of message dictionaries from topic 1 and topic 2, respectively::
+
+                c.zip_foldl("topic1", "topic2", lambda acc, message_dict1, message_dict2: acc + [(message_dict1, message_dict2)], [])
         """
         return zip_foldl(self, topic_str1, self, topic_str2, zip_foldl_function, initial_acc, group1=group1, group2=group2, offsets1=offsets1, offsets2=offsets2, config1=config1, config2=config2, key_type1=key_type1, value_type1=value_type1, key_type2=key_type2, value_type2=value_type2, n=n, batch_size=batch_size)
 
@@ -2845,8 +2971,9 @@ class Cluster:
             :obj:`list(tuple(message_dict, message_dict))`: Tuple of message dictionaries from topic 1 and topic 2 which are different according to the diff_function (=where diff_function(message_dict1, message_dict2) returned True).
 
         Examples:
-            c.diff_fun("topic1", "topic2", lambda message_dict1, message_dict2: message_dict1["value"] != message_dict2["value"])
-                Create a diff of "topic1" and "topic2" by comparing the message values.
+            Create a diff of "topic1" and "topic2" by comparing the message values::
+
+                c.diff_fun("topic1", "topic2", lambda message_dict1, message_dict2: message_dict1["value"] != message_dict2["value"])
         """
         return diff_fun(self, topic_str1, self, topic_str2, diff_function, group1=group1, group2=group2, offsets1=offsets1, offsets2=offsets2, key_type1=key_type1, value_type1=value_type1, key_type2=key_type2, value_type2=value_type2, n=n, batch_size=batch_size)
 
@@ -2873,7 +3000,8 @@ class Cluster:
             :obj:`list(tuple(message_dict, message_dict))`: Tuple of message dictionaries from topic 1 and topic 2 which are different with respect to their keys and values.
 
         Examples:
-            diff(cluster1, "topic1", cluster2, "topic2")
-                Create a diff of "topic1" and "topic2" with respect to their keys and values.
+            Create a diff of "topic1" and "topic2" with respect to their keys and values::
+
+                diff(cluster1, "topic1", cluster2, "topic2")
         """
         return diff(self, topic_str1, self, topic_str2, group1=group1, group2=group2, offsets1=offsets2, offsets2=offsets2, key_type1=key_type1, value_type1=value_type1, key_type2=key_type2, value_type2=value_type2, n=n, batch_size=batch_size)
