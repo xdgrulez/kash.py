@@ -5,7 +5,7 @@ import time
 import unittest
 import warnings
 sys.path.insert(1, "..")
-from kash import *
+from kashpy.kash import *
 
 #cluster_str = "rp-dev"
 #cluster_str_without_kash = "rp-dev_without_kash"

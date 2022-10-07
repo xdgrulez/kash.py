@@ -14,29 +14,28 @@ Check out the full [kash module documentation](https://github.com/xdgrulez/kash.
 
 ## Installation
 
-Just install the dependencies...
+Just write...
 ```
-pip install -r requirements.txt
+pip install kashpy
 ```
-
 ...and off you go. For interactive use, e.g. using your local cluster configured in the file "clusters_unsecured/local.conf", just do the following to list the topics:
 ```
 $ python3
->>> from kash import *
+>>> from kashpy.kash import *
 >>> c = Cluster("local")
 >>> c.ls()
 ['__consumer_offsets', '_schemas']
 >>>
 ```
 
-## Tutorial 1 (one cluster)
+## Tutorial 1 (single-cluster)
 
-This is the first tutorial, showcasing *kash.py* in interactive mode on one Kafka cluster.
+This is the first tutorial, showcasing the single cluster capabilities of *kash.py* in interactive mode.
 
 Let's start Python, import kash.py and create a `Cluster` object `c`:
 ```
 $ python3
->>> from kash import *
+>>> from kashpy.kash import *
 >>> c = Cluster("local")
 >>>
 ```
@@ -189,14 +188,14 @@ The resulting file "snacks1.txt" looks like this:
 {"name": "timtam", "calories": 80.0, "colour": "chocolateish"}
 ```
 
-## Tutorial 2 (two clusters)
+## Tutorial 2 (cross-cluster)
 
-This is the second tutorial, showcasing *kash.py* in interactive mode on two Kafka clusters.
+This is the second tutorial, showcasing the cross-cluster capabilities of *kash.py* in interactive mode.
 
 Again, let's start Python, import kash.py and create a `Cluster` object `c1`:
 ```
 $ python3
->>> from kash import *
+>>> from kashpy.kash import *
 >>> c1 = Cluster("local")
 >>>
 ```
