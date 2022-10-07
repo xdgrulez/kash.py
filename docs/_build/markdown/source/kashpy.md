@@ -205,16 +205,18 @@ List ACLs of the cluster.
 
 ### Examples
 
-c.acls():
+List all ACLs of the cluster:
 
-    List all ACLs of the cluster.
+```default
+c.acls()
+```
 
-c.acls(restype=”topic”):
+List all ACLs for the topics of the cluster:
 
-    List all ACLs for the topics of the cluster.
+```default
+c.acls(restype="topic")
+```
 
-
-#### block_topic(topic_str, exists=True)
 
 #### broker_config(pattern_int_or_str_or_int_or_str_list)
 List the configurations of brokers of the cluster.
@@ -241,13 +243,17 @@ List the configurations of brokers of the cluster. Optionally only list those br
 
 ### Examples
 
+List the configuration of broker 0 of the cluster:
+
+```default
 c.broker_config(0)
+```
 
-    List the configuration of broker 0 of the cluster.
+List the configurations of brokers 0 and 1 of the cluster:
 
+```default
 c.broker_config([0, 1])
-
-    List the configurations of brokers 0 and 1 of the cluster.
+```
 
 
 #### brokers(pattern=None)
@@ -275,20 +281,18 @@ List brokers of the cluster. Optionally only list those brokers whose identifier
 
 ### Examples
 
+List all brokers of the cluster:
+
+```default
 c.brokers()
+```
 
-    List all brokers of the cluster.
+List only the brokers 0 and 1 of the cluster:
 
+```default
 c.brokers([0, 1])
+```
 
-    List only the brokers 0 and 1 of the cluster.
-
-
-#### bytes_avro_to_dict(bytes, key_bool)
-
-#### bytes_jsonschema_to_dict(bytes, key_bool)
-
-#### bytes_protobuf_to_dict(bytes, key_bool)
 
 #### cat(topic_str, foreach_function=<built-in function print>, group=None, offsets=None, config={}, key_type='str', value_type='str', n=-1, batch_size=1)
 Subscribe to and consume messages from a topic and call an operation on each of them.
@@ -340,9 +344,11 @@ Subscribe to and consume messages from a topic and call an operation on each of 
 
 ### Examples
 
-c.cat(“test”)
+Consume topic “test” and print out all the consumed messages to standard out/the console:
 
-    Consume topic “test” and print out all the consumed messages to standard out/the console.
+```default
+c.cat("test")
+```
 
 
 #### commit()
@@ -388,13 +394,17 @@ Return the configuration of those topics whose names match the bash-like pattern
 
 ### Examples
 
-c.config(“test”)
+Return the configuration of the topic “test”:
 
-    Return the configuration of the topic “test”.
+```default
+c.config("test")
+```
 
-c.config([“test?”, “bla?”])
+Return the configuration of all topics matching the patterns “test?” or “bla?”:
 
-    Return the configuration of all topics matching the patterns “test?” or “bla?”.
+```default
+c.config(["test?", "bla?"])
+```
 
 
 #### consume(n=1)
@@ -422,13 +432,17 @@ Consume messages from a subscribed topic.
 
 ### Examples
 
+Consume the next message from the topic subscribed to before:
+
+```default
 c.consume()
+```
 
-    Consume the next message from the topic subscribed to before.
+Consume the next 100 messages from the topic subscribed to before:
 
+```default
 c.consume(n=100)
-
-    Consume the next 100 messages from the topic subscribed to before.
+```
 
 
 #### cp(source_str, target_str, group=None, offsets=None, config={}, flatmap_function=<function Cluster.<lambda>>, source_key_type='str', source_value_type='str', target_key_type='str', target_value_type='str', target_key_schema=None, target_value_schema=None, key_value_separator=None, message_separator='\\n', overwrite=True, keep_timestamps=True, n=-1, batch_size=1, bufsize=4096)
@@ -511,17 +525,23 @@ Copy files to topics, topics to files, or topics to topics. Uses `Cluster.upload
 
 ### Examples
 
-c.cp(“./test.txt”, “test”)
+Upload the messages from the local file “./test.txt” to the topic “test”:
 
-    Upload the messages from the local file “./test.txt” to the topic “test”.
+```default
+c.cp("./test.txt", "test")
+```
 
-c.cp(“test”, “./test.txt”)
+Download the messages from topic “test” to the local file “./test.txt”:
 
-    Download the messages from topic “test” to the local file “./test.txt”.
+```default
+c.cp("test", "./test.txt")
+```
 
-c.cp(“test1”, “test2”)
+Replicate the messages from topic “test1” to topic “test2”:
 
-    Replicate the messages from topic “test1” to topic “test2”.
+```default
+c.cp("test1", "test2")
+```
 
 
 #### create(topic_str, partitions=1, config={}, block=True)
@@ -559,21 +579,29 @@ Create a topic.
 
 ### Examples
 
-c.create(“test”)
+Create the topic “test” with one partition, and block until it is created:
 
-    Create the topic “test” with one partition, and block until it is created.
+```default
+c.create("test")
+```
 
-c.create(“test”, partitions=2)
+Create the topic “test” with two partitions, and block until it is created:
 
-    Create the topic “test” with two partitions, and block until it is created.
+```default
+c.create("test", partitions=2)
+```
 
-c.create(“test”, config={“retention.ms”: “4711”})
+Create the topic “test” with one partition, a retention time of 4711ms and block until it is created:
 
-    Create the topic “test” with one partition, a retention time of 4711ms and block until it is created.
+```default
+c.create("test", config={"retention.ms": "4711"})
+```
 
-c.create(“test”, block=False)
+Create the topic “test” with one partition, and *do not* block until it is created:
 
-    Create the topic “test” with one partition, and *do not* block until it is created.
+```default
+c.create("test", block=False)
+```
 
 
 #### create_acl(restype='any', name=None, resource_pattern_type='any', principal=None, host=None, operation='any', permission_type='any')
@@ -620,9 +648,11 @@ Create an ACL on the cluster.
 
 ### Examples
 
-c.create_acl(restype=”topic”, name=”test”, resource_pattern_type=”literal”, principal=”User:abc”, host=”\*”, operation=”read”, permission_type=”allow”):
+Grant user “abc” read permission on topic “test”:
 
-    Grant user “abc” read permission on topic “test”.
+```default
+c.create_acl(restype="topic", name="test", resource_pattern_type="literal", principal="User:abc", host="*", operation="read", permission_type="allow")
+```
 
 
 #### delete(pattern_str_or_str_list, block=True)
@@ -654,17 +684,23 @@ Delete those topics whose names match the bash-like pattern (or list of patterns
 
 ### Examples
 
-c.delete(“test”)
+Delete the topic “test” and block until it is deleted:
 
-    Delete the topic “test” and block until it is deleted.
+```default
+c.delete("test")
+```
 
-c.delete(“test”, block=False)
+Delete the topic “test” and *do not* block until it is deleted:
 
-    Delete the topic “test” and *do not* block until it is deleted.
+```default
+c.delete("test", block=False)
+```
 
-c.delete([“test\*”, “bla\*”])
+Delete all topics starting with “test” or “bla”:
 
-    Delete all topics starting with “test” or “bla”.
+```default
+c.delete(["test*", "bla*"])
+```
 
 
 #### delete_acl(restype=ResourceType.ANY, name=None, resource_pattern_type=ResourcePatternType.ANY, principal=None, host=None, operation=AclOperation.ANY, permission_type=AclPermissionType.ANY)
@@ -711,9 +747,11 @@ Delete ACLs from the cluster.
 
 ### Examples
 
-c.delete_acl(restype=”topic”, name=”test”, resource_pattern_type=”literal”, principal=”User:abc”, host=”\*”, operation=”read”, permission_type=”allow”):
+Delete the ACL which granted user “abc” read permission on topic “test”:
 
-    Delete the ACL which granted user “abc” read permission on topic “test”.
+```default
+c.delete_acl(restype="topic", name="test", resource_pattern_type="literal", principal="User:abc", host="*", operation="read", permission_type="allow")
+```
 
 
 #### describe(pattern_str_or_str_list)
@@ -741,13 +779,17 @@ Describe all topics matching the bash-like pattern (or list of patterns) pattern
 
 ### Examples
 
-c.describe(“test”)
+Describe the topic “test”:
 
-    Describe the topic “test”.
+```default
+c.describe("test")
+```
 
-c.describe([“test\*”, “bla\*”])
+Describe all topics whose names start with “test” or “bla”:
 
-    Describe all topics whose names start with “test” or “bla”.
+```default
+c.describe(["test*", "bla*"])
+```
 
 
 #### describe_groups(pattern_str_or_str_list)
@@ -775,13 +817,17 @@ Describe consumer groups on the cluster whose names match bash-like patterns.
 
 ### Examples
 
-c.describe_groups(“test\*”)
+Describe all those consumer groups of the cluster whose name starts with “test”:
 
-    Describe all those consumer groups of the cluster whose name starts with “test”.
+```default
+c.describe_groups("test*")
+```
 
-c.describe_groups([“test\*”, “bla\*”])
+Describe all those consumer groups of the cluster whose name starts with “test” or “bla”:
 
-    Describe all those consumer groups of the cluster whose name starts with “test” or “bla”.
+```default
+c.describe_groups(["test*", "bla*"])
+```
 
 
 #### diff(topic_str1, topic_str2, group1=None, group2=None, offsets1=None, offsets2=None, key_type1='bytes', value_type1='bytes', key_type2='bytes', value_type2='bytes', n=-1, batch_size=1)
@@ -843,9 +889,11 @@ Create a diff of (parts of) a topic (topic_str1) and another topic (topic_str2) 
 
 ### Examples
 
-diff(cluster1, “topic1”, cluster2, “topic2”)
+Create a diff of “topic1” and “topic2” with respect to their keys and values:
 
-    Create a diff of “topic1” and “topic2” with respect to their keys and values.
+```default
+diff(cluster1, "topic1", cluster2, "topic2")
+```
 
 
 #### diff_fun(topic_str1, topic_str2, diff_function, group1=None, group2=None, offsets1=None, offsets2=None, key_type1='bytes', value_type1='bytes', key_type2='bytes', value_type2='bytes', n=-1, batch_size=1)
@@ -910,9 +958,11 @@ Create a diff of (parts of) a topic (topic_str1) and another topic (topic_str2) 
 
 ### Examples
 
-c.diff_fun(“topic1”, “topic2”, lambda message_dict1, message_dict2: message_dict1[“value”] != message_dict2[“value”])
+Create a diff of “topic1” and “topic2” by comparing the message values:
 
-    Create a diff of “topic1” and “topic2” by comparing the message values.
+```default
+c.diff_fun("topic1", "topic2", lambda message_dict1, message_dict2: message_dict1["value"] != message_dict2["value"])
+```
 
 
 #### download(topic_str, path_str, flatmap_function=<function Cluster.<lambda>>, group=None, offsets=None, config={}, key_type='str', value_type='str', key_value_separator=None, message_separator='\\n', overwrite=True, n=-1, batch_size=1)
@@ -974,9 +1024,11 @@ Subscribe to and consume messages from a topic, optionally transform them in a f
 
 ### Examples
 
-c.download(“test”, “./test.txt”)
+Download the messages from topic “test” to the local file “./test.txt”:
 
-    Download the messages from topic “test” to the local file “./test.txt”.
+```default
+c.download("test", "./test.txt")
+```
 
 
 #### exists(topic_str)
@@ -1004,9 +1056,11 @@ Test whether a topic exists on the cluster.
 
 ### Examples
 
-c.exists(“test”)
+Test whether the topic “test” exists on the cluster:
 
-    Test whether the topic “test” exists on the cluster.
+```default
+c.exists("test")
+```
 
 
 #### flatmap(topic_str, flatmap_function, group=None, offsets=None, config={}, key_type='str', value_type='str', n=-1, batch_size=1)
@@ -1059,13 +1113,17 @@ Subscribe to and consume messages from a topic and transform them in a flatmap-l
 
 ### Examples
 
-c.flatmap(“test”, lambda x: [x])
+Consume topic “test” and return a list of all its messages as message dictionaries:
 
-    Consume topic “test” and return a list of all its messages as message dictionaries.
+```default
+c.flatmap("test", lambda x: [x])
+```
 
-c.flatmap(“test”, lambda x: [x, x, x])
+Consume topic “test” and return a list of all its messages repeated three times:
 
-    Consume topic “test” and return a list of all its messages repeated three times.
+```default
+c.flatmap("test", lambda x: [x, x, x])
+```
 
 
 #### flatmap_from_file(path_str, topic_str, flatmap_function, key_type='str', value_type='str', key_schema=None, value_schema=None, partition=-1, key_value_separator=None, message_separator='\\n', n=-1, bufsize=4096)
@@ -1121,17 +1179,23 @@ Read messages from a local file with path path_str and produce them to topic top
 
 ### Examples
 
-c.flatmap(“./snacks_value.txt”, “test”, flatmap_function=lambda x: [x])
+Read all messages from the local file “./snacks_value.txt” and produce them to the topic “test”:
 
-    Read all messages from the local file “./snacks_value.txt” and produce them to the topic “test”.
+```default
+c.flatmap("./snacks_value.txt", "test", flatmap_function=lambda x: [x])
+```
 
-c.flatmap(“./snacks_value.txt”, “test”, flatmap_function=lambda x: [x, x])
+Read all messages from the local file “./snacks_value.txt” and duplicate each of them in the topic “test”:
 
-    Read all messages from the local file “./snacks_value.txt” and duplicate each of them in the topic “test”.
+```default
+c.flatmap("./snacks_value.txt", "test", flatmap_function=lambda x: [x, x])
+```
 
-c.flatmap(“./snacks_value.txt”, “test”, flatmap_function=lambda x: [x], value_type=”protobuf”, value_schema=’message Snack { required string name = 1; required float calories = 2; optional string colour = 3; }’)
+Read all messages from the local file “./snacks_value.txt” and produce them to the topic “test” in Protobuf using schema ‘message Snack { required string name = 1; required float calories = 2; optional string colour = 3; }’:
 
-    Read all messages from the local file “./snacks_value.txt” and produce them to the topic “test” in Protobuf using schema ‘message Snack { required string name = 1; required float calories = 2; optional string colour = 3; }’.
+```default
+c.flatmap("./snacks_value.txt", "test", flatmap_function=lambda x: [x], value_type="protobuf", value_schema='message Snack { required string name = 1; required float calories = 2; optional string colour = 3; }')
+```
 
 
 #### flatmap_to_file(topic_str, path_str, flatmap_function, group=None, offsets=None, config={}, key_type='str', value_type='str', key_value_separator=None, message_separator='\\n', overwrite=True, n=-1, batch_size=1)
@@ -1193,13 +1257,17 @@ Subscribe to and consume messages from a topic, transform them in a flatmap-like
 
 ### Examples
 
-c.flatmap_to_file(“test”, “./test.txt”, lambda x: [x])
+Consume all the messages from topic “test” and write them to the local file “./test.txt”:
 
-    Consume all the messages from topic “test” and write them to the local file “./test.txt”.
+```default
+c.flatmap_to_file("test", "./test.txt", lambda x: [x])
+```
 
-c.flatmap_to_file(“test”, “./test3.txt”, lambda x: [x, x, x])
+Consume all the messages from topic “test” and write three messages for each of them to the local file “./test3.txt”:
 
-    Consume all the messages from topic “test” and write three messages for each of them to the local file “./test3.txt”.
+```default
+c.flatmap_to_file("test", "./test3.txt", lambda x: [x, x, x])
+```
 
 
 #### flush()
@@ -1261,13 +1329,17 @@ Subscribe to and consume messages from a topic and transform them in a foldl-lik
 
 ### Examples
 
-c.foldl(“test”, lambda acc, message_dict: acc + [message_dict], [])
+Consume topic “test” and return a list of all its messages as message dictionaries:
 
-    Consume topic “test” and return a list of all its messages as message dictionaries.
+```default
+c.foldl("test", lambda acc, message_dict: acc + [message_dict], [])
+```
 
-c.foldl(“test”, lambda acc, x: acc + x[“value”][“calories”], 0, value_type=”json”)
+Consume topic “test” and sum up the “calories” value of the individual messages:
 
-    Consume topic “test” and sum up the “calories” value of the individual messages.
+```default
+c.foldl("test", lambda acc, x: acc + x["value"]["calories"], 0, value_type="json")
+```
 
 
 #### foreach(topic_str, foreach_function, group=None, offsets=None, config={}, key_type='str', value_type='str', n=-1, batch_size=1)
@@ -1320,12 +1392,12 @@ Subscribe to and consume messages from a topic and call an operation on each of 
 
 ### Examples
 
-c.foreach(“test”, print)
+Consume topic “test” and print out all the consumed messages to standard out/the console:
 
-    Consume topic “test” and print out all the consumed messages to standard out/the console.
+```default
+c.foreach("test", print)
+```
 
-
-#### get_config_dict(resourceType, resource_str)
 
 #### grep(topic_str, re_pattern_str, group=None, offsets=None, config={}, key_type='str', value_type='str', n=-1, batch_size=1)
 Find matching messages in a topic (regular expression matching).
@@ -1377,9 +1449,11 @@ Find matching messages in a topic using regular expression matching. Optionally 
 
 ### Examples
 
-c.grep(“test”, “.\*name.\*cake”)
+Consume topic “test” and return all messages whose value matches the regular expression “.\*name.\*cake”:
 
-    Consume topic “test” and return all messages whose value matches the regular expression “.\*name.\*cake”.
+```default
+c.grep("test", ".*name.*cake")
+```
 
 
 #### grep_fun(topic_str, match_function, group=None, offsets=None, config={}, key_type='str', value_type='str', n=-1, batch_size=1)
@@ -1432,9 +1506,11 @@ Find matching messages in a topic using a custom match function match_function. 
 
 ### Examples
 
-c.grep_fun(“test”, lambda x: x[“value”][“name”] == “cake”, value_type=”json”)
+Consume topic “test” and return all messages whose value is a JSON with the “name” attribute set to “cake”:
 
-    Consume topic “test” and return all messages whose value is a JSON with the “name” attribute set to “cake”.
+```default
+c.grep_fun("test", lambda x: x["value"]["name"] == "cake", value_type="json")
+```
 
 
 #### groups(pattern=None)
@@ -1462,17 +1538,23 @@ List consumer groups on the cluster. Optionally return only those consumer group
 
 ### Examples
 
+List all consumer groups of the cluster:
+
+```default
 c.groups()
+```
 
-    List all consumer groups of the cluster.
+List all those consumer groups of the cluster whose name starts with “test”:
 
-c.groups(“test\*”)
+```default
+c.groups("test*")
+```
 
-    List all those consumer groups of the cluster whose name starts with “test”.
+List all those consumer groups of the cluster whose name starts with “test” or “bla”:
 
-c.groups([“test\*”, “bla\*”])
-
-    List all those consumer groups of the cluster whose name starts with “test” or “bla”.
+```default
+c.groups(["test*", "bla*"])
+```
 
 
 #### l(pattern=None, size=True, partitions=False)
@@ -1507,29 +1589,41 @@ List topics on the cluster. Optionally return only those topics whose names matc
 
 ### Examples
 
+List all the topics of the cluster and their total sizes:
+
+```default
 c.l()
+```
 
-    List all the topics of the cluster and their total sizes.
+List all the topics of the cluster:
 
+```default
 c.l(size=False)
+```
 
-    List all the topics of the cluster.
+List all the topics of the cluster, their total sizes and the sizes of their individual partitions:
 
+```default
 c.l(partitions=True)
+```
 
-    List all the topics of the cluster, their total sizes and the sizes of their individual partitions.
+List all the topics of the cluster and the sizes of their individual partitions:
 
+```default
 c.l(size=False, partitions=True)
+```
 
-    List all the topics of the cluster and the sizes of their individual partitions.
+List all those topics of the cluster whose name starts with “test” and their total sizes:
 
-c.l(“test\*”)
+```default
+c.l("test*")
+```
 
-    List all those topics of the cluster whose name starts with “test” and their total sizes.
+List all those topics of the cluster whose name starts with “test” or “bla”:
 
-c.l([“test\*”, “bla\*”])
-
-    List all those topics of the cluster whose name starts with “test” or “bla”.
+```default
+c.l(["test*", "bla*"])
+```
 
 
 #### ll(pattern=None, size=True, partitions=False)
@@ -1564,29 +1658,41 @@ List topics on the cluster. Optionally return only those topics whose names matc
 
 ### Examples
 
+List all the topics of the cluster and their total sizes:
+
+```default
 c.ll()
+```
 
-    List all the topics of the cluster and their total sizes.
+List all the topics of the cluster:
 
+```default
 c.ll(size=False)
+```
 
-    List all the topics of the cluster.
+List all the topics of the cluster, their total sizes and the sizes of their individual partitions:
 
+```default
 c.ll(partitions=True)
+```
 
-    List all the topics of the cluster, their total sizes and the sizes of their individual partitions.
+List all the topics of the cluster and the sizes of their individual partitions:
 
+```default
 c.ll(size=False, partitions=True)
+```
 
-    List all the topics of the cluster and the sizes of their individual partitions.
+List all those topics of the cluster whose name starts with “test” and their total sizes:
 
-c.ll(“test\*”)
+```default
+c.ll("test*")
+```
 
-    List all those topics of the cluster whose name starts with “test” and their total sizes.
+List all those topics of the cluster whose name starts with “test” or “bla” and their total sizes:
 
-c.ll([“test\*”, “bla\*”])
-
-    List all those topics of the cluster whose name starts with “test” or “bla” and their total sizes.
+```default
+c.ll(["test*", "bla*"])
+```
 
 
 #### ls(pattern=None, size=False, partitions=False)
@@ -1621,29 +1727,41 @@ List topics on the cluster. Optionally return only those topics whose names matc
 
 ### Examples
 
+List all topics of the cluster:
+
+```default
 c.ls()
+```
 
-    List all topics of the cluster.
+List all the topics of the cluster and their total sizes:
 
+```default
 c.ls(size=True)
+```
 
-    List all the topics of the cluster and their total sizes.
+List all the topics of the cluster and the sizes of their individual partitions:
 
+```default
 c.ls(partitions=True)
+```
 
-    List all the topics of the cluster and the sizes of their individual partitions.
+List all the topics of the cluster, their total sizes and the sizes of their individual partitions:
 
+```default
 c.ls(size=True, partitions=True)
+```
 
-    List all the topics of the cluster, their total sizes and the sizes of their individual partitions.
+List all those topics of the cluster whose name starts with “test”:
 
-c.ls(“test\*”)
+```default
+c.ls("test*")
+```
 
-    List all those topics of the cluster whose name starts with “test”.
+List all those topics of the cluster whose name starts with “test” or “bla”:
 
-c.ls([“test\*”, “bla\*”])
-
-    List all those topics of the cluster whose name starts with “test” or “bla”.
+```default
+c.ls(["test*", "bla*"])
+```
 
 
 #### map(topic_str, map_function, group=None, offsets=None, config={}, key_type='str', value_type='str', n=-1, batch_size=1)
@@ -1696,16 +1814,18 @@ Subscribe to and consume messages from a topic and transform them in a map-like 
 
 ### Examples
 
-c.map(“test”, lambda x: x)
+Consume topic “test” and return a list of all its messages as message dictionaries:
 
-    Consume topic “test” and return a list of all its messages as message dictionaries.
+```default
+c.map("test", lambda x: x)
+```
 
-c.map(“test”, lambda x: x[“value”].update({“colour”: “yellow”}) or x, value_type=”json”)
+Consume topic “test” and return a list of all its messages where the “colour” is set to “yellow”:
 
-> Consume topic “test” and return a list of all its messages where the “colour” is set to “yellow”.
+```default
+c.map("test", lambda x: x["value"].update({"colour": "yellow"}) or x, value_type="json")
+```
 
-
-#### message_to_message_dict(message, key_type='str', value_type='str')
 
 #### offsets(timeout=-1.0)
 Get committed offsets of the subscribed topic.
@@ -1732,13 +1852,17 @@ Get committed offsets of the subscribed topic.
 
 ### Examples
 
+Get the offsets of the subscribed topic:
+
+```default
 c.offsets()
+```
 
-    Get the offsets of the subscribed topic.
+Get the offsets of the subscribed topic, using a timeout of 1 second:
 
+```default
 c.offsets(timeout=1.0)
-
-    Get the offsets of the subscribed topic, using a timeout of 1 second.
+```
 
 
 #### offsets_for_times(pattern_str_or_str_list, partition_int_timestamp_int_dict, timeout=-1.0)
@@ -1773,13 +1897,17 @@ Look up those offsets in the individual partitions of all topics matching the ba
 
 ### Examples
 
-c.offsets_for_times(“test”, {0: 1664644769886})
+Look up the offset of the first message in the first partition of the topic “test” which has a timestamp greater or equal to 1664644769886 milliseconds from epoch. If the provided timestamp exceeds that of the last message in the partition, a value of -1 will be returned:
 
-    Look up the offset of the first message in the first partition of the topic “test” which has a timestamp greater or equal to 1664644769886 milliseconds from epoch. If the provided timestamp exceeds that of the last message in the partition, a value of -1 will be returned.
+```default
+c.offsets_for_times("test", {0: 1664644769886})
+```
 
-c.offsets_for_times(“te\*st”, {0: 1664644769886, 1: 1664645155987}, timeout=1.0)
+Look up the offset of the first message in the first partition of those topics starting with “te” and ending with “st” with a timestamp greater or equal to 1664644769886 milliseconds from epoch; and look up the offset of the first message in the second partition of those topics with a timestamp greater or equal to 1664645155987 milliseconds from epoch. Time out the internally used offsets_for_times() calls after one second:
 
-    Look up the offset of the first message in the first partition of those topics starting with “te” and ending with “st” with a timestamp greater or equal to 1664644769886 milliseconds from epoch; and look up the offset of the first message in the second partition of those topics with a timestamp greater or equal to 1664645155987 milliseconds from epoch. Time out the internally used offsets_for_times() calls after one second.
+```default
+c.offsets_for_times("te*st", {0: 1664644769886, 1: 1664645155987}, timeout=1.0)
+```
 
 
 #### partitions(pattern_str_or_str_list)
@@ -1807,16 +1935,18 @@ Get the number of partitions of all topics matching the bash-like pattern (or li
 
 ### Examples
 
-c.partitions(“test”)
+Get the number of partitions of the topic “test”:
 
-    Get the number of partitions of the topic “test”.
+```default
+c.partitions("test")
+```
 
-c.partitions([“test\*”, “bla\*”])
+Get the numbers of partitions of all topics whose names start with “test” or “bla”:
 
-    Get the numbers of partitions of all topics whose names start with “test” or “bla”.
+```default
+c.partitions(["test*", "bla*"])
+```
 
-
-#### post_schema(schema_str, schema_type_str, topic_str, key_bool)
 
 #### produce(topic_str, value, key=None, key_type='str', value_type='str', key_schema=None, value_schema=None, partition=-1, timestamp=0, headers=None)
 Produce a message to a topic.
@@ -1871,41 +2001,59 @@ Produce a message to a topic. The key and the value of the message can be either
 
 ### Examples
 
-c.produce(“test”, “value 1”)
+Produce a message with value = “value 1” and key = None to the topic “test”:
 
-    Produce a message with value = “value 1” and key = None to the topic “test”.
+```default
+c.produce("test", "value 1")
+```
 
-c.produce(“test”, “value 1”, key=”key 1”)
+Produce a message with value = “value 1” and key = “key 1” to the topic “test”:
 
-    Produce a message with value = “value 1” and key = “key 1” to the topic “test”.
+```default
+c.produce("test", "value 1", key="key 1")
+```
 
-c.produce(“test”, “value 1”, key=”key 1”, partition=0)
+Produce a message with value = “value 1” and key = “key 1” to partition 0 of the topic “test”:
 
-    Produce a message with value = “value 1” and key = “key 1” to partition 0 of the topic “test”.
+```default
+c.produce("test", "value 1", key="key 1", partition=0)
+```
 
-c.produce(“test”, “value 1”, key=”key 1”, timestamp=1664902656169)
+Produce a message with value = “value 1” and key = “key 1” to the topic “test”, set the timestamp of this message to 1664902656169:
 
-    Produce a message with value = “value 1” and key = “key 1” to the topic “test”, set the timestamp of this message to 1664902656169.
+```default
+c.produce("test", "value 1", key="key 1", timestamp=1664902656169)
+```
 
-c.produce(“test”, “value 1”, headers={“bla”: “blups”})
+Produce a message with value = “value 1” and key = None to the topic “test”, set the headers of this message to {“bla”: “blups”}:
 
-    Produce a message with value = “value 1” and key = None to the topic “test”, set the headers of this message to {“bla”: “blups”}.
+```default
+c.produce("test", "value 1", headers={"bla": "blups"})
+```
 
-c.produce(“test”, {‘name’: ‘cookie’, ‘calories’: 500.0, ‘colour’: ‘brown’}, value_type=”json”)
+Produce a message with value = {‘name’: ‘cookie’, ‘calories’: 500.0, ‘colour’: ‘brown’} and key = None to the topic “test”, using JSON without schema:
 
-    Produce a message with value = {‘name’: ‘cookie’, ‘calories’: 500.0, ‘colour’: ‘brown’} and key = None to the topic “test”, using JSON without schema.
+```default
+c.produce("test", {'name': 'cookie', 'calories': 500.0, 'colour': 'brown'}, value_type="json")
+```
 
-c.produce(“test”, {‘name’: ‘cookie’, ‘calories’: 500.0, ‘colour’: ‘brown’}, value_type=”avro”, value_schema=’{ “type”: “record”, “name”: “myrecord”, “fields”: [{“name”: “name”,  “type”: “string” }, {“name”: “calories”, “type”: “float” }, {“name”: “colour”, “type”: “string” }] }’)
+Produce a message with value = {‘name’: ‘cookie’, ‘calories’: 500.0, ‘colour’: ‘brown’} and key = None to the topic “test”, using Avro with the schema ‘{ “type”: “record”, “name”: “myrecord”, “fields”: [{“name”: “name”,  “type”: “string” }, {“name”: “calories”, “type”: “float” }, {“name”: “colour”, “type”: “string” }] }’:
 
-    Produce a message with value = {‘name’: ‘cookie’, ‘calories’: 500.0, ‘colour’: ‘brown’} and key = None to the topic “test”, using Avro with the schema ‘{ “type”: “record”, “name”: “myrecord”, “fields”: [{“name”: “name”,  “type”: “string” }, {“name”: “calories”, “type”: “float” }, {“name”: “colour”, “type”: “string” }] }’.
+```default
+c.produce("test", {'name': 'cookie', 'calories': 500.0, 'colour': 'brown'}, value_type="avro", value_schema='{ "type": "record", "name": "myrecord", "fields": [{"name": "name",  "type": "string" }, {"name": "calories", "type": "float" }, {"name": "colour", "type": "string" }] }')
+```
 
-c.produce(“test”, {‘name’: ‘cookie’, ‘calories’: 500.0, ‘colour’: ‘brown’}, value_type=”protobuf”, value_schema=’message Snack { required string name = 1; required float calories = 2; optional string colour = 3; }’)
+Produce a message with value = {‘name’: ‘cookie’, ‘calories’: 500.0, ‘colour’: ‘brown’} and key = None to the topic “test”, using Protobuf with the schema ‘message Snack { required string name = 1; required float calories = 2; optional string colour = 3; }’:
 
-    Produce a message with value = {‘name’: ‘cookie’, ‘calories’: 500.0, ‘colour’: ‘brown’} and key = None to the topic “test”, using Protobuf with the schema ‘message Snack { required string name = 1; required float calories = 2; optional string colour = 3; }’.
+```default
+c.produce("test", {'name': 'cookie', 'calories': 500.0, 'colour': 'brown'}, value_type="protobuf", value_schema='message Snack { required string name = 1; required float calories = 2; optional string colour = 3; }')
+```
 
-c.produce(“test”, {‘name’: ‘cookie’, ‘calories’: 500.0, ‘colour’: ‘brown’}, value_type=”jsonschema”, value_schema=’{ “title”: “abc”, “definitions”
+Produce a message with value = {‘name’: ‘cookie’, ‘calories’: 500.0, ‘colour’: ‘brown’} and key = None to the topic “test”, using JSONSchema with the schema ‘{ “title”: “abc”, “definitions” : { “record:myrecord” : { “type” : “object”, “required” : [ “name”, “calories” ], “additionalProperties” : false, “properties” : { “name” : {“type” : “string”}, “calories” : {“type” : “number”}, “colour” : {“type” : “string”} } } }, “$ref” : “#/definitions/record:myrecord” }’:
 
-    Produce a message with value = {‘name’: ‘cookie’, ‘calories’: 500.0, ‘colour’: ‘brown’} and key = None to the topic “test”, using JSONSchema with the schema ‘{ “title”: “abc”, “definitions” : { “record:myrecord” : { “type” : “object”, “required” : [ “name”, “calories” ], “additionalProperties” : false, “properties” : { “name” : {“type” : “string”}, “calories” : {“type” : “number”}, “colour” : {“type” : “string”} } } }, “$ref” : “#/definitions/record:myrecord” }’.
+```default
+c.produce("test", {'name': 'cookie', 'calories': 500.0, 'colour': 'brown'}, value_type="jsonschema", value_schema='{ "title": "abc", "definitions" : { "record:myrecord" : { "type" : "object", "required" : [ "name", "calories" ], "additionalProperties" : false, "properties" : { "name" : {"type" : "string"}, "calories" : {"type" : "number"}, "colour" : {"type" : "string"} } } }, "$ref" : "#/definitions/record:myrecord" }')
+```
 
 
 #### recreate(topic_str)
@@ -1933,9 +2081,11 @@ Recreate a topic by 1) replicating it to a temporary topic, 2) deleting the orig
 
 ### Examples
 
-c.recreate(“test”)
+Recreate the topic “test”:
 
-    Recreate the topic “test”.
+```default
+c.recreate("test")
+```
 
 
 #### rm(pattern_str_or_str_list, block=True)
@@ -1967,28 +2117,24 @@ Delete those topics whose names match the bash-like pattern (or list of patterns
 
 ### Examples
 
-c.rm(“test”)
+Delete the topic “test” and block until it is deleted:
 
-    Delete the topic “test” and block until it is deleted.
+```default
+c.rm("test")
+```
 
-c.rm(“test”, block=False)
+Delete the topic “test” and *do not* block until it is deleted:
 
-    Delete the topic “test” and *do not* block until it is deleted.
+```default
+c.rm("test", block=False)
+```
 
-c.rm([“test\*”, “bla\*”])
+Delete all topics starting with “test” or “bla”:
 
-    Delete all topics starting with “test” or “bla”.
+```default
+c.rm(["test*", "bla*"])
+```
 
-
-#### schema_id_int_and_schema_str_to_generalizedProtocolMessageType(schema_id_int, schema_str)
-
-#### schema_id_int_to_avro_schema_str(schema_id_int)
-
-#### schema_id_int_to_generalizedProtocolMessageType_protobuf_schema_str_tuple(schema_id_int)
-
-#### schema_id_int_to_jsonschema_str(schema_id_int)
-
-#### schema_str_to_generalizedProtocolMessageType(schema_str, topic_str, key_bool)
 
 #### set_broker_config(pattern_int_or_str_or_int_or_str_list, key_str, value_str, test=False)
 Set a configuration item of brokers.
@@ -2025,17 +2171,23 @@ Set the configuration item with key key_str and value value_str of those brokers
 
 ### Examples
 
-c.set_broker_config(0, “background.threads”, “5”)
+Sets the configuration key “background.threads” to configuration value “5” for broker 0:
 
-    Sets the configuration key “background.threads” to configuration value “5” for broker 0.
+```default
+c.set_broker_config(0, "background.threads", "5")
+```
 
-c.set_broker_config(0, “background.threads”, “5”, test=True)
+Verifies if the configuration key “background.threads” can be set to configuration value “5” for broker 0, but does not change the configuration:
 
-    Verifies if the configuration key “background.threads” can be set to configuration value “5” for broker 0, but does not change the configuration.
+```default
+c.set_broker_config(0, "background.threads", "5", test=True)
+```
 
-c.set_broker_config(“[0-2]”, “background.threads”, “5”)
+Sets the configuration key “background.threads” to configuration value “5” for brokers 0, 1 and 2:
 
-    Sets the configuration key “background.threads” to configuration value “5” for brokers 0, 1 and 2.
+```default
+c.set_broker_config("[0-2]", "background.threads", "5")
+```
 
 
 #### set_config(pattern_str_or_str_list, key_str, value_str, test=False)
@@ -2067,17 +2219,23 @@ Set the configuration item with key key_str and value value_str of those topics 
 
 ### Examples
 
-c.set_config(“test”, “retention.ms”, “4711”)
+Sets the configuration key “retention.ms” to configuration value “4711” for topic “test”:
 
-    Sets the configuration key “retention.ms” to configuration value “4711” for topic “test”.
+```default
+c.set_config("test", "retention.ms", "4711")
+```
 
-c.set_config(“test”, “retention.ms”, “4711”, test=True)
+Verifies if the configuration key “retention.ms” can be set to configuration value “4711” for topic “test”, but does not change the configuration:
 
-    Verifies if the configuration key “retention.ms” can be set to configuration value “4711” for topic “test”, but does not change the configuration.
+```default
+c.set_config("test", "retention.ms", "4711", test=True)
+```
 
-c.set_config([“test\*”, “bla\*”], “42”)
+Sets the configuration key “retention.ms” to configuration value “42” for all topics whose names start with “test” or “bla”:
 
-    Sets the configuration key “retention.ms” to configuration value “42” for all topics whose names start with “test” or “bla”.
+```default
+c.set_config(["test*", "bla*"], "42")
+```
 
 
 #### set_config_dict(resourceType, resource_str, new_config_dict, test=False)
@@ -2114,13 +2272,17 @@ Set the number of partitions of all topics matching the bash-like pattern (or li
 
 ### Examples
 
-c.set_partitions(“test”, 2)
+Set the number of partitions for the topic “test” to 2:
 
-    Set the number of partitions for the topic “test” to 2.
+```default
+c.set_partitions("test", 2)
+```
 
-c.set_partitions([“test\*”, “bla\*”], 4)
+Set the numbers of partitions of all topics whose names start with “test” or “bla” to 4:
 
-    Set the numbers of partitions of all topics whose names start with “test” or “bla” to 4.
+```default
+c.set_partitions(["test*", "bla*"], 4)
+```
 
 
 #### set_verbose(verbose_int)
@@ -2162,13 +2324,17 @@ List topics on the cluster whose names match the pattern pattern_str, their tota
 
 ### Examples
 
-c.size(”\*”)
+List all topics of the cluster, their total sizes and the sizes of their partitions:
 
-    List all topics of the cluster, their total sizes and the sizes of their partitions.
+```default
+c.size("\*")
+```
 
-c.size([”\*test”, “bla”], timeout=1.0)
+List those topics whose name end with “test” or whose name is “bla”, their total sizes and the sizes of their partitions and time out the internally used get_watermark_offsets() method after one second:
 
-    List those topics whose name end with “test” or whose name is “bla”, their total sizes and the sizes of their partitions and time out the internally used get_watermark_offsets() method after one second.
+```default
+c.size(["\*test", "bla"], timeout=1.0)
+```
 
 
 #### subscribe(topic_str, group=None, offsets=None, config={}, key_type='str', value_type='str')
@@ -2206,25 +2372,35 @@ Subscribe to a topic, optionally explicitly set the consumer group, initial offs
 
 ### Examples
 
-c.subscribe(“test”)
+Subscribe to the topic “test” using an automatically created new unique consumer group:
 
-    Subscribe to the topic “test” using an automatically created new unique consumer group.
+```default
+c.subscribe("test")
+```
 
-c.subscribe(“test”, group=”test_group”)
+Susbcribe to the topic “test” using the consumer group name “test_group”:
 
-    Susbcribe to the topic “test” using the consumer group name “test_group”.
+```default
+c.subscribe("test", group="test_group")
+```
 
-c.subscribe(“test”, offsets={0: 42, 1: 4711})
+Subscribe to the topic “test” using an automatically created new unique consumer group. Set the initial offset for the first partition to 42, and for the second partition to 4711:
 
-    Subscribe to the topic “test” using an automatically created new unique consumer group. Set the initial offset for the first partition to 42, and for the second partition to 4711.
+```default
+c.subscribe("test", offsets={0: 42, 1: 4711})
+```
 
-c.subscribe(“test”, config={“enable.auto.commit”: “False”})
+Subscribe to the topic “test” using an automatically created new unique consumer group. Set the configuration key “enable.auto.commit” to “False”:
 
-    Subscribe to the topic “test” using an automatically created new unique consumer group. Set the configuration key “enable.auto.commit” to “False”.
+```default
+c.subscribe("test", config={"enable.auto.commit": "False"})
+```
 
-c.subscribe(“test”, key_type=”avro”, value_type=”avro”)
+Subscribe to the topic “test” using an automatically created new unique consumer group. Consume with key and value type “avro”:
 
-    Subscribe to the topic “test” using an automatically created new unique consumer group. Consume with key and value type “avro”.
+```default
+c.subscribe("test", key_type="avro", value_type="avro")
+```
 
 
 #### topics(pattern=None, size=False, partitions=False)
@@ -2259,29 +2435,41 @@ List topics on the cluster. Optionally return only those topics whose names matc
 
 ### Examples
 
+List all topics of the cluster:
+
+```default
 c.topics()
+```
 
-    List all topics of the cluster.
+List all the topics of the cluster and their total sizes:
 
+```default
 c.topics(size=True)
+```
 
-    List all the topics of the cluster and their total sizes.
+List all the topics of the cluster and the sizes of their individual partitions:
 
+```default
 c.topics(partitions=True)
+```
 
-    List all the topics of the cluster and the sizes of their individual partitions.
+List all the topics of the cluster, their total sizes and the sizes of their individual partitions:
 
+```default
 c.topics(size=True, partitions=True)
+```
 
-    List all the topics of the cluster, their total sizes and the sizes of their individual partitions.
+List all those topics of the cluster whose name starts with “test”:
 
-c.topics(“test\*”)
+```default
+c.topics("test*")
+```
 
-    List all those topics of the cluster whose name starts with “test”.
+List all those topics of the cluster whose name starts with “test” or “bla”:
 
-c.topics([“test\*”, “bla\*”])
-
-    List all those topics of the cluster whose name starts with “test” or “bla”.
+```default
+c.topics(["test*", "bla*"])
+```
 
 
 #### touch(topic_str, partitions=1, config={}, block=True)
@@ -2319,21 +2507,29 @@ Create a topic (shell synonym for `Cluster.create()`)
 
 ### Examples
 
-c.touch(“test”)
+Create the topic “test” with one partition, and block until it is created:
 
-    Create the topic “test” with one partition, and block until it is created.
+```default
+c.touch("test")
+```
 
-c.touch(“test”, partitions=2)
+Create the topic “test” with two partitions, and block until it is created:
 
-    Create the topic “test” with two partitions, and block until it is created.
+```default
+c.touch("test", partitions=2)
+```
 
-c.touch(“test”, config={“retention.ms”: “4711”})
+Create the topic “test” with one partition, a retention time of 4711ms and block until it is created:
 
-    Create the topic “test” with one partition, a retention time of 4711ms and block until it is created.
+```default
+c.touch("test", config={"retention.ms": "4711"})
+```
 
-c.touch(“test”, block=False)
+Create the topic “test” with one partition, and *do not* block until it is created:
 
-    Create the topic “test” with one partition, and *do not* block until it is created.
+```default
+c.touch("test", block=False)
+```
 
 
 #### unsubscribe()
@@ -2401,17 +2597,23 @@ Read messages from a local file with path path_str and produce them to topic top
 
 ### Examples
 
-c.upload(“./snacks_value.txt”, “test”)
+Read all messages from the local file “./snacks_value.txt” and produce them to the topic “test”:
 
-    Read all messages from the local file “./snacks_value.txt” and produce them to the topic “test”.
+```default
+c.upload("./snacks_value.txt", "test")
+```
 
-c.upload(“./snacks_value.txt”, “test”, flatmap_function=lambda x: [x, x])
+Read all messages from the local file “./snacks_value.txt” and duplicate each of them in the topic “test”:
 
-    Read all messages from the local file “./snacks_value.txt” and duplicate each of them in the topic “test”.
+```default
+c.upload("./snacks_value.txt", "test", flatmap_function=lambda x: [x, x])
+```
 
-c.upload(“./snacks_value.txt”, “test”, value_type=”protobuf”, value_schema=’message Snack { required string name = 1; required float calories = 2; optional string colour = 3; }’)
+Read all messages from the local file “./snacks_value.txt” and produce them to the topic “test” in Protobuf using schema ‘message Snack { required string name = 1; required float calories = 2; optional string colour = 3; }’:
 
-    Read all messages from the local file “./snacks_value.txt” and produce them to the topic “test” in Protobuf using schema ‘message Snack { required string name = 1; required float calories = 2; optional string colour = 3; }’.
+```default
+c.upload("./snacks_value.txt", "test", value_type="protobuf", value_schema='message Snack { required string name = 1; required float calories = 2; optional string colour = 3; }')
+```
 
 
 #### verbose()
@@ -2459,13 +2661,17 @@ Returns a dictionary of the topics whose names match the bash-like pattern patte
 
 ### Examples
 
-c.watermarks(“test\*”)
+Return the watermarks for all topics whose name starts with “test” and their partitions:
 
-    Return the watermarks for all topics whose name starts with “test” and their partitions.
+```default
+c.watermarks("test*")
+```
 
-c.watermarks([“test”, “bla”], timeout=1.0)
+Return the watermarks for the topics “test” and “bla” and time out the internally used get_watermark_offsets() method after one second:
 
-    Return the watermarks for the topics “test” and “bla” and time out the internally used get_watermark_offsets() method after one second.
+```default
+c.watermarks(["test", "bla"], timeout=1.0)
+```
 
 
 #### wc(topic_str, group=None, offsets=None, config={}, key_type='str', value_type='str', n=-1, batch_size=1)
@@ -2515,9 +2721,11 @@ Count the number of messages, words, and bytes in a topic. Optionally explicitly
 
 ### Examples
 
-c.wc(“test”)
+Consume topic “test” and return the number of messages, words and bytes:
 
-    Consume topic “test” and return the number of messages, words and bytes.
+```default
+c.wc("test")
+```
 
 
 #### zip_foldl(topic_str1, topic_str2, zip_foldl_function, initial_acc, group1=None, group2=None, offsets1=None, offsets2=None, config1={}, config2={}, key_type1='bytes', value_type1='bytes', key_type2='bytes', value_type2='bytes', n=-1, batch_size=1)
@@ -2591,16 +2799,12 @@ Consume (parts of) a topic (topic_str1) and another topic (topic_str2) and combi
 
 ### Examples
 
-c.zip_foldl(“topic1”, “topic2”, lambda acc, message_dict1, message_dict2: acc + [(message_dict1, message_dict2)], [])
+Consume “topic1” and “topic2” and return a list of pairs of message dictionaries from topic 1 and topic 2, respectively:
 
-    Consume “topic1” and “topic2” and return a list of pairs of message dictionaries from topic 1 and topic 2, respectively.
+```default
+c.zip_foldl("topic1", "topic2", lambda acc, message_dict1, message_dict2: acc + [(message_dict1, message_dict2)], [])
+```
 
-
-### kashpy.kash.aclBinding_to_dict(aclBinding)
-
-### kashpy.kash.aclOperation_to_str(aclOperation)
-
-### kashpy.kash.aclPermissionType_to_str(aclPermissionType)
 
 ### kashpy.kash.cp(source_cluster, source_topic_str, target_cluster, target_topic_str, flatmap_function=<function <lambda>>, group=None, offsets=None, config={}, source_key_type='bytes', source_value_type='bytes', target_key_type=None, target_value_type=None, target_key_schema=None, target_value_schema=None, keep_timestamps=True, n=-1, batch_size=1)
 Replicate a topic and optionally transform the messages in a flatmap-like manner.
@@ -2676,24 +2880,30 @@ Replicate (parts of) a topic (source_topic_str) on one cluster (source_cluster) 
 
 ### Examples
 
-cp(cluster1, “topic1”, cluster2, “topic2”)
+Replicate “topic1” on cluster1 to “topic2” on cluster2:
 
-    Replicate “topic1” on cluster1 to “topic2” on cluster2.
+```default
+cp(cluster1, "topic1", cluster2, "topic2")
+```
 
-cp(cluster1, “topic1”, cluster2, “topic2”, flatmap_function=lambda message_dict: [message_dict, message_dict])
+Replicate “topic1” on cluster1 to “topic2” on cluster2, while duplicating each message from topic1 in topic2:
 
-    Replicate “topic1” on cluster1 to “topic2” on cluster2, while duplicating each message from topic1 in topic2.
+```default
+cp(cluster1, "topic1", cluster2, "topic2", flatmap_function=lambda message_dict: [message_dict, message_dict])
+```
 
-cp(cluster1, “topic1”, cluster2, “topic2”, source_value_type=”avro”, target_value_type=”protobuf”, target_value_schema=”message Snack { required string name = 1; required float calories = 2; optional string colour = 3; }”, n=100)
+Replicate the first 100 messages from “topic1” on cluster1 to “topic2” on cluster2, changing the value schema from avro to protobuf:
 
-    Replicate the first 100 messages from “topic1” on cluster1 to “topic2” on cluster2, changing the value schema from avro to protobuf.
+```default
+cp(cluster1, "topic1", cluster2, "topic2", source_value_type="avro", target_value_type="protobuf", target_value_schema="message Snack { required string name = 1; required float calories = 2; optional string colour = 3; }", n=100)
+```
 
-cp(cluster1, “topic1”, cluster2, “topic2”, offsets={0:100}, keep_timestamps=False, n=500)
+Replicate the messages 100-600 from “topic1” on cluster1 to “topic2” on cluster2. Create new timestamps for the messages produced to the target topic:
 
-    Replicate the messages 100-600 from “topic1” on cluster1 to “topic2” on cluster2. Create new timestamps for the messages produced to the target topic.
+```default
+cp(cluster1, "topic1", cluster2, "topic2", offsets={0:100}, keep_timestamps=False, n=500)
+```
 
-
-### kashpy.kash.create_unique_group_id()
 
 ### kashpy.kash.diff(cluster1, topic_str1, cluster2, topic_str2, group1=None, group2=None, offsets1=None, offsets2=None, key_type1='bytes', value_type1='bytes', key_type2='bytes', value_type2='bytes', n=-1, batch_size=1)
 Create a diff of topic 1 on cluster 1 and topic 2 on cluster 2 using a diff function.
@@ -2760,9 +2970,11 @@ Create a diff of (parts of) a topic (topic_str1) on one cluster (cluster1) and a
 
 ### Examples
 
-diff(cluster1, “topic1”, cluster2, “topic2”)
+Create a diff of “topic1” on cluster1 and “topic2” on cluster2 with respect to their keys and values:
 
-    Create a diff of “topic1” on cluster1 and “topic2” on cluster2 with respect to their keys and values.
+```default
+diff(cluster1, "topic1", cluster2, "topic2")
+```
 
 
 ### kashpy.kash.diff_fun(cluster1, topic_str1, cluster2, topic_str2, diff_function, group1=None, group2=None, offsets1=None, offsets2=None, key_type1='bytes', value_type1='bytes', key_type2='bytes', value_type2='bytes', n=-1, batch_size=1)
@@ -2833,9 +3045,11 @@ Create a diff of (parts of) a topic (topic_str1) on one cluster (cluster1) and a
 
 ### Examples
 
-diff_fun(cluster1, “topic1”, cluster2, “topic2”, lambda message_dict1, message_dict2: message_dict1[“value”] != message_dict2[“value”])
+Create a diff of “topic1” on cluster1 and “topic2” on cluster2 by comparing the message values:
 
-    Create a diff of “topic1” on cluster1 and “topic2” on cluster2 by comparing the message values.
+```default
+diff_fun(cluster1, "topic1", cluster2, "topic2", lambda message_dict1, message_dict2: message_dict1["value"] != message_dict2["value"])
+```
 
 
 ### kashpy.kash.flatmap(source_cluster, source_topic_str, target_cluster, target_topic_str, flatmap_function, group=None, offsets=None, config={}, source_key_type='bytes', source_value_type='bytes', target_key_type=None, target_value_type=None, target_key_schema=None, target_value_schema=None, keep_timestamps=True, n=-1, batch_size=1)
@@ -2914,44 +3128,28 @@ Replicate (parts of) a topic (source_topic_str) on one cluster (source_cluster) 
 
 Replicate “topic1” on cluster1 to “topic2” on cluster2:
 
-    flatmap(cluster1, “topic1”, cluster2, “topic2”, lambda message_dict: [message_dict])
+```default
+flatmap(cluster1, "topic1", cluster2, "topic2", lambda message_dict: [message_dict])
+```
 
 Replicate “topic1” on cluster1 to “topic2” on cluster2, while duplicating each message from topic1 in topic2:
 
-    flatmap(cluster1, “topic1”, cluster2, “topic2”, lambda message_dict: [message_dict, message_dict])
+```default
+flatmap(cluster1, "topic1", cluster2, "topic2", lambda message_dict: [message_dict, message_dict])
+```
 
 Replicate “topic1” on cluster1 to “topic2” on cluster2, while duplicating each message from topic1 in topic2:
 
-    flatmap(cluster1, “topic1”, cluster2, “topic2”, lambda message_dict: [message_dict], source_value_type=”avro”, target_value_type=”protobuf”, target_value_schema=”message Snack { required string name = 1; required float calories = 2; optional string colour = 3; }”, n=100)
+```default
+flatmap(cluster1, "topic1", cluster2, "topic2", lambda message_dict: [message_dict], source_value_type="avro", target_value_type="protobuf", target_value_schema="message Snack { required string name = 1; required float calories = 2; optional string colour = 3; }", n=100)
+```
 
 Replicate the messages 100-600 from “topic1” on cluster1 to “topic2” on cluster2. Create new timestamps for the messages produced to the target topic:
 
-    flatmap(cluster1, “topic1”, cluster2, “topic2”, lambda message_dict: [message_dict], offsets={0:100}, keep_timestamps=False, n=500)
+```default
+flatmap(cluster1, "topic1", cluster2, "topic2", lambda message_dict: [message_dict], offsets={0:100}, keep_timestamps=False, n=500)
+```
 
-
-### kashpy.kash.foldl_file(path_str, foldl_function, initial_acc, delimiter='\\n', n=-1, bufsize=4096, verbose=0, progress_num_lines=1000)
-
-### kashpy.kash.get_adminClient(config_dict)
-
-### kashpy.kash.get_config_dict(cluster_str)
-
-### kashpy.kash.get_consumer(config_dict)
-
-### kashpy.kash.get_millis()
-
-### kashpy.kash.get_producer(config_dict)
-
-### kashpy.kash.get_schemaRegistryClient(config_dict)
-
-### kashpy.kash.groupMember_to_dict(groupMember)
-
-### kashpy.kash.groupMetadata_to_group_dict(groupMetadata)
-
-### kashpy.kash.is_file(str)
-
-### kashpy.kash.is_interactive()
-
-### kashpy.kash.kafkaError_to_error_dict(kafkaError)
 
 ### kashpy.kash.map(source_cluster, source_topic_str, target_cluster, target_topic_str, map_function, group=None, offsets=None, config={}, source_key_type='bytes', source_value_type='bytes', target_key_type=None, target_value_type=None, target_key_schema=None, target_value_schema=None, keep_timestamps=True, n=-1, batch_size=1)
 Replicate a topic and optionally transform the messages in a map-like manner.
@@ -3027,30 +3225,12 @@ Replicate (parts of) a topic (source_topic_str) on one cluster (source_cluster) 
 
 ### Examples
 
-map(cluster1, “topic1”, cluster2, “topic2”, lambda x: x)
+Replicate “topic1” on cluster1 to “topic2” on cluster2:
 
-    Replicate “topic1” on cluster1 to “topic2” on cluster2.
+```default
+map(cluster1, "topic1", cluster2, "topic2", lambda x: x)
+```
 
-
-### kashpy.kash.offset_int_to_int_or_str(offset_int)
-
-### kashpy.kash.partitionMetadata_to_partition_dict(partitionMetadata)
-
-### kashpy.kash.resourcePatternType_to_str(resourcePatternType)
-
-### kashpy.kash.resourceType_to_str(resourceType)
-
-### kashpy.kash.str_to_aclOperation(operation_str)
-
-### kashpy.kash.str_to_aclPermissionType(permission_type_str)
-
-### kashpy.kash.str_to_bool(str)
-
-### kashpy.kash.str_to_resourcePatternType(resource_pattern_type_str)
-
-### kashpy.kash.str_to_resourceType(restype_str)
-
-### kashpy.kash.topicMetadata_to_topic_dict(topicMetadata)
 
 ### kashpy.kash.zip_foldl(cluster1, topic_str1, cluster2, topic_str2, zip_foldl_function, initial_acc, group1=None, group2=None, offsets1=None, offsets2=None, config1={}, config2={}, key_type1='bytes', value_type1='bytes', key_type2='bytes', value_type2='bytes', n=-1, batch_size=1)
 Subscribe to and consume from topic 1 on cluster 1 and topic 2 on cluster 2 and combine the messages using a foldl function.
@@ -3129,8 +3309,10 @@ Consume (parts of) a topic (topic_str1) on one cluster (cluster1) and another to
 
 ### Examples
 
-zip_foldl(cluster1, “topic1”, cluster2, “topic2”, lambda acc, message_dict1, message_dict2: acc + [(message_dict1, message_dict2)], [])
+Consume “topic1” on cluster1 and “topic2” on cluster2 and return a list of pairs of message dictionaries from topic 1 and topic 2, respectively:
 
-    Consume “topic1” on cluster1 and “topic2” on cluster2 and return a list of pairs of message dictionaries from topic 1 and topic 2, respectively.
+```default
+zip_foldl(cluster1, "topic1", cluster2, "topic2", lambda acc, message_dict1, message_dict2: acc + [(message_dict1, message_dict2)], [])
+```
 
 ## Module contents
