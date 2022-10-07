@@ -2912,19 +2912,19 @@ Replicate (parts of) a topic (source_topic_str) on one cluster (source_cluster) 
 
 ### Examples
 
-Replicate “topic1” on cluster1 to “topic2” on cluster2.
+Replicate “topic1” on cluster1 to “topic2” on cluster2:
 
     flatmap(cluster1, “topic1”, cluster2, “topic2”, lambda message_dict: [message_dict])
 
-Replicate “topic1” on cluster1 to “topic2” on cluster2, while duplicating each message from topic1 in topic2.
+Replicate “topic1” on cluster1 to “topic2” on cluster2, while duplicating each message from topic1 in topic2:
 
     flatmap(cluster1, “topic1”, cluster2, “topic2”, lambda message_dict: [message_dict, message_dict])
 
-Replicate “topic1” on cluster1 to “topic2” on cluster2, while duplicating each message from topic1 in topic2.
+Replicate “topic1” on cluster1 to “topic2” on cluster2, while duplicating each message from topic1 in topic2:
 
     flatmap(cluster1, “topic1”, cluster2, “topic2”, lambda message_dict: [message_dict], source_value_type=”avro”, target_value_type=”protobuf”, target_value_schema=”message Snack { required string name = 1; required float calories = 2; optional string colour = 3; }”, n=100)
 
-Replicate the messages 100-600 from “topic1” on cluster1 to “topic2” on cluster2. Create new timestamps for the messages produced to the target topic.
+Replicate the messages 100-600 from “topic1” on cluster1 to “topic2” on cluster2. Create new timestamps for the messages produced to the target topic:
 
     flatmap(cluster1, “topic1”, cluster2, “topic2”, lambda message_dict: [message_dict], offsets={0:100}, keep_timestamps=False, n=500)
 
