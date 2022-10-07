@@ -224,7 +224,7 @@ List the configurations of brokers of the cluster. Optionally only list those br
 
 * **Parameters**
 
-    **pattern_int_or_str_or_int_or_str_list** (*str** | **list**(**str**)**, **optional*) – The pattern or list of patterns for selecting those brokers which shall be listed. Defaults to None.
+    **pattern_int_or_str_or_int_or_str_list** (str | `list(str)`, optional) – The pattern or list of patterns for selecting those brokers which shall be listed. Defaults to None.
 
 
 
@@ -258,7 +258,7 @@ List brokers of the cluster. Optionally only list those brokers whose identifier
 
 * **Parameters**
 
-    **pattern** (*str** | **list**(**str**)**, **optional*) – The pattern or list of patterns for selecting those brokers which shall be listed. Defaults to None.
+    **pattern** (str | `list(str)`, optional) – The pattern or list of patterns for selecting those brokers which shall be listed. Defaults to None.
 
 
 
@@ -308,10 +308,10 @@ Subscribe to and consume messages from a topic and call an operation on each of 
     * **group** (`str`, optional) – Consumer group name used for subscribing to the topic. If set to None, creates a new unique consumer group name. Defaults to None.
 
 
-    * **offsets** (*dict**, **optional*) – Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for subscribing to the topic. If set to None, subscribe to the topic using the offsets from the consumer group. Defaults to None.
+    * **offsets** (`dict(int, int)`, optional) – Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for subscribing to the topic. If set to None, subscribe to the topic using the offsets from the consumer group. Defaults to None.
 
 
-    * **config** (*dict**(**str**, **str**)**, **optional*) – Dictionary of strings (keys) and strings (values) to augment the consumer configuration for the topic. Defaults to {}.
+    * **config** (`dict(str, str)`, optional) – Dictionary of strings (keys) and strings (values) to augment the consumer configuration for the topic. Defaults to {}.
 
 
     * **key_type** (`str`, optional) – Message key type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to “str”.
@@ -320,10 +320,10 @@ Subscribe to and consume messages from a topic and call an operation on each of 
     * **value_type** (`str`, optional) – Message value type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to “str”.
 
 
-    * **n** (*int**, **optional*) – Number of messages to consume from the topic. Defaults to ALL_MESSAGES = -1.
+    * **n** (`int`, optional) – Number of messages to consume from the topic. Defaults to ALL_MESSAGES = -1.
 
 
-    * **batch_size** (*int**, **optional*) – Maximum number of messages to consume from the topic at a time. Defaults to 1.
+    * **batch_size** (`int`, optional) – Maximum number of messages to consume from the topic at a time. Defaults to 1.
 
 
 
@@ -371,7 +371,7 @@ Return the configuration of those topics whose names match the bash-like pattern
 
 * **Parameters**
 
-    **pattern_str_or_str_list** (*str** | **list**(**str**)*) – The pattern (or list of patterns) for selecting the topics for which the configuration shall be returned.
+    **pattern_str_or_str_list** (str | `list(str)`) – The pattern (or list of patterns) for selecting the topics for which the configuration shall be returned.
 
 
 
@@ -405,7 +405,7 @@ Consume messages from a subscribed topic.
 
 * **Parameters**
 
-    **n** (*int**, **optional*) – Maximum number of messages to return. Defaults to 1.
+    **n** (`int`, optional) – Maximum number of messages to return. Defaults to 1.
 
 
 
@@ -449,10 +449,10 @@ Copy files to topics, topics to files, or topics to topics. Uses `Cluster.upload
     * **group** (`str`, optional) – Consumer group name used for subscribing to the topic to consume from. If set to None, creates a new unique consumer group name. Defaults to None.
 
 
-    * **offsets** (*dict**, **optional*) – Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for subscribing to the topic to consume from. If set to None, subscribe to the topic using the offsets from the consumer group. Defaults to None.
+    * **offsets** (`dict(int, int)`, optional) – Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for subscribing to the topic to consume from. If set to None, subscribe to the topic using the offsets from the consumer group. Defaults to None.
 
 
-    * **config** (*dict**(**str**, **str**)**, **optional*) – Dictionary of strings (keys) and strings (values) to augment the consumer configuration for the topic. Defaults to {}.
+    * **config** (`dict(str, str)`, optional) – Dictionary of strings (keys) and strings (values) to augment the consumer configuration for the topic. Defaults to {}.
 
 
     * **flatmap_function** (*function**, **optional*) – Flatmap function (either takes a message dictionary and returns a list of message dictionaries if source_str points to a topic, or takes a pair of strings (keys and values) of the messages read from the local file if source_str points to a local file). Defaults to lambda x: [x] (=the identify function for flatmap, leading to a one-to-one copy).
@@ -482,19 +482,19 @@ Copy files to topics, topics to files, or topics to topics. Uses `Cluster.upload
     * **message_separator** (`str`, optional) – The separator between individual messages in the local file to read from/write to. Defaults to the newline character.
 
 
-    * **overwrite** (*bool**, **optional*) – Overwrite the target local file if set to True, append to it otherwise. Defaults to True.
+    * **overwrite** (`bool`, optional) – Overwrite the target local file if set to True, append to it otherwise. Defaults to True.
 
 
-    * **keep_timestamps** (*bool**, **optional*) – Replicate the timestamps of the source messages in the target messages. Defaults to True.
+    * **keep_timestamps** (`bool`, optional) – Replicate the timestamps of the source messages in the target messages. Defaults to True.
 
 
-    * **n** (*int**, **optional*) – Number of messages to consume from the topic. Defaults to ALL_MESSAGES = -1.
+    * **n** (`int`, optional) – Number of messages to consume from the topic. Defaults to ALL_MESSAGES = -1.
 
 
-    * **batch_size** (*int**, **optional*) – Maximum number of messages to consume from the topic at a time. Defaults to 1.
+    * **batch_size** (`int`, optional) – Maximum number of messages to consume from the topic at a time. Defaults to 1.
 
 
-    * **bufsize** (*int**, **optional*) – The buffer size for reading from the local file. Defaults to 4096.
+    * **bufsize** (`int`, optional) – The buffer size for reading from the local file. Defaults to 4096.
 
 
 
@@ -536,13 +536,13 @@ Create a topic.
     * **topic_str** (`str`) – The name of the topic to be created.
 
 
-    * **partitions** (*int**, **optional*) – The number of partitions for the topic to be created. Defaults to 1.
+    * **partitions** (`int`, optional) – The number of partitions for the topic to be created. Defaults to 1.
 
 
-    * **config** (*dict**(**str**, **str**)**, **optional*) – Configuration overrides for the topic to be created. Note that the default “retention.ms” can also be set in the kash.py cluster configuration file (e.g. you can set it to -1 to have infinite retention for all topics that you create). Defaults to {}.
+    * **config** (`dict(str, str)`, optional) – Configuration overrides for the topic to be created. Note that the default “retention.ms” can also be set in the kash.py cluster configuration file (e.g. you can set it to -1 to have infinite retention for all topics that you create). Defaults to {}.
 
 
-    * **block** (*bool**, **optional*) – Block until the topic is created. Defaults to True.
+    * **block** (`bool`, optional) – Block until the topic is created. Defaults to True.
 
 
 
@@ -634,10 +634,10 @@ Delete those topics whose names match the bash-like pattern (or list of patterns
 * **Parameters**
 
     
-    * **pattern_str_or_str_list** (*str** | **list**(**str**)*) – The pattern (or list of patterns) for selecting the topics to be deleted.
+    * **pattern_str_or_str_list** (str | `list(str)`) – The pattern (or list of patterns) for selecting the topics to be deleted.
 
 
-    * **block** (*bool**, **optional*) – Block until the topic is deleted. Defaults to True.
+    * **block** (`bool`, optional) – Block until the topic is deleted. Defaults to True.
 
 
 
@@ -724,7 +724,7 @@ Describe all topics matching the bash-like pattern (or list of patterns) pattern
 
 * **Parameters**
 
-    **pattern_str_or_str_list** (*str** | **list**(**str**)*) – The pattern (or list of patterns) for selecting the topics.
+    **pattern_str_or_str_list** (str | `list(str)`) – The pattern (or list of patterns) for selecting the topics.
 
 
 
@@ -805,10 +805,10 @@ Create a diff of (parts of) a topic (topic_str1) and another topic (topic_str2) 
     * **group2** (`str`, optional) – Consumer group name used for consuming from topic 2. If set to None, creates a new unique consumer group name. Defaults to None.
 
 
-    * **offsets1** (*dict**, **optional*) – Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for consuming from topic 1. If set to None, consume topic 1 using the offsets from the consumer group for topic 1. Defaults to None.
+    * **offsets1** (`dict(int, int)`, optional) – Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for consuming from topic 1. If set to None, consume topic 1 using the offsets from the consumer group for topic 1. Defaults to None.
 
 
-    * **offsets2** (*dict**, **optional*) – Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for consuming from topic 2. If set to None, consume topic 2 using the offsets from the consumer group for topic 2. Defaults to None.
+    * **offsets2** (`dict(int, int)`, optional) – Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for consuming from topic 2. If set to None, consume topic 2 using the offsets from the consumer group for topic 2. Defaults to None.
 
 
     * **key_type1** (`str`, optional) – Topic 1 message key type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to “bytes”.
@@ -823,10 +823,10 @@ Create a diff of (parts of) a topic (topic_str1) and another topic (topic_str2) 
     * **value_type2** (`str`, optional) – Topic 2 message value type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). If set to None, target_value_type = source_value_type. Defaults to None.
 
 
-    * **n** (*int**, **optional*) – Number of messages to consume from the topic 1 and topic 2. Defaults to ALL_MESSAGES = -1.
+    * **n** (`int`, optional) – Number of messages to consume from the topic 1 and topic 2. Defaults to ALL_MESSAGES = -1.
 
 
-    * **batch_size** (*int**, **optional*) – Maximum number of messages to consume from topic 1 and topic 2 at a time. Defaults to 1.
+    * **batch_size** (`int`, optional) – Maximum number of messages to consume from topic 1 and topic 2 at a time. Defaults to 1.
 
 
 
@@ -863,7 +863,7 @@ Create a diff of (parts of) a topic (topic_str1) and another topic (topic_str2) 
     * **topic_str2** (`str`) – Topic 2
 
 
-    * **diff_function** (*function*) – Diff function (takes a message dictionary from topic 1 and a message dictionary from topic 2 and returns the updated accumulator)
+    * **diff_function** (`function`) – Diff function (takes a message dictionary from topic 1 and a message dictionary from topic 2 and returns the updated accumulator)
 
 
     * **group1** (`str`, optional) – Consumer group name used for consuming from topic 1. If set to None, creates a new unique consumer group name. Defaults to None.
@@ -872,10 +872,10 @@ Create a diff of (parts of) a topic (topic_str1) and another topic (topic_str2) 
     * **group2** (`str`, optional) – Consumer group name used for consuming from topic 2. If set to None, creates a new unique consumer group name. Defaults to None.
 
 
-    * **offsets1** (*dict**, **optional*) – Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for consuming from topic 1. If set to None, consume topic 1 using the offsets from the consumer group for topic 1. Defaults to None.
+    * **offsets1** (`dict(int, int)`, optional) – Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for consuming from topic 1. If set to None, consume topic 1 using the offsets from the consumer group for topic 1. Defaults to None.
 
 
-    * **offsets2** (*dict**, **optional*) – Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for consuming from topic 2. If set to None, consume topic 2 using the offsets from the consumer group for topic 2. Defaults to None.
+    * **offsets2** (`dict(int, int)`, optional) – Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for consuming from topic 2. If set to None, consume topic 2 using the offsets from the consumer group for topic 2. Defaults to None.
 
 
     * **key_type1** (`str`, optional) – Topic 1 message key type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to “bytes”.
@@ -890,10 +890,10 @@ Create a diff of (parts of) a topic (topic_str1) and another topic (topic_str2) 
     * **value_type2** (`str`, optional) – Topic 2 message value type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). If set to None, target_value_type = source_value_type. Defaults to None.
 
 
-    * **n** (*int**, **optional*) – Number of messages to consume from the topic 1 and topic 2. Defaults to ALL_MESSAGES = -1.
+    * **n** (`int`, optional) – Number of messages to consume from the topic 1 and topic 2. Defaults to ALL_MESSAGES = -1.
 
 
-    * **batch_size** (*int**, **optional*) – Maximum number of messages to consume from topic 1 and topic 2 at a time. Defaults to 1.
+    * **batch_size** (`int`, optional) – Maximum number of messages to consume from topic 1 and topic 2 at a time. Defaults to 1.
 
 
 
@@ -933,10 +933,10 @@ Subscribe to and consume messages from a topic, optionally transform them in a f
     * **group** (`str`, optional) – Consumer group name used for subscribing to the topic. If set to None, creates a new unique consumer group name. Defaults to None.
 
 
-    * **offsets** (*dict**, **optional*) – Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for subscribing to the topic. If set to None, subscribe to the topic using the offsets from the consumer group. Defaults to None.
+    * **offsets** (`dict(int, int)`, optional) – Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for subscribing to the topic. If set to None, subscribe to the topic using the offsets from the consumer group. Defaults to None.
 
 
-    * **config** (*dict**(**str**, **str**)**, **optional*) – Dictionary of strings (keys) and strings (values) to augment the consumer configuration for the topic. Defaults to {}.
+    * **config** (`dict(str, str)`, optional) – Dictionary of strings (keys) and strings (values) to augment the consumer configuration for the topic. Defaults to {}.
 
 
     * **key_type** (`str`, optional) – Message key type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to “str”.
@@ -951,13 +951,13 @@ Subscribe to and consume messages from a topic, optionally transform them in a f
     * **message_separator** (`str`, optional) – The separator between individual messages in the local file to write to. Defaults to the newline character.
 
 
-    * **overwrite** (*bool**, **optional*) – Overwrite the local file if set to True, append to it otherwise. Defaults to True.
+    * **overwrite** (`bool`, optional) – Overwrite the local file if set to True, append to it otherwise. Defaults to True.
 
 
-    * **n** (*int**, **optional*) – Number of messages to consume from the topic. Defaults to ALL_MESSAGES = -1.
+    * **n** (`int`, optional) – Number of messages to consume from the topic. Defaults to ALL_MESSAGES = -1.
 
 
-    * **batch_size** (*int**, **optional*) – Maximum number of messages to consume from the topic at a time. Defaults to 1.
+    * **batch_size** (`int`, optional) – Maximum number of messages to consume from the topic at a time. Defaults to 1.
 
 
 
@@ -1021,16 +1021,16 @@ Subscribe to and consume messages from a topic and transform them in a flatmap-l
     * **topic_str** (`str`) – The topic to subscribe to and consume from.
 
 
-    * **flatmap_function** (*function*) – Flatmap function (takes a message dictionary and returns a list of message dictionaries).
+    * **flatmap_function** (`function`) – Flatmap function (takes a message dictionary and returns a list of message dictionaries).
 
 
     * **group** (`str`, optional) – Consumer group name used for subscribing to the topic. If set to None, creates a new unique consumer group name. Defaults to None.
 
 
-    * **offsets** (*dict**, **optional*) – Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for subscribing to the topic. If set to None, subscribe to the topic using the offsets from the consumer group. Defaults to None.
+    * **offsets** (`dict(int, int)`, optional) – Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for subscribing to the topic. If set to None, subscribe to the topic using the offsets from the consumer group. Defaults to None.
 
 
-    * **config** (*dict**(**str**, **str**)**, **optional*) – Dictionary of strings (keys) and strings (values) to augment the consumer configuration for the topic. Defaults to {}.
+    * **config** (`dict(str, str)`, optional) – Dictionary of strings (keys) and strings (values) to augment the consumer configuration for the topic. Defaults to {}.
 
 
     * **key_type** (`str`, optional) – Message key type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to “str”.
@@ -1039,10 +1039,10 @@ Subscribe to and consume messages from a topic and transform them in a flatmap-l
     * **value_type** (`str`, optional) – Message value type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to “str”.
 
 
-    * **n** (*int**, **optional*) – Number of messages to consume from the topic. Defaults to ALL_MESSAGES = -1.
+    * **n** (`int`, optional) – Number of messages to consume from the topic. Defaults to ALL_MESSAGES = -1.
 
 
-    * **batch_size** (*int**, **optional*) – Maximum number of messages to consume from the topic at a time. Defaults to 1.
+    * **batch_size** (`int`, optional) – Maximum number of messages to consume from the topic at a time. Defaults to 1.
 
 
 
@@ -1083,7 +1083,7 @@ Read messages from a local file with path path_str and produce them to topic top
     * **topic_str** (`str`) – The topic to produce to.
 
 
-    * **flatmap_function** (*function*) – Flatmap function (takes a message and returns a list of messages)
+    * **flatmap_function** (`function`) – Flatmap function (takes a message and returns a list of messages)
 
 
     * **key_type** (`str`, optional) – The key type (“bytes”, “str”, “json”, “avro”, “protobuf” or “pb”, or “jsonschema”). Defaults to “str”.
@@ -1098,7 +1098,7 @@ Read messages from a local file with path path_str and produce them to topic top
     * **value_schema** (`str`, optional) – The schema of the value of the message to be produced (if key_type is either “avro”, “protobuf” or “pb”, or “jsonschema”). Defaults to None.
 
 
-    * **partition** (*int**, **optional*) – The partition to produce to. Defaults to RD_KAFKA_PARTITION_UA = -1, i.e., the partition is selected by configured built-in partitioner.
+    * **partition** (`int`, optional) – The partition to produce to. Defaults to RD_KAFKA_PARTITION_UA = -1, i.e., the partition is selected by configured built-in partitioner.
 
 
     * **key_value_separator** (`str`, optional) – The separator between the keys and the values in the local file to read from, e.g. “:”. If set to None, only read the values, not the keys. Defaults to None.
@@ -1107,22 +1107,16 @@ Read messages from a local file with path path_str and produce them to topic top
     * **message_separator** (`str`, optional) – The separator between individual messages in the local file to read from. Defaults to the newline character.
 
 
-    * **n** (*int**, **optional*) – The number of messages to read from the local file. Defaults to ALL_MESSAGES = -1.
+    * **n** (`int`, optional) – The number of messages to read from the local file. Defaults to ALL_MESSAGES = -1.
 
 
-    * **bufsize** (*int**, **optional*) – The buffer size for reading from the local file. Defaults to 4096.
+    * **bufsize** (`int`, optional) – The buffer size for reading from the local file. Defaults to 4096.
 
 
 
 * **Returns**
 
-    Pair of the number of messages read from the local file (integer) and the number of messages produced to the topic (integer).
-
-
-
-* **Return type**
-
-    (int, int)
+    `tuple(int, int)` Pair of the number of messages read from the local file (integer) and the number of messages produced to the topic (integer).
 
 
 ### Examples
@@ -1152,16 +1146,16 @@ Subscribe to and consume messages from a topic, transform them in a flatmap-like
     * **topic_str** (`str`) – The topic to subscribe to and consume from.
 
 
-    * **flatmap_function** (*function*) – Flatmap function (takes a message dictionary and returns a list of message dictionaries).
+    * **flatmap_function** (`function`) – Flatmap function (takes a message dictionary and returns a list of message dictionaries).
 
 
     * **group** (`str`, optional) – Consumer group name used for subscribing to the topic. If set to None, creates a new unique consumer group name. Defaults to None.
 
 
-    * **offsets** (*dict**, **optional*) – Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for subscribing to the topic. If set to None, subscribe to the topic using the offsets from the consumer group. Defaults to None.
+    * **offsets** (`dict(int, int)`, optional) – Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for subscribing to the topic. If set to None, subscribe to the topic using the offsets from the consumer group. Defaults to None.
 
 
-    * **config** (*dict**(**str**, **str**)**, **optional*) – Dictionary of strings (keys) and strings (values) to augment the consumer configuration for the topic. Defaults to {}.
+    * **config** (`dict(str, str)`, optional) – Dictionary of strings (keys) and strings (values) to augment the consumer configuration for the topic. Defaults to {}.
 
 
     * **key_type** (`str`, optional) – Message key type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to “str”.
@@ -1176,13 +1170,13 @@ Subscribe to and consume messages from a topic, transform them in a flatmap-like
     * **message_separator** (`str`, optional) – The separator between individual messages in the local file to write to. Defaults to the newline character.
 
 
-    * **overwrite** (*bool**, **optional*) – Overwrite the local file if set to True, append to it otherwise. Defaults to True.
+    * **overwrite** (`bool`, optional) – Overwrite the local file if set to True, append to it otherwise. Defaults to True.
 
 
-    * **n** (*int**, **optional*) – Number of messages to consume from the topic. Defaults to ALL_MESSAGES = -1.
+    * **n** (`int`, optional) – Number of messages to consume from the topic. Defaults to ALL_MESSAGES = -1.
 
 
-    * **batch_size** (*int**, **optional*) – Maximum number of messages to consume from the topic at a time. Defaults to 1.
+    * **batch_size** (`int`, optional) – Maximum number of messages to consume from the topic at a time. Defaults to 1.
 
 
 
@@ -1226,7 +1220,7 @@ Subscribe to and consume messages from a topic and transform them in a foldl-lik
     * **topic_str** (`str`) – The topic to subscribe to and consume from.
 
 
-    * **foldl_function** (*function*) – Foldl function (takes an accumulator (any type) and a message dictionary and returns the updated accumulator).
+    * **foldl_function** (`function`) – Foldl function (takes an accumulator (any type) and a message dictionary and returns the updated accumulator).
 
 
     * **initial_acc** – Initial value of the accumulator (any type).
@@ -1235,10 +1229,10 @@ Subscribe to and consume messages from a topic and transform them in a foldl-lik
     * **group** (`str`, optional) – Consumer group name used for subscribing to the topic. Creates a new unique consumer group name if set to None. Defaults to None.
 
 
-    * **offsets** (*dict**, **optional*) – Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for subscribing to the topic. If set to None, subscribe to the topic using the offsets from the consumer group. Defaults to None.
+    * **offsets** (`dict(int, int)`, optional) – Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for subscribing to the topic. If set to None, subscribe to the topic using the offsets from the consumer group. Defaults to None.
 
 
-    * **config** (*dict**(**str**, **str**)**, **optional*) – Dictionary of strings (keys) and strings (values) to augment the consumer configuration for the topic. Defaults to {}.
+    * **config** (`dict(str, str)`, optional) – Dictionary of strings (keys) and strings (values) to augment the consumer configuration for the topic. Defaults to {}.
 
 
     * **key_type** (`str`, optional) – Message key type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to “str”.
@@ -1247,10 +1241,10 @@ Subscribe to and consume messages from a topic and transform them in a foldl-lik
     * **value_type** (`str`, optional) – Message value type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to “str”.
 
 
-    * **n** (*int**, **optional*) – Number of messages to consume from the topic. Defaults to ALL_MESSAGES = -1.
+    * **n** (`int`, optional) – Number of messages to consume from the topic. Defaults to ALL_MESSAGES = -1.
 
 
-    * **batch_size** (*int**, **optional*) – Maximum number of messages to consume from the topic at a time. Defaults to 1.
+    * **batch_size** (`int`, optional) – Maximum number of messages to consume from the topic at a time. Defaults to 1.
 
 
 
@@ -1288,16 +1282,16 @@ Subscribe to and consume messages from a topic and call an operation on each of 
     * **topic_str** (`str`) – The topic to subscribe to and consume from.
 
 
-    * **foreach_function** (*function*) – Foreach function (takes a message dictionary and returns None).
+    * **foreach_function** (`function`) – Foreach function (takes a message dictionary and returns None).
 
 
     * **group** (`str`, optional) – Consumer group name used for subscribing to the topic. If set to None, creates a new unique consumer group name. Defaults to None.
 
 
-    * **offsets** (*dict**, **optional*) – Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for subscribing to the topic. If set to None, subscribe to the topic using the offsets from the consumer group. Defaults to None.
+    * **offsets** (`dict(int, int)`, optional) – Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for subscribing to the topic. If set to None, subscribe to the topic using the offsets from the consumer group. Defaults to None.
 
 
-    * **config** (*dict**(**str**, **str**)**, **optional*) – Dictionary of strings (keys) and strings (values) to augment the consumer configuration for the topic. Defaults to {}.
+    * **config** (`dict(str, str)`, optional) – Dictionary of strings (keys) and strings (values) to augment the consumer configuration for the topic. Defaults to {}.
 
 
     * **key_type** (`str`, optional) – Message key type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to “str”.
@@ -1306,10 +1300,10 @@ Subscribe to and consume messages from a topic and call an operation on each of 
     * **value_type** (`str`, optional) – Message value type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to “str”.
 
 
-    * **n** (*int**, **optional*) – Number of messages to consume from the topic. Defaults to ALL_MESSAGES = -1.
+    * **n** (`int`, optional) – Number of messages to consume from the topic. Defaults to ALL_MESSAGES = -1.
 
 
-    * **batch_size** (*int**, **optional*) – Maximum number of messages to consume from the topic at a time. Defaults to 1.
+    * **batch_size** (`int`, optional) – Maximum number of messages to consume from the topic at a time. Defaults to 1.
 
 
 
@@ -1351,10 +1345,10 @@ Find matching messages in a topic using regular expression matching. Optionally 
     * **group** (`str`, optional) – Consumer group name used for subscribing to the topic. If set to None, creates a new unique consumer group name. Defaults to None.
 
 
-    * **offsets** (*dict**, **optional*) – Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for subscribing to the topic. If set to None, subscribe to the topic using the offsets from the consumer group. Defaults to None.
+    * **offsets** (`dict(int, int)`, optional) – Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for subscribing to the topic. If set to None, subscribe to the topic using the offsets from the consumer group. Defaults to None.
 
 
-    * **config** (*dict**(**str**, **str**)**, **optional*) – Dictionary of strings (keys) and strings (values) to augment the consumer configuration for the topic. Defaults to {}.
+    * **config** (`dict(str, str)`, optional) – Dictionary of strings (keys) and strings (values) to augment the consumer configuration for the topic. Defaults to {}.
 
 
     * **key_type** (`str`, optional) – Message key type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to “str”.
@@ -1363,10 +1357,10 @@ Find matching messages in a topic using regular expression matching. Optionally 
     * **value_type** (`str`, optional) – Message value type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to “str”.
 
 
-    * **n** (*int**, **optional*) – Number of messages to consume from the topic. Defaults to ALL_MESSAGES = -1.
+    * **n** (`int`, optional) – Number of messages to consume from the topic. Defaults to ALL_MESSAGES = -1.
 
 
-    * **batch_size** (*int**, **optional*) – Maximum number of messages to consume from the topic at a time. Defaults to 1.
+    * **batch_size** (`int`, optional) – Maximum number of messages to consume from the topic at a time. Defaults to 1.
 
 
 
@@ -1400,16 +1394,16 @@ Find matching messages in a topic using a custom match function match_function. 
     * **topic_str** (`str`) – The topic to subscribe to and consume from.
 
 
-    * **match_function** (*function*) – Match function (takes a message dictionary and returns a True for a match and False otherwise).
+    * **match_function** (`function`) – Match function (takes a message dictionary and returns a True for a match and False otherwise).
 
 
     * **group** (`str`, optional) – Consumer group name used for subscribing to the topic. If set to None, creates a new unique consumer group name. Defaults to None.
 
 
-    * **offsets** (*dict**, **optional*) – Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for subscribing to the topic. If set to None, subscribe to the topic using the offsets from the consumer group. Defaults to None.
+    * **offsets** (`dict(int, int)`, optional) – Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for subscribing to the topic. If set to None, subscribe to the topic using the offsets from the consumer group. Defaults to None.
 
 
-    * **config** (*dict**(**str**, **str**)**, **optional*) – Dictionary of strings (keys) and strings (values) to augment the consumer configuration for the topic. Defaults to {}.
+    * **config** (`dict(str, str)`, optional) – Dictionary of strings (keys) and strings (values) to augment the consumer configuration for the topic. Defaults to {}.
 
 
     * **key_type** (`str`, optional) – Message key type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to “str”.
@@ -1418,10 +1412,10 @@ Find matching messages in a topic using a custom match function match_function. 
     * **value_type** (`str`, optional) – Message value type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to “str”.
 
 
-    * **n** (*int**, **optional*) – Number of messages to consume from the topic. Defaults to ALL_MESSAGES = -1.
+    * **n** (`int`, optional) – Number of messages to consume from the topic. Defaults to ALL_MESSAGES = -1.
 
 
-    * **batch_size** (*int**, **optional*) – Maximum number of messages to consume from the topic at a time. Defaults to 1.
+    * **batch_size** (`int`, optional) – Maximum number of messages to consume from the topic at a time. Defaults to 1.
 
 
 
@@ -1451,7 +1445,7 @@ List consumer groups on the cluster. Optionally return only those consumer group
 
 * **Parameters**
 
-    **pattern** (*str** | **list**(**str**)**, **optional*) – The pattern or list of patterns for selecting those consumer groups which shall be listed. Defaults to None.
+    **pattern** (str | `list(str)`, optional) – The pattern or list of patterns for selecting those consumer groups which shall be listed. Defaults to None.
 
 
 
@@ -1493,10 +1487,10 @@ List topics on the cluster. Optionally return only those topics whose names matc
     * **pattern** (`str`, optional) – The pattern or list of patterns for selecting those topics which shall be listed. Defaults to None.
 
 
-    * **size** (*bool**, **optional*) – Return the total sizes of the topics if set to True. Defaults to True.
+    * **size** (`bool`, optional) – Return the total sizes of the topics if set to True. Defaults to True.
 
 
-    * **partitions** (*bool**, **optional*) – Return the sizes of the individual partitions of the topics if set to True. Defaults to False.
+    * **partitions** (`bool`, optional) – Return the sizes of the individual partitions of the topics if set to True. Defaults to False.
 
 
 
@@ -1508,7 +1502,7 @@ List topics on the cluster. Optionally return only those topics whose names matc
 
 * **Return type**
 
-    list(str) | dict(str, int) | dict(str, dict(int, int)) | dict(str, tuple(int, dict(int, int)))
+    `list(str)` | dict(str, int) | dict(str, dict(int, int)) | dict(str, tuple(int, dict(int, int)))
 
 
 ### Examples
@@ -1550,10 +1544,10 @@ List topics on the cluster. Optionally return only those topics whose names matc
     * **pattern** (`str`, optional) – The pattern or list of patterns for selecting those topics which shall be listed. Defaults to None.
 
 
-    * **size** (*bool**, **optional*) – Return the total sizes of the topics if set to True. Defaults to True.
+    * **size** (`bool`, optional) – Return the total sizes of the topics if set to True. Defaults to True.
 
 
-    * **partitions** (*bool**, **optional*) – Return the sizes of the individual partitions of the topics if set to True. Defaults to False.
+    * **partitions** (`bool`, optional) – Return the sizes of the individual partitions of the topics if set to True. Defaults to False.
 
 
 
@@ -1607,10 +1601,10 @@ List topics on the cluster. Optionally return only those topics whose names matc
     * **pattern** (`str`, optional) – The pattern or list of patterns for selecting those topics which shall be listed. Defaults to None.
 
 
-    * **size** (*bool**, **optional*) – Return the total sizes of the topics if set to True. Defaults to False.
+    * **size** (`bool`, optional) – Return the total sizes of the topics if set to True. Defaults to False.
 
 
-    * **partitions** (*bool**, **optional*) – Return the sizes of the individual partitions of the topics if set to True. Defaults to False.
+    * **partitions** (`bool`, optional) – Return the sizes of the individual partitions of the topics if set to True. Defaults to False.
 
 
 
@@ -1622,7 +1616,7 @@ List topics on the cluster. Optionally return only those topics whose names matc
 
 * **Return type**
 
-    list(str) | dict(str, int) | dict(str, dict(int, int)) | dict(str, tuple(int, dict(int, int)))
+    `list(str)` | dict(str, int) | dict(str, dict(int, int)) | dict(str, tuple(int, dict(int, int)))
 
 
 ### Examples
@@ -1664,16 +1658,16 @@ Subscribe to and consume messages from a topic and transform them in a map-like 
     * **topic_str** (`str`) – The topic to subscribe to and consume from.
 
 
-    * **map_function** (*function*) – Map function (takes a message dictionary and returns a message dictionary).
+    * **map_function** (`function`) – Map function (takes a message dictionary and returns a message dictionary).
 
 
     * **group** (`str`, optional) – Consumer group name used for subscribing to the topic. If set to None, creates a new unique consumer group name. Defaults to None.
 
 
-    * **offsets** (*dict**, **optional*) – Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for subscribing to the topic. If set to None, subscribe to the topic using the offsets from the consumer group. Defaults to None.
+    * **offsets** (`dict(int, int)`, optional) – Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for subscribing to the topic. If set to None, subscribe to the topic using the offsets from the consumer group. Defaults to None.
 
 
-    * **config** (*dict**(**str**, **str**)**, **optional*) – Dictionary of strings (keys) and strings (values) to augment the consumer configuration for the topic. Defaults to {}.
+    * **config** (`dict(str, str)`, optional) – Dictionary of strings (keys) and strings (values) to augment the consumer configuration for the topic. Defaults to {}.
 
 
     * **key_type** (`str`, optional) – Message key type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to “str”.
@@ -1682,10 +1676,10 @@ Subscribe to and consume messages from a topic and transform them in a map-like 
     * **value_type** (`str`, optional) – Message value type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to “str”.
 
 
-    * **n** (*int**, **optional*) – Number of messages to consume from the topic. Defaults to ALL_MESSAGES = -1.
+    * **n** (`int`, optional) – Number of messages to consume from the topic. Defaults to ALL_MESSAGES = -1.
 
 
-    * **batch_size** (*int**, **optional*) – Maximum number of messages to consume from the topic at a time. Defaults to 1.
+    * **batch_size** (`int`, optional) – Maximum number of messages to consume from the topic at a time. Defaults to 1.
 
 
 
@@ -1721,7 +1715,7 @@ Get committed offsets of the subscribed topic.
 
 * **Parameters**
 
-    **timeout** (*float**, **optional*) – Timeout (in seconds) for calling confluent_kafka.committed(). Defaults to -1.0 (no timeout).
+    **timeout** (`float`, optional) – Timeout (in seconds) for calling confluent_kafka.committed(). Defaults to -1.0 (no timeout).
 
 
 
@@ -1756,13 +1750,13 @@ Look up those offsets in the individual partitions of all topics matching the ba
 * **Parameters**
 
     
-    * **pattern_str_or_str_list** (*str** | **list**(**str**)*) – The pattern (or list of patterns) for selecting the topics.
+    * **pattern_str_or_str_list** (str | `list(str)`) – The pattern (or list of patterns) for selecting the topics.
 
 
-    * **partition_int_timestamp_int_dict** (*dict**(**int**, **int**)*) – Dictionary of integers (partitions) and integers (timestamps).
+    * **partition_int_timestamp_int_dict** (`dict(int, int)`) – Dictionary of integers (partitions) and integers (timestamps).
 
 
-    * **timeout** (*float**, **optional*) – The timeout (in seconds) for the individual offsets_for_times() method calls from confluent_kafka.Consumer. Defaults to -1.0 (infinite=no timeout).
+    * **timeout** (`float`, optional) – The timeout (in seconds) for the individual offsets_for_times() method calls from confluent_kafka.Consumer. Defaults to -1.0 (infinite=no timeout).
 
 
 
@@ -1796,7 +1790,7 @@ Get the number of partitions of all topics matching the bash-like pattern (or li
 
 * **Parameters**
 
-    **pattern_str_or_str_list** (*str** | **list**(**str**)*) – The pattern (or list of patterns) for selecting the topics.
+    **pattern_str_or_str_list** (str | `list(str)`) – The pattern (or list of patterns) for selecting the topics.
 
 
 
@@ -1836,10 +1830,10 @@ Produce a message to a topic. The key and the value of the message can be either
     * **topic_str** (`str`) – The topic to produce to.
 
 
-    * **value** (*bytes** | **str** | **dict*) – The value of the message to be produced.
+    * **value** (`bytes` | `str` |  `dict`) – The value of the message to be produced.
 
 
-    * **key** (*bytes** | **str** | **dict**, **optional*) – The key of the message to be produced. Defaults to None.
+    * **key** (`bytes` | `str` |  `dict`, optional) – The key of the message to be produced. Defaults to None.
 
 
     * **key_type** (`str`, optional) – The key type (“bytes”, “str”, “json”, “avro”, “protobuf” or “pb”, or “jsonschema”). Defaults to “str”.
@@ -1854,13 +1848,13 @@ Produce a message to a topic. The key and the value of the message can be either
     * **value_schema** (`str`, optional) – The schema of the value of the message to be produced (if key_type is either “avro”, “protobuf” or “pb”, or “jsonschema”). Defaults to None.
 
 
-    * **partition** (*int**, **optional*) – The partition to produce to. Defaults to RD_KAFKA_PARTITION_UA = -1, i.e., the partition is selected by configured built-in partitioner.
+    * **partition** (`int`, optional) – The partition to produce to. Defaults to RD_KAFKA_PARTITION_UA = -1, i.e., the partition is selected by configured built-in partitioner.
 
 
-    * **timestamp** (*int**, **optional*) – Message timestamp (CreateTime) in milliseconds since epoch UTC. Defaults to CURRENT_TIME = 0.
+    * **timestamp** (`int`, optional) – Message timestamp (CreateTime) in milliseconds since epoch UTC. Defaults to CURRENT_TIME = 0.
 
 
-    * **headers** (*dict** | **list*) – Message headers to set on the message. The header key must be a string while the value must be binary, unicode or None. Accepts a list of (key,value) or a dict.
+    * **headers** (`dict` | `list`) – Message headers to set on the message. The header key must be a string while the value must be binary, unicode or None. Accepts a list of (key,value) or a dict.
 
 
 
@@ -1953,10 +1947,10 @@ Delete those topics whose names match the bash-like pattern (or list of patterns
 * **Parameters**
 
     
-    * **pattern_str_or_str_list** (*str** | **list**(**str**)*) – The pattern (or list of patterns) for selecting the topics to be deleted.
+    * **pattern_str_or_str_list** (str | `list(str)`) – The pattern (or list of patterns) for selecting the topics to be deleted.
 
 
-    * **block** (*bool**, **optional*) – Block until the topic is deleted. Defaults to True.
+    * **block** (`bool`, optional) – Block until the topic is deleted. Defaults to True.
 
 
 
@@ -2005,7 +1999,7 @@ Set the configuration item with key key_str and value value_str of those brokers
 * **Parameters**
 
     
-    * **pattern_str_or_str_list** (*str** | **list**(**str**)*) – The pattern (or list of patterns) for selecting those topics whose configuration shall be changed.
+    * **pattern_str_or_str_list** (str | `list(str)`) – The pattern (or list of patterns) for selecting those topics whose configuration shall be changed.
 
 
     * **key_str** (`str`) – Configuration key.
@@ -2014,7 +2008,7 @@ Set the configuration item with key key_str and value value_str of those brokers
     * **value_str** (`str`) – Configuration value.
 
 
-    * **test** (*bool**, **optional*) – If True, the request is only validated without changing the configuration. Defaults to False.
+    * **test** (`bool`, optional) – If True, the request is only validated without changing the configuration. Defaults to False.
 
 
 
@@ -2053,10 +2047,10 @@ Set the configuration item with key key_str and value value_str of those topics 
 * **Parameters**
 
     
-    * **pattern_str_or_str_list** (*str** | **list**(**str**)*) – The pattern (or list of patterns) for selecting those topics whose configuration shall be changed.
+    * **pattern_str_or_str_list** (str | `list(str)`) – The pattern (or list of patterns) for selecting those topics whose configuration shall be changed.
 
 
-    * **test** (*bool**, **optional*) – If True, the request is only validated without changing the configuration. Defaults to False.
+    * **test** (`bool`, optional) – If True, the request is only validated without changing the configuration. Defaults to False.
 
 
 
@@ -2097,13 +2091,13 @@ Set the number of partitions of all topics matching the bash-like pattern (or li
 * **Parameters**
 
     
-    * **pattern_str_or_str_list** (*str** | **list**(**str**)*) – The pattern (or list of patterns) for selecting the topics.
+    * **pattern_str_or_str_list** (str | `list(str)`) – The pattern (or list of patterns) for selecting the topics.
 
 
     * **num_partitions_int** (*int*) – The number of partitions to set for the selected topics. The number of partitions of a topic can only be increased but not decreased, i.e., only additional partitions can be created.
 
 
-    * **test** (*bool**, **optional*) – If True, the request is only validated without creating the partitions.
+    * **test** (`bool`, optional) – If True, the request is only validated without creating the partitions.
 
 
 
@@ -2148,10 +2142,10 @@ List topics on the cluster whose names match the pattern pattern_str, their tota
 * **Parameters**
 
     
-    * **pattern_str_or_str_list** (*str** | **list**(**str**)*) – The pattern or a list of patterns for selecting those topics which shall be listed.
+    * **pattern_str_or_str_list** (str | `list(str)`) – The pattern or a list of patterns for selecting those topics which shall be listed.
 
 
-    * **timeout** (*float**, **optional*) – The timeout (in seconds) for the internally used get_watermark_offsets() method calls from confluent_kafka.Consumer. Defaults to -1.0 (infinite=no timeout).
+    * **timeout** (`float`, optional) – The timeout (in seconds) for the internally used get_watermark_offsets() method calls from confluent_kafka.Consumer. Defaults to -1.0 (infinite=no timeout).
 
 
 
@@ -2192,10 +2186,10 @@ Subscribe to a topic, optionally explicitly set the consumer group, initial offs
     * **group** (`str`, optional) – The consumer group name. If set to None, automatically create a new unique consumer group name. Defaults to None.
 
 
-    * **offsets** (*dict**(**int**, **int**)**, **optional*) – Dictionary of integers (partitions) and integers (initial offsets for the individual partitions of the topic). If set to None, does not set any initial offsets. Defaults to None.
+    * **offsets** (`dict(int, int)`, optional) – Dictionary of integers (partitions) and integers (initial offsets for the individual partitions of the topic). If set to None, does not set any initial offsets. Defaults to None.
 
 
-    * **config** (*dict**(**str**, **str**)**, **optional*) – Dictionary of strings (keys) and strings (values) to augment the consumer configuration. Defaults to {}.
+    * **config** (`dict(str, str)`, optional) – Dictionary of strings (keys) and strings (values) to augment the consumer configuration. Defaults to {}.
 
 
     * **key_type** (`str`, optional) – The key type (“bytes”, “str”, “json”, “avro”, “protobuf” or “pb”, or “jsonschema”). Defaults to “str”.
@@ -2207,13 +2201,7 @@ Subscribe to a topic, optionally explicitly set the consumer group, initial offs
 
 * **Returns**
 
-    Pair of the topic subscribed to (string) and the used consumer group name (string).
-
-
-
-* **Return type**
-
-    (str, str)
+    `tuple(str, str)` Pair of the topic subscribed to (string) and the used consumer group name (string).
 
 
 ### Examples
@@ -2248,13 +2236,13 @@ List topics on the cluster. Optionally return only those topics whose names matc
 * **Parameters**
 
     
-    * **pattern** (*str** | **list**(**str**)**, **optional*) – The pattern or list of patterns for selecting those topics which shall be listed. Defaults to None.
+    * **pattern** (str | `list(str)`, optional) – The pattern or list of patterns for selecting those topics which shall be listed. Defaults to None.
 
 
-    * **size** (*bool**, **optional*) – Return the total sizes of the topics if set to True. Defaults to False.
+    * **size** (`bool`, optional) – Return the total sizes of the topics if set to True. Defaults to False.
 
 
-    * **partitions** (*bool**, **optional*) – Return the sizes of the individual partitions of the topics if set to True. Defaults to False.
+    * **partitions** (`bool`, optional) – Return the sizes of the individual partitions of the topics if set to True. Defaults to False.
 
 
 
@@ -2266,7 +2254,7 @@ List topics on the cluster. Optionally return only those topics whose names matc
 
 * **Return type**
 
-    list(str) | dict(str, int) | dict(str, dict(int, int)) | dict(str, tuple(int, dict(int, int)))
+    `list(str)` | dict(str, int) | dict(str, dict(int, int)) | dict(str, tuple(int, dict(int, int)))
 
 
 ### Examples
@@ -2308,13 +2296,13 @@ Create a topic (shell synonym for `Cluster.create()`)
     * **topic_str** (`str`) – The name of the topic to be created.
 
 
-    * **partitions** (*int**, **optional*) – The number of partitions for the topic to be created. Defaults to 1.
+    * **partitions** (`int`, optional) – The number of partitions for the topic to be created. Defaults to 1.
 
 
-    * **config** (*dict**(**str**, **str**)**, **optional*) – Configuration overrides for the topic to be created. Note that the default “retention.ms” can also be set in the kash.py cluster configuration file (e.g. you can set it to -1 to have infinite retention for all topics that you create). Defaults to {}.
+    * **config** (`dict(str, str)`, optional) – Configuration overrides for the topic to be created. Note that the default “retention.ms” can also be set in the kash.py cluster configuration file (e.g. you can set it to -1 to have infinite retention for all topics that you create). Defaults to {}.
 
 
-    * **block** (*bool**, **optional*) – Block until the topic is created. Defaults to True.
+    * **block** (`bool`, optional) – Block until the topic is created. Defaults to True.
 
 
 
@@ -2356,13 +2344,7 @@ Unsubscribe from a topic.
 
 * **Returns**
 
-    Pair of the topic unsubscribed from (string) and the used consumer group (string).
-
-
-
-* **Return type**
-
-    (str, str)
+    `tuple(str, str)` Pair of the topic unsubscribed from (string) and the used consumer group (string).
 
 
 
@@ -2396,7 +2378,7 @@ Read messages from a local file with path path_str and produce them to topic top
     * **value_schema** (`str`, optional) – The schema of the value of the message to be produced (if key_type is either “avro”, “protobuf” or “pb”, or “jsonschema”). Defaults to None.
 
 
-    * **partition** (*int**, **optional*) – The partition to produce to. Defaults to RD_KAFKA_PARTITION_UA = -1, i.e., the partition is selected by configured built-in partitioner.
+    * **partition** (`int`, optional) – The partition to produce to. Defaults to RD_KAFKA_PARTITION_UA = -1, i.e., the partition is selected by configured built-in partitioner.
 
 
     * **key_value_separator** (`str`, optional) – The separator between the keys and the values in the local file to read from, e.g. “:”. If set to None, only read the values, not the keys. Defaults to None.
@@ -2405,22 +2387,16 @@ Read messages from a local file with path path_str and produce them to topic top
     * **message_separator** (`str`, optional) – The separator between individual messages in the local file to read from. Defaults to the newline character.
 
 
-    * **n** (*int**, **optional*) – The number of messages to read from the local file. Defaults to ALL_MESSAGES = -1.
+    * **n** (`int`, optional) – The number of messages to read from the local file. Defaults to ALL_MESSAGES = -1.
 
 
-    * **bufsize** (*int**, **optional*) – The buffer size for reading from the local file. Defaults to 4096.
+    * **bufsize** (`int`, optional) – The buffer size for reading from the local file. Defaults to 4096.
 
 
 
 * **Returns**
 
-    Pair of the number of messages read from the local file (integer) and the number of messages produced to the topic (integer).
-
-
-
-* **Return type**
-
-    (int, int)
+    `tuple(int, int)` Pair of the number of messages read from the local file (integer) and the number of messages produced to the topic (integer).
 
 
 ### Examples
@@ -2463,10 +2439,10 @@ Returns a dictionary of the topics whose names match the bash-like pattern patte
 * **Parameters**
 
     
-    * **pattern_str_or_str_list** (*str** | **list**(**str**)*) – The pattern or list of patterns for selecting the topics.
+    * **pattern_str_or_str_list** (str | `list(str)`) – The pattern or list of patterns for selecting the topics.
 
 
-    * **timeout** (*float**, **optional*) – The timeout (in seconds) for the individual get_watermark_offsets() method calls from confluent_kafka.Consumer. Defaults to -1.0 (infinite=no timeout).
+    * **timeout** (`float`, optional) – The timeout (in seconds) for the individual get_watermark_offsets() method calls from confluent_kafka.Consumer. Defaults to -1.0 (infinite=no timeout).
 
 
 
@@ -2507,10 +2483,10 @@ Count the number of messages, words, and bytes in a topic. Optionally explicitly
     * **group** (`str`, optional) – Consumer group name used for subscribing to the topic. If set to None, creates a new unique consumer group name. Defaults to None.
 
 
-    * **offsets** (*dict**, **optional*) – Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for subscribing to the topic. If set to None, subscribe to the topic using the offsets from the consumer group. Defaults to None.
+    * **offsets** (`dict(int, int)`, optional) – Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for subscribing to the topic. If set to None, subscribe to the topic using the offsets from the consumer group. Defaults to None.
 
 
-    * **config** (*dict**(**str**, **str**)**, **optional*) – Dictionary of strings (keys) and strings (values) to augment the consumer configuration for the topic. Defaults to {}.
+    * **config** (`dict(str, str)`, optional) – Dictionary of strings (keys) and strings (values) to augment the consumer configuration for the topic. Defaults to {}.
 
 
     * **key_type** (`str`, optional) – Message key type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to “str”.
@@ -2519,10 +2495,10 @@ Count the number of messages, words, and bytes in a topic. Optionally explicitly
     * **value_type** (`str`, optional) – Message value type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to “str”.
 
 
-    * **n** (*int**, **optional*) – Number of messages to consume from the topic. Defaults to ALL_MESSAGES = -1.
+    * **n** (`int`, optional) – Number of messages to consume from the topic. Defaults to ALL_MESSAGES = -1.
 
 
-    * **batch_size** (*int**, **optional*) – Maximum number of messages to consume from the topic at a time. Defaults to 1.
+    * **batch_size** (`int`, optional) – Maximum number of messages to consume from the topic at a time. Defaults to 1.
 
 
 
@@ -2559,7 +2535,7 @@ Consume (parts of) a topic (topic_str1) and another topic (topic_str2) and combi
     * **topic_str2** (`str`) – Topic 2
 
 
-    * **zip_foldl_function** (*function*) – Foldl function (takes an accumulator (any type) and a message dictionary and returns the updated accumulator).
+    * **zip_foldl_function** (`function`) – Foldl function (takes an accumulator (any type) and a message dictionary and returns the updated accumulator).
 
 
     * **initial_acc** – Initial value of the accumulator (any type).
@@ -2571,16 +2547,16 @@ Consume (parts of) a topic (topic_str1) and another topic (topic_str2) and combi
     * **group2** (`str`, optional) – Consumer group name used for consuming from topic 2. If set to None, creates a new unique consumer group name. Defaults to None.
 
 
-    * **offsets1** (*dict**, **optional*) – Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for consuming from topic 1. If set to None, consume topic 1 using the offsets from the consumer group for topic 1. Defaults to None.
+    * **offsets1** (`dict(int, int)`, optional) – Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for consuming from topic 1. If set to None, consume topic 1 using the offsets from the consumer group for topic 1. Defaults to None.
 
 
-    * **offsets2** (*dict**, **optional*) – Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for consuming from topic 2. If set to None, consume topic 2 using the offsets from the consumer group for topic 2. Defaults to None.
+    * **offsets2** (`dict(int, int)`, optional) – Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for consuming from topic 2. If set to None, consume topic 2 using the offsets from the consumer group for topic 2. Defaults to None.
 
 
-    * **config1** (*dict**(**str**, **str**)**, **optional*) – Dictionary of strings (keys) and strings (values) to augment the consumer configuration for topic 1 on cluster 1. Defaults to {}.
+    * **config1** (`dict(str, str)`, optional) – Dictionary of strings (keys) and strings (values) to augment the consumer configuration for topic 1 on cluster 1. Defaults to {}.
 
 
-    * **config2** (*dict**(**str**, **str**)**, **optional*) – Dictionary of strings (keys) and strings (values) to augment the consumer configuration for topic 2 on cluster 2. Defaults to {}.
+    * **config2** (`dict(str, str)`, optional) – Dictionary of strings (keys) and strings (values) to augment the consumer configuration for topic 2 on cluster 2. Defaults to {}.
 
 
     * **key_type1** (`str`, optional) – Topic 1 message key type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to “bytes”.
@@ -2595,10 +2571,10 @@ Consume (parts of) a topic (topic_str1) and another topic (topic_str2) and combi
     * **value_type2** (`str`, optional) – Topic 2 message value type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). If set to None, target_value_type = source_value_type. Defaults to None.
 
 
-    * **n** (*int**, **optional*) – Number of messages to consume from topic 1 and topic 2. Defaults to ALL_MESSAGES = -1.
+    * **n** (`int`, optional) – Number of messages to consume from topic 1 and topic 2. Defaults to ALL_MESSAGES = -1.
 
 
-    * **batch_size** (*int**, **optional*) – Maximum number of messages to consume from topic 1 and topic 2 at a time. Defaults to 1.
+    * **batch_size** (`int`, optional) – Maximum number of messages to consume from topic 1 and topic 2 at a time. Defaults to 1.
 
 
 
@@ -2635,13 +2611,13 @@ Replicate (parts of) a topic (source_topic_str) on one cluster (source_cluster) 
 * **Parameters**
 
     
-    * **source_cluster** (*Cluster*) – Source cluster
+    * **source_cluster** (`Cluster`) – Source cluster
 
 
     * **source_topic_str** (`str`) – Source topic
 
 
-    * **target_cluster** (*Cluster*) – Target cluster
+    * **target_cluster** (`Cluster`) – Target cluster
 
 
     * **target_topic_str** (`str`) – Target topic
@@ -2653,10 +2629,10 @@ Replicate (parts of) a topic (source_topic_str) on one cluster (source_cluster) 
     * **group** (`str`, optional) – Consumer group name used for subscribing to the source topic. If set to None, creates a new unique consumer group name. Defaults to None.
 
 
-    * **offsets** (*dict**, **optional*) – Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for subscribing to the source topic. If set to None, subscribe to the topic using the offsets from the consumer group for the topic. Defaults to None.
+    * **offsets** (`dict(int, int)`, optional) – Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for subscribing to the source topic. If set to None, subscribe to the topic using the offsets from the consumer group for the topic. Defaults to None.
 
 
-    * **config** (*dict**(**str**, **str**)**, **optional*) – Dictionary of strings (keys) and strings (values) to augment the consumer configuration for the source topic. Defaults to {}.
+    * **config** (`dict(str, str)`, optional) – Dictionary of strings (keys) and strings (values) to augment the consumer configuration for the source topic. Defaults to {}.
 
 
     * **source_key_type** (`str`, optional) – Source topic message key type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to “bytes”.
@@ -2677,13 +2653,13 @@ Replicate (parts of) a topic (source_topic_str) on one cluster (source_cluster) 
     * **target_value_schema** (`str`, optional) – Target value message type schema (for “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to None.
 
 
-    * **keep_timestamps** (*bool**, **optional*) – Replicate the timestamps of the source messages in the target messages. Defaults to True.
+    * **keep_timestamps** (`bool`, optional) – Replicate the timestamps of the source messages in the target messages. Defaults to True.
 
 
-    * **n** (*int**, **optional*) – Number of messages to consume from the source topic. Defaults to ALL_MESSAGES = -1.
+    * **n** (`int`, optional) – Number of messages to consume from the source topic. Defaults to ALL_MESSAGES = -1.
 
 
-    * **batch_size** (*int**, **optional*) – Maximum number of messages to consume from the source topic at a time. Defaults to 1.
+    * **batch_size** (`int`, optional) – Maximum number of messages to consume from the source topic at a time. Defaults to 1.
 
 
 
@@ -2728,13 +2704,13 @@ Create a diff of (parts of) a topic (topic_str1) on one cluster (cluster1) and a
 * **Parameters**
 
     
-    * **cluster1** (*Cluster*) – Cluster 1
+    * **cluster1** (`Cluster`) – Cluster 1
 
 
     * **topic_str1** (`str`) – Topic 1
 
 
-    * **cluster2** (*Cluster*) – Cluster 2
+    * **cluster2** (`Cluster`) – Cluster 2
 
 
     * **topic_str2** (`str`) – Topic 2
@@ -2746,10 +2722,10 @@ Create a diff of (parts of) a topic (topic_str1) on one cluster (cluster1) and a
     * **group2** (`str`, optional) – Consumer group name used for consuming from topic 2. If set to None, creates a new unique consumer group name. Defaults to None.
 
 
-    * **offsets1** (*dict**, **optional*) – Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for consuming from topic 1. If set to None, consume topic 1 using the offsets from the consumer group for topic 1. Defaults to None.
+    * **offsets1** (`dict(int, int)`, optional) – Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for consuming from topic 1. If set to None, consume topic 1 using the offsets from the consumer group for topic 1. Defaults to None.
 
 
-    * **offsets2** (*dict**, **optional*) – Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for consuming from topic 2. If set to None, consume topic 2 using the offsets from the consumer group for topic 2. Defaults to None.
+    * **offsets2** (`dict(int, int)`, optional) – Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for consuming from topic 2. If set to None, consume topic 2 using the offsets from the consumer group for topic 2. Defaults to None.
 
 
     * **key_type1** (`str`, optional) – Topic 1 message key type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to “bytes”.
@@ -2764,10 +2740,10 @@ Create a diff of (parts of) a topic (topic_str1) on one cluster (cluster1) and a
     * **value_type2** (`str`, optional) – Topic 2 message value type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). If set to None, target_value_type = source_value_type. Defaults to “bytes”.
 
 
-    * **n** (*int**, **optional*) – Number of messages to consume from the topic 1 and topic 2. Defaults to ALL_MESSAGES = -1.
+    * **n** (`int`, optional) – Number of messages to consume from the topic 1 and topic 2. Defaults to ALL_MESSAGES = -1.
 
 
-    * **batch_size** (*int**, **optional*) – Maximum number of messages to consume from topic 1 and topic 2 at a time. Defaults to 1.
+    * **batch_size** (`int`, optional) – Maximum number of messages to consume from topic 1 and topic 2 at a time. Defaults to 1.
 
 
 
@@ -2798,19 +2774,19 @@ Create a diff of (parts of) a topic (topic_str1) on one cluster (cluster1) and a
 * **Parameters**
 
     
-    * **cluster1** (*Cluster*) – Cluster 1
+    * **cluster1** (`Cluster`) – Cluster 1
 
 
     * **topic_str1** (`str`) – Topic 1
 
 
-    * **cluster2** (*Cluster*) – Cluster 2
+    * **cluster2** (`Cluster`) – Cluster 2
 
 
     * **topic_str2** (`str`) – Topic 2
 
 
-    * **diff_function** (*function*) – Diff function (takes a message dictionary from topic 1 and a message dictionary from topic 2 and returns the updated accumulator)
+    * **diff_function** (`function`) – Diff function (takes a message dictionary from topic 1 and a message dictionary from topic 2 and returns the updated accumulator)
 
 
     * **group1** (`str`, optional) – Consumer group name used for consuming from topic 1. If set to None, creates a new unique consumer group name. Defaults to None.
@@ -2819,10 +2795,10 @@ Create a diff of (parts of) a topic (topic_str1) on one cluster (cluster1) and a
     * **group2** (`str`, optional) – Consumer group name used for consuming from topic 2. If set to None, creates a new unique consumer group name. Defaults to None.
 
 
-    * **offsets1** (*dict**, **optional*) – Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for consuming from topic 1. If set to None, consume topic 1 using the offsets from the consumer group for topic 1. Defaults to None.
+    * **offsets1** (`dict(int, int)`, optional) – Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for consuming from topic 1. If set to None, consume topic 1 using the offsets from the consumer group for topic 1. Defaults to None.
 
 
-    * **offsets2** (*dict**, **optional*) – Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for consuming from topic 2. If set to None, consume topic 2 using the offsets from the consumer group for topic 2. Defaults to None.
+    * **offsets2** (`dict(int, int)`, optional) – Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for consuming from topic 2. If set to None, consume topic 2 using the offsets from the consumer group for topic 2. Defaults to None.
 
 
     * **key_type1** (`str`, optional) – Topic 1 message key type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to “bytes”.
@@ -2837,10 +2813,10 @@ Create a diff of (parts of) a topic (topic_str1) on one cluster (cluster1) and a
     * **value_type2** (`str`, optional) – Topic 2 message value type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). If set to None, target_value_type = source_value_type. Defaults to “bytes”.
 
 
-    * **n** (*int**, **optional*) – Number of messages to consume from the topic 1 and topic 2. Defaults to ALL_MESSAGES = -1.
+    * **n** (`int`, optional) – Number of messages to consume from the topic 1 and topic 2. Defaults to ALL_MESSAGES = -1.
 
 
-    * **batch_size** (*int**, **optional*) – Maximum number of messages to consume from topic 1 and topic 2 at a time. Defaults to 1.
+    * **batch_size** (`int`, optional) – Maximum number of messages to consume from topic 1 and topic 2 at a time. Defaults to 1.
 
 
 
@@ -2877,22 +2853,22 @@ Replicate (parts of) a topic (source_topic_str) on one cluster (source_cluster) 
     * **source_topic_str** (`str`) – Source topic
 
 
-    * **target_cluster** (*Cluster*) – Target cluster
+    * **target_cluster** (`Cluster`) – Target cluster
 
 
     * **target_topic_str** (`str`) – Target topic
 
 
-    * **flatmap_function** (*function*) – Flatmap function (takes a message dictionary and returns a list of message dictionaries)
+    * **flatmap_function** (`function`) – Flatmap function (takes a message dictionary and returns a list of message dictionaries)
 
 
     * **group** (`str`, optional) – Consumer group name used for subscribing to the source topic. If set to None, creates a new unique consumer group name. Defaults to None.
 
 
-    * **offsets** (*dict**, **optional*) – Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for subscribing to the source topic. If set to None, subscribe to the topic using the offsets from the consumer group for the topic. Defaults to None.
+    * **offsets** (`dict(int, int)`, optional) – Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for subscribing to the source topic. If set to None, subscribe to the topic using the offsets from the consumer group for the topic. Defaults to None.
 
 
-    * **config** (*dict**(**str**, **str**)**, **optional*) – Dictionary of strings (keys) and strings (values) to augment the consumer configuration for the source topic. Defaults to {}.
+    * **config** (`dict(str, str)`, optional) – Dictionary of strings (keys) and strings (values) to augment the consumer configuration for the source topic. Defaults to {}.
 
 
     * **source_key_type** (`str`, optional) – Source topic message key type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to “bytes”.
@@ -2913,13 +2889,13 @@ Replicate (parts of) a topic (source_topic_str) on one cluster (source_cluster) 
     * **target_value_schema** (`str`, optional) – Target value message type schema (for “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to None.
 
 
-    * **keep_timestamps** (*bool**, **optional*) – Replicate the timestamps of the source messages in the target messages. Defaults to True.
+    * **keep_timestamps** (`bool`, optional) – Replicate the timestamps of the source messages in the target messages. Defaults to True.
 
 
-    * **n** (*int**, **optional*) – Number of messages to consume from the source topic. Defaults to ALL_MESSAGES = -1.
+    * **n** (`int`, optional) – Number of messages to consume from the source topic. Defaults to ALL_MESSAGES = -1.
 
 
-    * **batch_size** (*int**, **optional*) – Maximum number of messages to consume from the source topic at a time. Defaults to 1.
+    * **batch_size** (`int`, optional) – Maximum number of messages to consume from the source topic at a time. Defaults to 1.
 
 
 
@@ -2986,13 +2962,13 @@ Replicate (parts of) a topic (source_topic_str) on one cluster (source_cluster) 
 * **Parameters**
 
     
-    * **source_cluster** (*Cluster*) – Source cluster
+    * **source_cluster** (`Cluster`) – Source cluster
 
 
     * **source_topic_str** (`str`) – Source topic
 
 
-    * **target_cluster** (*Cluster*) – Target cluster
+    * **target_cluster** (`Cluster`) – Target cluster
 
 
     * **target_topic_str** (`str`) – Target topic
@@ -3004,10 +2980,10 @@ Replicate (parts of) a topic (source_topic_str) on one cluster (source_cluster) 
     * **group** (`str`, optional) – Consumer group name used for subscribing to the source topic. If set to None, creates a new unique consumer group name. Defaults to None.
 
 
-    * **offsets** (*dict**, **optional*) – Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for subscribing to the source topic. If set to None, subscribe to the topic using the offsets from the consumer group for the topic. Defaults to None.
+    * **offsets** (`dict(int, int)`, optional) – Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for subscribing to the source topic. If set to None, subscribe to the topic using the offsets from the consumer group for the topic. Defaults to None.
 
 
-    * **config** (*dict**(**str**, **str**)**, **optional*) – Dictionary of strings (keys) and strings (values) to augment the consumer configuration for the source topic. Defaults to {}.
+    * **config** (`dict(str, str)`, optional) – Dictionary of strings (keys) and strings (values) to augment the consumer configuration for the source topic. Defaults to {}.
 
 
     * **source_key_type** (`str`, optional) – Source topic message key type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to “bytes”.
@@ -3028,13 +3004,13 @@ Replicate (parts of) a topic (source_topic_str) on one cluster (source_cluster) 
     * **target_value_schema** (`str`, optional) – Target value message type schema (for “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to None.
 
 
-    * **keep_timestamps** (*bool**, **optional*) – Replicate the timestamps of the source messages in the target messages. Defaults to True.
+    * **keep_timestamps** (`bool`, optional) – Replicate the timestamps of the source messages in the target messages. Defaults to True.
 
 
-    * **n** (*int**, **optional*) – Number of messages to consume from the source topic. Defaults to ALL_MESSAGES = -1.
+    * **n** (`int`, optional) – Number of messages to consume from the source topic. Defaults to ALL_MESSAGES = -1.
 
 
-    * **batch_size** (*int**, **optional*) – Maximum number of messages to consume from the source topic at a time. Defaults to 1.
+    * **batch_size** (`int`, optional) – Maximum number of messages to consume from the source topic at a time. Defaults to 1.
 
 
 
@@ -3085,19 +3061,19 @@ Consume (parts of) a topic (topic_str1) on one cluster (cluster1) and another to
 * **Parameters**
 
     
-    * **cluster1** (*Cluster*) – Cluster 1
+    * **cluster1** (`Cluster`) – Cluster 1
 
 
     * **topic_str1** (`str`) – Topic 1
 
 
-    * **cluster2** (*Cluster*) – Cluster 2
+    * **cluster2** (`Cluster`) – Cluster 2
 
 
     * **topic_str2** (`str`) – Topic 2
 
 
-    * **zip_foldl_function** (*function*) – Foldl function (takes an accumulator (any type) and a message dictionary and returns the updated accumulator).
+    * **zip_foldl_function** (`function`) – Foldl function (takes an accumulator (any type) and a message dictionary and returns the updated accumulator).
 
 
     * **initial_acc** – Initial value of the accumulator (any type).
@@ -3109,16 +3085,16 @@ Consume (parts of) a topic (topic_str1) on one cluster (cluster1) and another to
     * **group2** (`str`, optional) – Consumer group name used for consuming from topic 2. If set to None, creates a new unique consumer group name. Defaults to None.
 
 
-    * **offsets1** (*dict**, **optional*) – Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for consuming from topic 1. If set to None, consume topic 1 using the offsets from the consumer group for topic 1. Defaults to None.
+    * **offsets1** (`dict(int, int)`, optional) – Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for consuming from topic 1. If set to None, consume topic 1 using the offsets from the consumer group for topic 1. Defaults to None.
 
 
-    * **offsets2** (*dict**, **optional*) – Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for consuming from topic 2. If set to None, consume topic 2 using the offsets from the consumer group for topic 2. Defaults to None.
+    * **offsets2** (`dict(int, int)`, optional) – Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for consuming from topic 2. If set to None, consume topic 2 using the offsets from the consumer group for topic 2. Defaults to None.
 
 
-    * **config1** (*dict**(**str**, **str**)**, **optional*) – Dictionary of strings (keys) and strings (values) to augment the consumer configuration for topic 1 on cluster 1. Defaults to {}.
+    * **config1** (`dict(str, str)`, optional) – Dictionary of strings (keys) and strings (values) to augment the consumer configuration for topic 1 on cluster 1. Defaults to {}.
 
 
-    * **config2** (*dict**(**str**, **str**)**, **optional*) – Dictionary of strings (keys) and strings (values) to augment the consumer configuration for topic 2 on cluster 2. Defaults to {}.
+    * **config2** (`dict(str, str)`, optional) – Dictionary of strings (keys) and strings (values) to augment the consumer configuration for topic 2 on cluster 2. Defaults to {}.
 
 
     * **key_type1** (`str`, optional) – Topic 1 message key type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to “bytes”.
@@ -3133,10 +3109,10 @@ Consume (parts of) a topic (topic_str1) on one cluster (cluster1) and another to
     * **value_type2** (`str`, optional) – Topic 2 message value type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). If set to None, target_value_type = source_value_type. Defaults to “bytes”.
 
 
-    * **n** (*int**, **optional*) – Number of messages to consume from topic 1 and topic 2. Defaults to ALL_MESSAGES = -1.
+    * **n** (`int`, optional) – Number of messages to consume from topic 1 and topic 2. Defaults to ALL_MESSAGES = -1.
 
 
-    * **batch_size** (*int**, **optional*) – Maximum number of messages to consume from topic 1 and topic 2 at a time. Defaults to 1.
+    * **batch_size** (`int`, optional) – Maximum number of messages to consume from topic 1 and topic 2 at a time. Defaults to 1.
 
 
 
