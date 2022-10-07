@@ -355,20 +355,20 @@ def flatmap(source_cluster, source_topic_str, target_cluster, target_topic_str, 
     Replicate (parts of) a topic (source_topic_str) on one cluster (source_cluster) to another topic (target_topic_str) on another (or the same) cluster (target_cluster). Each replicated message is transformed into a list of other messages in a flatmap-like manner. The source and target topics can have different message key and value types; e.g. the source topic can have value type Avro whereas the target topic will be written with value type Protobuf.
 
     Args:
-        source_cluster (Cluster): Source cluster
-        source_topic_str (str): Source topic
+        source_cluster (:obj:`Cluster`): Source cluster
+        source_topic_str (:obj:`str`): Source topic
         target_cluster (Cluster): Target cluster
-        target_topic_str (str): Target topic
+        target_topic_str (:obj:`str`): Target topic
         flatmap_function (function): Flatmap function (takes a message dictionary and returns a list of message dictionaries)
-        group (str, optional): Consumer group name used for subscribing to the source topic. If set to None, creates a new unique consumer group name. Defaults to None.
+        group (:obj:`str`, optional): Consumer group name used for subscribing to the source topic. If set to None, creates a new unique consumer group name. Defaults to None.
         offsets (dict, optional): Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for subscribing to the source topic. If set to None, subscribe to the topic using the offsets from the consumer group for the topic. Defaults to None.
         config (dict(str, str), optional): Dictionary of strings (keys) and strings (values) to augment the consumer configuration for the source topic. Defaults to {}.
-        source_key_type (str, optional): Source topic message key type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "bytes".
-        source_value_type (str, optional): Source topic message value type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "bytes".
-        target_key_type (str, optional): Target topic message key type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). If set to None, target_key_type = source_key_type. Defaults to None.
-        target_value_type (str, optional): Target topic message value type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). If set to None, target_value_type = source_value_type. Defaults to None.
-        target_key_schema (str, optional): Target key message type schema (for "avro", "protobuf"/"pb" or "jsonschema"). Defaults to None.
-        target_value_schema (str, optional): Target value message type schema (for "avro", "protobuf"/"pb" or "jsonschema"). Defaults to None.
+        source_key_type (:obj:`str`, optional): Source topic message key type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "bytes".
+        source_value_type (:obj:`str`, optional): Source topic message value type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "bytes".
+        target_key_type (:obj:`str`, optional): Target topic message key type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). If set to None, target_key_type = source_key_type. Defaults to None.
+        target_value_type (:obj:`str`, optional): Target topic message value type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). If set to None, target_value_type = source_value_type. Defaults to None.
+        target_key_schema (:obj:`str`, optional): Target key message type schema (for "avro", "protobuf"/"pb" or "jsonschema"). Defaults to None.
+        target_value_schema (:obj:`str`, optional): Target value message type schema (for "avro", "protobuf"/"pb" or "jsonschema"). Defaults to None.
         keep_timestamps (bool, optional): Replicate the timestamps of the source messages in the target messages. Defaults to True.
         n (int, optional): Number of messages to consume from the source topic. Defaults to ALL_MESSAGES = -1.
         batch_size (int, optional): Maximum number of messages to consume from the source topic at a time. Defaults to 1.
@@ -445,19 +445,19 @@ def map(source_cluster, source_topic_str, target_cluster, target_topic_str, map_
 
     Args:
         source_cluster (Cluster): Source cluster
-        source_topic_str (str): Source topic
+        source_topic_str (:obj:`str`): Source topic
         target_cluster (Cluster): Target cluster
-        target_topic_str (str): Target topic
+        target_topic_str (:obj:`str`): Target topic
         map_function (function, optional): Map function (takes a message dictionary and returns a message dictionary). Defaults to lambda x: [x].
-        group (str, optional): Consumer group name used for subscribing to the source topic. If set to None, creates a new unique consumer group name. Defaults to None.
+        group (:obj:`str`, optional): Consumer group name used for subscribing to the source topic. If set to None, creates a new unique consumer group name. Defaults to None.
         offsets (dict, optional): Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for subscribing to the source topic. If set to None, subscribe to the topic using the offsets from the consumer group for the topic. Defaults to None.
         config (dict(str, str), optional): Dictionary of strings (keys) and strings (values) to augment the consumer configuration for the source topic. Defaults to {}.
-        source_key_type (str, optional): Source topic message key type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "bytes".
-        source_value_type (str, optional): Source topic message value type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "bytes".
-        target_key_type (str, optional): Target topic message key type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). If set to None, target_key_type = source_key_type. Defaults to None.
-        target_value_type (str, optional): Target topic message value type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). If set to None, target_value_type = source_value_type. Defaults to None.
-        target_key_schema (str, optional): Target key message type schema (for "avro", "protobuf"/"pb" or "jsonschema"). Defaults to None.
-        target_value_schema (str, optional): Target value message type schema (for "avro", "protobuf"/"pb" or "jsonschema"). Defaults to None.
+        source_key_type (:obj:`str`, optional): Source topic message key type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "bytes".
+        source_value_type (:obj:`str`, optional): Source topic message value type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "bytes".
+        target_key_type (:obj:`str`, optional): Target topic message key type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). If set to None, target_key_type = source_key_type. Defaults to None.
+        target_value_type (:obj:`str`, optional): Target topic message value type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). If set to None, target_value_type = source_value_type. Defaults to None.
+        target_key_schema (:obj:`str`, optional): Target key message type schema (for "avro", "protobuf"/"pb" or "jsonschema"). Defaults to None.
+        target_value_schema (:obj:`str`, optional): Target value message type schema (for "avro", "protobuf"/"pb" or "jsonschema"). Defaults to None.
         keep_timestamps (bool, optional): Replicate the timestamps of the source messages in the target messages. Defaults to True.
         n (int, optional): Number of messages to consume from the source topic. Defaults to ALL_MESSAGES = -1.
         batch_size (int, optional): Maximum number of messages to consume from the source topic at a time. Defaults to 1.
@@ -482,19 +482,19 @@ def cp(source_cluster, source_topic_str, target_cluster, target_topic_str, flatm
 
     Args:
         source_cluster (Cluster): Source cluster
-        source_topic_str (str): Source topic
+        source_topic_str (:obj:`str`): Source topic
         target_cluster (Cluster): Target cluster
-        target_topic_str (str): Target topic
+        target_topic_str (:obj:`str`): Target topic
         flatmap_function (function, optional): Flatmap function (takes a message dictionary and returns a list of message dictionaries). Defaults to lambda x: [x].
-        group (str, optional): Consumer group name used for subscribing to the source topic. If set to None, creates a new unique consumer group name. Defaults to None.
+        group (:obj:`str`, optional): Consumer group name used for subscribing to the source topic. If set to None, creates a new unique consumer group name. Defaults to None.
         offsets (dict, optional): Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for subscribing to the source topic. If set to None, subscribe to the topic using the offsets from the consumer group for the topic. Defaults to None.
         config (dict(str, str), optional): Dictionary of strings (keys) and strings (values) to augment the consumer configuration for the source topic. Defaults to {}.
-        source_key_type (str, optional): Source topic message key type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "bytes".
-        source_value_type (str, optional): Source topic message value type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "bytes".
-        target_key_type (str, optional): Target topic message key type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). If set to None, target_key_type = source_key_type. Defaults to None.
-        target_value_type (str, optional): Target topic message value type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). If set to None, target_value_type = source_value_type. Defaults to None.
-        target_key_schema (str, optional): Target key message type schema (for "avro", "protobuf"/"pb" or "jsonschema"). Defaults to None.
-        target_value_schema (str, optional): Target value message type schema (for "avro", "protobuf"/"pb" or "jsonschema"). Defaults to None.
+        source_key_type (:obj:`str`, optional): Source topic message key type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "bytes".
+        source_value_type (:obj:`str`, optional): Source topic message value type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "bytes".
+        target_key_type (:obj:`str`, optional): Target topic message key type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). If set to None, target_key_type = source_key_type. Defaults to None.
+        target_value_type (:obj:`str`, optional): Target topic message value type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). If set to None, target_value_type = source_value_type. Defaults to None.
+        target_key_schema (:obj:`str`, optional): Target key message type schema (for "avro", "protobuf"/"pb" or "jsonschema"). Defaults to None.
+        target_value_schema (:obj:`str`, optional): Target value message type schema (for "avro", "protobuf"/"pb" or "jsonschema"). Defaults to None.
         keep_timestamps (bool, optional): Replicate the timestamps of the source messages in the target messages. Defaults to True.
         n (int, optional): Number of messages to consume from the source topic. Defaults to ALL_MESSAGES = -1.
         batch_size (int, optional): Maximum number of messages to consume from the source topic at a time. Defaults to 1.
@@ -525,21 +525,21 @@ def zip_foldl(cluster1, topic_str1, cluster2, topic_str2, zip_foldl_function, in
 
     Args:
         cluster1 (Cluster): Cluster 1
-        topic_str1 (str): Topic 1
+        topic_str1 (:obj:`str`): Topic 1
         cluster2 (Cluster): Cluster 2
-        topic_str2 (str): Topic 2
+        topic_str2 (:obj:`str`): Topic 2
         zip_foldl_function (function): Foldl function (takes an accumulator (any type) and a message dictionary and returns the updated accumulator).
         initial_acc: Initial value of the accumulator (any type).
-        group1 (str, optional): Consumer group name used for consuming from topic 1. If set to None, creates a new unique consumer group name. Defaults to None.
-        group2 (str, optional): Consumer group name used for consuming from topic 2. If set to None, creates a new unique consumer group name. Defaults to None.
+        group1 (:obj:`str`, optional): Consumer group name used for consuming from topic 1. If set to None, creates a new unique consumer group name. Defaults to None.
+        group2 (:obj:`str`, optional): Consumer group name used for consuming from topic 2. If set to None, creates a new unique consumer group name. Defaults to None.
         offsets1 (dict, optional): Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for consuming from topic 1. If set to None, consume topic 1 using the offsets from the consumer group for topic 1. Defaults to None.
         offsets2 (dict, optional): Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for consuming from topic 2. If set to None, consume topic 2 using the offsets from the consumer group for topic 2. Defaults to None.
         config1 (dict(str, str), optional): Dictionary of strings (keys) and strings (values) to augment the consumer configuration for topic 1 on cluster 1. Defaults to {}.
         config2 (dict(str, str), optional): Dictionary of strings (keys) and strings (values) to augment the consumer configuration for topic 2 on cluster 2. Defaults to {}.
-        key_type1 (str, optional): Topic 1 message key type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "bytes".
-        value_type1 (str, optional): Topic 1 message value type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "bytes".
-        key_type2 (str, optional): Topic 2 message key type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). If set to None, target_key_type = source_key_type. Defaults to "bytes".
-        value_type2 (str, optional): Topic 2 message value type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). If set to None, target_value_type = source_value_type. Defaults to "bytes".
+        key_type1 (:obj:`str`, optional): Topic 1 message key type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "bytes".
+        value_type1 (:obj:`str`, optional): Topic 1 message value type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "bytes".
+        key_type2 (:obj:`str`, optional): Topic 2 message key type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). If set to None, target_key_type = source_key_type. Defaults to "bytes".
+        value_type2 (:obj:`str`, optional): Topic 2 message value type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). If set to None, target_value_type = source_value_type. Defaults to "bytes".
         n (int, optional): Number of messages to consume from topic 1 and topic 2. Defaults to ALL_MESSAGES = -1.
         batch_size (int, optional): Maximum number of messages to consume from topic 1 and topic 2 at a time. Defaults to 1.
 
@@ -610,18 +610,18 @@ def diff_fun(cluster1, topic_str1, cluster2, topic_str2, diff_function, group1=N
 
     Args:
         cluster1 (Cluster): Cluster 1
-        topic_str1 (str): Topic 1
+        topic_str1 (:obj:`str`): Topic 1
         cluster2 (Cluster): Cluster 2
-        topic_str2 (str): Topic 2
+        topic_str2 (:obj:`str`): Topic 2
         diff_function (function): Diff function (takes a message dictionary from topic 1 and a message dictionary from topic 2 and returns the updated accumulator)
-        group1 (str, optional): Consumer group name used for consuming from topic 1. If set to None, creates a new unique consumer group name. Defaults to None.
-        group2 (str, optional): Consumer group name used for consuming from topic 2. If set to None, creates a new unique consumer group name. Defaults to None.
+        group1 (:obj:`str`, optional): Consumer group name used for consuming from topic 1. If set to None, creates a new unique consumer group name. Defaults to None.
+        group2 (:obj:`str`, optional): Consumer group name used for consuming from topic 2. If set to None, creates a new unique consumer group name. Defaults to None.
         offsets1 (dict, optional): Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for consuming from topic 1. If set to None, consume topic 1 using the offsets from the consumer group for topic 1. Defaults to None.
         offsets2 (dict, optional): Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for consuming from topic 2. If set to None, consume topic 2 using the offsets from the consumer group for topic 2. Defaults to None.
-        key_type1 (str, optional): Topic 1 message key type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "bytes".
-        value_type1 (str, optional): Topic 1 message value type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "bytes".
-        key_type2 (str, optional): Topic 2 message key type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). If set to None, target_key_type = source_key_type. Defaults to "bytes".
-        value_type2 (str, optional): Topic 2 message value type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). If set to None, target_value_type = source_value_type. Defaults to "bytes".
+        key_type1 (:obj:`str`, optional): Topic 1 message key type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "bytes".
+        value_type1 (:obj:`str`, optional): Topic 1 message value type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "bytes".
+        key_type2 (:obj:`str`, optional): Topic 2 message key type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). If set to None, target_key_type = source_key_type. Defaults to "bytes".
+        value_type2 (:obj:`str`, optional): Topic 2 message value type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). If set to None, target_value_type = source_value_type. Defaults to "bytes".
         n (int, optional): Number of messages to consume from the topic 1 and topic 2. Defaults to ALL_MESSAGES = -1.
         batch_size (int, optional): Maximum number of messages to consume from topic 1 and topic 2 at a time. Defaults to 1.
 
@@ -655,17 +655,17 @@ def diff(cluster1, topic_str1, cluster2, topic_str2, group1=None, group2=None, o
 
     Args:
         cluster1 (Cluster): Cluster 1
-        topic_str1 (str): Topic 1
+        topic_str1 (:obj:`str`): Topic 1
         cluster2 (Cluster): Cluster 2
-        topic_str2 (str): Topic 2
-        group1 (str, optional): Consumer group name used for consuming from topic 1. If set to None, creates a new unique consumer group name. Defaults to None.
-        group2 (str, optional): Consumer group name used for consuming from topic 2. If set to None, creates a new unique consumer group name. Defaults to None.
+        topic_str2 (:obj:`str`): Topic 2
+        group1 (:obj:`str`, optional): Consumer group name used for consuming from topic 1. If set to None, creates a new unique consumer group name. Defaults to None.
+        group2 (:obj:`str`, optional): Consumer group name used for consuming from topic 2. If set to None, creates a new unique consumer group name. Defaults to None.
         offsets1 (dict, optional): Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for consuming from topic 1. If set to None, consume topic 1 using the offsets from the consumer group for topic 1. Defaults to None.
         offsets2 (dict, optional): Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for consuming from topic 2. If set to None, consume topic 2 using the offsets from the consumer group for topic 2. Defaults to None.
-        key_type1 (str, optional): Topic 1 message key type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "bytes".
-        value_type1 (str, optional): Topic 1 message value type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "bytes".
-        key_type2 (str, optional): Topic 2 message key type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). If set to None, target_key_type = source_key_type. Defaults to "bytes".
-        value_type2 (str, optional): Topic 2 message value type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). If set to None, target_value_type = source_value_type. Defaults to "bytes".
+        key_type1 (:obj:`str`, optional): Topic 1 message key type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "bytes".
+        value_type1 (:obj:`str`, optional): Topic 1 message value type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "bytes".
+        key_type2 (:obj:`str`, optional): Topic 2 message key type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). If set to None, target_key_type = source_key_type. Defaults to "bytes".
+        value_type2 (:obj:`str`, optional): Topic 2 message value type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). If set to None, target_value_type = source_value_type. Defaults to "bytes".
         n (int, optional): Number of messages to consume from the topic 1 and topic 2. Defaults to ALL_MESSAGES = -1.
         batch_size (int, optional): Maximum number of messages to consume from topic 1 and topic 2 at a time. Defaults to 1.
 
@@ -720,7 +720,7 @@ class Cluster:
       * ``block.interval``: Time (in seconds) between retries when blocking to wait for topics to have been created/deleted (if ``block`` is set to True). Defaults to 0.1.
 
     Args:
-        cluster_str (str): Name of the cluster; kash.py searches the two folders "clusters_secured" and "clusters_unsecured" for kash.py configuration files named "<cluster.str>.conf".
+        cluster_str (:obj:`str`): Name of the cluster; kash.py searches the two folders "clusters_secured" and "clusters_unsecured" for kash.py configuration files named "<cluster.str>.conf".
 
     Examples:
 
@@ -1231,7 +1231,7 @@ class Cluster:
     List topics on the cluster. Optionally return only those topics whose names match bash-like patterns. Optionally return the total sizes of the topics and the sizes of their individual partitions.
 
     Args:
-        pattern (str, optional): The pattern or list of patterns for selecting those topics which shall be listed. Defaults to None.
+        pattern (:obj:`str`, optional): The pattern or list of patterns for selecting those topics which shall be listed. Defaults to None.
         size (bool, optional): Return the total sizes of the topics if set to True. Defaults to False.
         partitions (bool, optional): Return the sizes of the individual partitions of the topics if set to True. Defaults to False.
 
@@ -1264,7 +1264,7 @@ class Cluster:
         List topics on the cluster. Optionally return only those topics whose names match bash-like patterns. Optionally return the total sizes of the topics and the sizes of their individual partitions.
 
         Args:
-            pattern (str, optional): The pattern or list of patterns for selecting those topics which shall be listed. Defaults to None.
+            pattern (:obj:`str`, optional): The pattern or list of patterns for selecting those topics which shall be listed. Defaults to None.
             size (bool, optional): Return the total sizes of the topics if set to True. Defaults to True.
             partitions (bool, optional): Return the sizes of the individual partitions of the topics if set to True. Defaults to False.
 
@@ -1298,7 +1298,7 @@ class Cluster:
     List topics on the cluster. Optionally return only those topics whose names match bash-like patterns. Optionally return the total sizes of the topics and the sizes of their individual partitions.
 
     Args:
-        pattern (str, optional): The pattern or list of patterns for selecting those topics which shall be listed. Defaults to None.
+        pattern (:obj:`str`, optional): The pattern or list of patterns for selecting those topics which shall be listed. Defaults to None.
         size (bool, optional): Return the total sizes of the topics if set to True. Defaults to True.
         partitions (bool, optional): Return the sizes of the individual partitions of the topics if set to True. Defaults to False.
 
@@ -1405,7 +1405,7 @@ class Cluster:
         Create a topic.
 
         Args:
-            topic_str (str): The name of the topic to be created.
+            topic_str (:obj:`str`): The name of the topic to be created.
             partitions (int, optional): The number of partitions for the topic to be created. Defaults to 1.
             config (dict(str, str), optional): Configuration overrides for the topic to be created. Note that the default "retention.ms" can also be set in the kash.py cluster configuration file (e.g. you can set it to -1 to have infinite retention for all topics that you create). Defaults to {}.
             block (bool, optional): Block until the topic is created. Defaults to True.
@@ -1446,7 +1446,7 @@ class Cluster:
     Create a topic (shell synonym for ``Cluster.create()``)
 
     Args:
-        topic_str (str): The name of the topic to be created.
+        topic_str (:obj:`str`): The name of the topic to be created.
         partitions (int, optional): The number of partitions for the topic to be created. Defaults to 1.
         config (dict(str, str), optional): Configuration overrides for the topic to be created. Note that the default "retention.ms" can also be set in the kash.py cluster configuration file (e.g. you can set it to -1 to have infinite retention for all topics that you create). Defaults to {}.
         block (bool, optional): Block until the topic is created. Defaults to True.
@@ -1478,7 +1478,7 @@ class Cluster:
             block (bool, optional): Block until the topic is deleted. Defaults to True.
 
         Returns:
-            list(str): List of strings of names of the deleted topics.
+            :obj:`list(str)`: List of strings of names of the deleted topics.
 
         Examples:
             c.delete("test")
@@ -1512,7 +1512,7 @@ class Cluster:
         block (bool, optional): Block until the topic is deleted. Defaults to True.
 
     Returns:
-        list(str): List of strings of names of the deleted topics.
+        obj:`list(str)`: List of strings of names of the deleted topics.
 
     Examples:
         c.rm("test")
@@ -1598,7 +1598,7 @@ class Cluster:
         Test whether a topic exists on the cluster.
 
         Args:
-            topic_str (str): A topic.
+            topic_str (:obj:`str`): A topic.
 
         Returns:
             bool: True if the topic topic_str exists, False otherwise.
@@ -1680,7 +1680,7 @@ class Cluster:
             pattern (str | list(str), optional): The pattern or list of patterns for selecting those consumer groups which shall be listed. Defaults to None.
 
         Returns:
-            list(str): List of strings (consumer group names).
+            :obj:`list(str)`): List of strings (consumer group names).
 
         Examples:
             c.groups()
@@ -1711,7 +1711,7 @@ class Cluster:
         Describe consumer groups on the cluster whose names match bash-like patterns.
 
         Args:
-            pattern (str | list(str), optional): The pattern or list of patterns for selecting those consumer groups which shall be listed. Defaults to None.
+            pattern_str_or_str_list (:obj:`str` | :obj:`list(str)`, optional): The pattern or list of patterns for selecting those consumer groups which shall be listed. Defaults to None.
 
         Returns:
             dict(str, group_dict): Dictionary of strings (consumer group names) and group dictionaries describing the consumer group (converted from confluent_kafka.GroupMetadata objects).
@@ -1799,8 +1799,8 @@ class Cluster:
 
         Args:
             pattern_str_or_str_list (str | list(str)): The pattern (or list of patterns) for selecting those topics whose configuration shall be changed.
-            key_str (str): Configuration key.
-            value_str (str): Configuration value.
+            key_str (:obj:`str`): Configuration key.
+            value_str (:obj:`str`): Configuration value.
             test (bool, optional): If True, the request is only validated without changing the configuration. Defaults to False.
 
         Returns:
@@ -1834,13 +1834,13 @@ class Cluster:
         List ACLs of the cluster.
 
         Args:
-            restype (str, optional): The resource type ("unknown", "any", "topic", "group" or "broker"). Defaults to "any".
-            name (str, optional): The name. Defaults to None.
-            resource_pattern_type (str, optional): The resource pattern type ("unknown", "any", "match", "literal" or "prefixed"). Defaults to "any".
-            principal (str, optional): The principal. Defaults to None.
-            host (str, optional): The host. Defaults to None.
-            operation (str, optional): The operation ("unknown", "any", "all", "read", "write", "create", "delete", "alter", "describe", "cluster_action", "describe_configs", "alter_configs", "idempotent_write"). Defaults to "any"
-            permission_type (str, optional): The permission type ("unknown", "any", "deny" or "allow"). Defaults to "any".
+            restype (:obj:`str`, optional): The resource type ("unknown", "any", "topic", "group" or "broker"). Defaults to "any".
+            name (:obj:`str`, optional): The name. Defaults to None.
+            resource_pattern_type (:obj:`str`, optional): The resource pattern type ("unknown", "any", "match", "literal" or "prefixed"). Defaults to "any".
+            principal (:obj:`str`, optional): The principal. Defaults to None.
+            host (:obj:`str`, optional): The host. Defaults to None.
+            operation (:obj:`str`, optional): The operation ("unknown", "any", "all", "read", "write", "create", "delete", "alter", "describe", "cluster_action", "describe_configs", "alter_configs", "idempotent_write"). Defaults to "any"
+            permission_type (:obj:`str`, optional): The permission type ("unknown", "any", "deny" or "allow"). Defaults to "any".
 
         Returns:
             list(aclBinding_dict): List of ACL Binding dictionaries (converted from confluent_kafka.AclBinding objects) of the selected ACLs.
@@ -1871,13 +1871,13 @@ class Cluster:
         Create an ACL on the cluster.
 
         Args:
-            restype (str, optional): The resource type ("unknown", "any", "topic", "group" or "broker"). Defaults to "any".
-            name (str, optional): The name. Defaults to None.
-            resource_pattern_type (str, optional): The resource pattern type ("unknown", "any", "match", "literal" or "prefixed"). Defaults to "any".
-            principal (str, optional): The principal. Defaults to None.
-            host (str, optional): The host. Defaults to None.
-            operation (str, optional): The operation ("unknown", "any", "all", "read", "write", "create", "delete", "alter", "describe", "cluster_action", "describe_configs", "alter_configs", "idempotent_write"). Defaults to "any"
-            permission_type (str, optional): The permission type ("unknown", "any", "deny" or "allow"). Defaults to "any".
+            restype (:obj:`str`, optional): The resource type ("unknown", "any", "topic", "group" or "broker"). Defaults to "any".
+            name (:obj:`str`, optional): The name. Defaults to None.
+            resource_pattern_type (:obj:`str`, optional): The resource pattern type ("unknown", "any", "match", "literal" or "prefixed"). Defaults to "any".
+            principal (:obj:`str`, optional): The principal. Defaults to None.
+            host (:obj:`str`, optional): The host. Defaults to None.
+            operation (:obj:`str`, optional): The operation ("unknown", "any", "all", "read", "write", "create", "delete", "alter", "describe", "cluster_action", "describe_configs", "alter_configs", "idempotent_write"). Defaults to "any"
+            permission_type (:obj:`str`, optional): The permission type ("unknown", "any", "deny" or "allow"). Defaults to "any".
 
         Returns:
             aclBinding_dict: ACL Binding dictionary (converted from an confluent_kafka.AclBinding object) of the created ACL.
@@ -1905,13 +1905,13 @@ class Cluster:
         Delete ACLs from the cluster.
 
         Args:
-            restype (str, optional): The resource type ("unknown", "any", "topic", "group" or "broker"). Defaults to "any".
-            name (str, optional): The name. Defaults to None.
-            resource_pattern_type (str, optional): The resource pattern type ("unknown", "any", "match", "literal" or "prefixed"). Defaults to "any".
-            principal (str, optional): The principal. Defaults to None.
-            host (str, optional): The host. Defaults to None.
-            operation (str, optional): The operation ("unknown", "any", "all", "read", "write", "create", "delete", "alter", "describe", "cluster_action", "describe_configs", "alter_configs", "idempotent_write"). Defaults to "any"
-            permission_type (str, optional): The permission type ("unknown", "any", "deny" or "allow"). Defaults to "any".
+            restype (:obj:`str`, optional): The resource type ("unknown", "any", "topic", "group" or "broker"). Defaults to "any".
+            name (:obj:`str`, optional): The name. Defaults to None.
+            resource_pattern_type (:obj:`str`, optional): The resource pattern type ("unknown", "any", "match", "literal" or "prefixed"). Defaults to "any".
+            principal (:obj:`str`, optional): The principal. Defaults to None.
+            host (:obj:`str`, optional): The host. Defaults to None.
+            operation (:obj:`str`, optional): The operation ("unknown", "any", "all", "read", "write", "create", "delete", "alter", "describe", "cluster_action", "describe_configs", "alter_configs", "idempotent_write"). Defaults to "any"
+            permission_type (:obj:`str`, optional): The permission type ("unknown", "any", "deny" or "allow"). Defaults to "any".
 
         Returns:
             List(aclBinding_dict): List of ACL Binding dictionaries (converted from confluent_kafka.AclBinding objects) of the deleted ACLs.
@@ -1941,13 +1941,13 @@ class Cluster:
         Produce a message to a topic. The key and the value of the message can be either bytes, a string, a dictionary, or a schema-based format supported by the Confluent Schema Registry (currently Avro, Protobuf or JSONSchema).
 
         Args:
-            topic_str (str): The topic to produce to.
+            topic_str (:obj:`str`): The topic to produce to.
             value (bytes | str | dict): The value of the message to be produced.
             key (bytes | str | dict, optional): The key of the message to be produced. Defaults to None.
-            key_type (str, optional): The key type ("bytes", "str", "json", "avro", "protobuf" or "pb", or "jsonschema"). Defaults to "str".
-            value_type (str, optional): The value type ("bytes", "str", "json", "avro", "protobuf" or "pb", or "jsonschema"). Defaults to "str".
-            key_schema (str, optional): The schema of the key of the message to be produced (if key_type is either "avro", "protobuf" or "pb", or "jsonschema"). Defaults to None.
-            value_schema (str, optional): The schema of the value of the message to be produced (if key_type is either "avro", "protobuf" or "pb", or "jsonschema"). Defaults to None.
+            key_type (:obj:`str`, optional): The key type ("bytes", "str", "json", "avro", "protobuf" or "pb", or "jsonschema"). Defaults to "str".
+            value_type (:obj:`str`, optional): The value type ("bytes", "str", "json", "avro", "protobuf" or "pb", or "jsonschema"). Defaults to "str".
+            key_schema (:obj:`str`, optional): The schema of the key of the message to be produced (if key_type is either "avro", "protobuf" or "pb", or "jsonschema"). Defaults to None.
+            value_schema (:obj:`str`, optional): The schema of the value of the message to be produced (if key_type is either "avro", "protobuf" or "pb", or "jsonschema"). Defaults to None.
             partition (int, optional): The partition to produce to. Defaults to RD_KAFKA_PARTITION_UA = -1, i.e., the partition is selected by configured built-in partitioner.
             timestamp (int, optional): Message timestamp (CreateTime) in milliseconds since epoch UTC. Defaults to CURRENT_TIME = 0.
             headers (dict | list): Message headers to set on the message. The header key must be a string while the value must be binary, unicode or None. Accepts a list of (key,value) or a dict.
@@ -2045,16 +2045,16 @@ class Cluster:
         Read messages from a local file with path path_str and produce them to topic topic_str, while transforming the messages in a flatmap-like manner.
 
         Args:
-            path_str (str): The path to the local file to read from.
-            topic_str (str): The topic to produce to.
+            path_str (:obj:`str`): The path to the local file to read from.
+            topic_str (:obj:`str`): The topic to produce to.
             flatmap_function (function): Flatmap function (takes a message and returns a list of messages)
-            key_type (str, optional): The key type ("bytes", "str", "json", "avro", "protobuf" or "pb", or "jsonschema"). Defaults to "str".
-            value_type (str, optional): The value type ("bytes", "str", "json", "avro", "protobuf" or "pb", or "jsonschema"). Defaults to "str".
-            key_schema (str, optional): The schema of the key of the message to be produced (if key_type is either "avro", "protobuf" or "pb", or "jsonschema"). Defaults to None.
-            value_schema (str, optional): The schema of the value of the message to be produced (if key_type is either "avro", "protobuf" or "pb", or "jsonschema"). Defaults to None.
+            key_type (:obj:`str`, optional): The key type ("bytes", "str", "json", "avro", "protobuf" or "pb", or "jsonschema"). Defaults to "str".
+            value_type (:obj:`str`, optional): The value type ("bytes", "str", "json", "avro", "protobuf" or "pb", or "jsonschema"). Defaults to "str".
+            key_schema (:obj:`str`, optional): The schema of the key of the message to be produced (if key_type is either "avro", "protobuf" or "pb", or "jsonschema"). Defaults to None.
+            value_schema (:obj:`str`, optional): The schema of the value of the message to be produced (if key_type is either "avro", "protobuf" or "pb", or "jsonschema"). Defaults to None.
             partition (int, optional): The partition to produce to. Defaults to RD_KAFKA_PARTITION_UA = -1, i.e., the partition is selected by configured built-in partitioner.
-            key_value_separator (str, optional): The separator between the keys and the values in the local file to read from, e.g. ":". If set to None, only read the values, not the keys. Defaults to None.
-            message_separator (str, optional): The separator between individual messages in the local file to read from. Defaults to the newline character.
+            key_value_separator (:obj:`str`, optional): The separator between the keys and the values in the local file to read from, e.g. ":". If set to None, only read the values, not the keys. Defaults to None.
+            message_separator (:obj:`str`, optional): The separator between individual messages in the local file to read from. Defaults to the newline character.
             n (int, optional): The number of messages to read from the local file. Defaults to ALL_MESSAGES = -1.
             bufsize (int, optional): The buffer size for reading from the local file. Defaults to 4096.
 
@@ -2117,16 +2117,16 @@ class Cluster:
         Read messages from a local file with path path_str and produce them to topic topic_str, while optionally transforming the messages in a flatmap-like manner.
 
         Args:
-            path_str (str): The path to the local file to read from.
-            topic_str (str): The topic to produce to.
+            path_str (:obj:`str`): The path to the local file to read from.
+            topic_str (:obj:`str`): The topic to produce to.
             flatmap_function (function, optional): Flatmap function (takes a message and returns a list of messages). Defaults to lambda x: [x] (=the identify function for flatmap, leading to a one-to-one copy from the messages in the file to the messages in the topic).
-            key_type (str, optional): The key type ("bytes", "str", "json", "avro", "protobuf" or "pb", or "jsonschema"). Defaults to "str".
-            value_type (str, optional): The value type ("bytes", "str", "json", "avro", "protobuf" or "pb", or "jsonschema"). Defaults to "str".
-            key_schema (str, optional): The schema of the key of the message to be produced (if key_type is either "avro", "protobuf" or "pb", or "jsonschema"). Defaults to None.
-            value_schema (str, optional): The schema of the value of the message to be produced (if key_type is either "avro", "protobuf" or "pb", or "jsonschema"). Defaults to None.
+            key_type (:obj:`str`, optional): The key type ("bytes", "str", "json", "avro", "protobuf" or "pb", or "jsonschema"). Defaults to "str".
+            value_type (:obj:`str`, optional): The value type ("bytes", "str", "json", "avro", "protobuf" or "pb", or "jsonschema"). Defaults to "str".
+            key_schema (:obj:`str`, optional): The schema of the key of the message to be produced (if key_type is either "avro", "protobuf" or "pb", or "jsonschema"). Defaults to None.
+            value_schema (:obj:`str`, optional): The schema of the value of the message to be produced (if key_type is either "avro", "protobuf" or "pb", or "jsonschema"). Defaults to None.
             partition (int, optional): The partition to produce to. Defaults to RD_KAFKA_PARTITION_UA = -1, i.e., the partition is selected by configured built-in partitioner.
-            key_value_separator (str, optional): The separator between the keys and the values in the local file to read from, e.g. ":". If set to None, only read the values, not the keys. Defaults to None.
-            message_separator (str, optional): The separator between individual messages in the local file to read from. Defaults to the newline character.
+            key_value_separator (:obj:`str`, optional): The separator between the keys and the values in the local file to read from, e.g. ":". If set to None, only read the values, not the keys. Defaults to None.
+            message_separator (:obj:`str`, optional): The separator between individual messages in the local file to read from. Defaults to the newline character.
             n (int, optional): The number of messages to read from the local file. Defaults to ALL_MESSAGES = -1.
             bufsize (int, optional): The buffer size for reading from the local file. Defaults to 4096.
 
@@ -2160,12 +2160,12 @@ class Cluster:
         Subscribe to a topic, optionally explicitly set the consumer group, initial offsets, and augment the consumer configuration. Prerequisite for consuming from a topic. Set "auto.offset.reset" to the configured "auto.offset.value" in the configuration ("kash"-section), and "enable.auto.commit" and "session.timeout.ms" as well.
 
         Args:
-            topic_str (str): The topic to subscribe to.
-            group (str, optional): The consumer group name. If set to None, automatically create a new unique consumer group name. Defaults to None.
+            topic_str (:obj:`str`): The topic to subscribe to.
+            group (:obj:`str`, optional): The consumer group name. If set to None, automatically create a new unique consumer group name. Defaults to None.
             offsets (dict(int, int), optional): Dictionary of integers (partitions) and integers (initial offsets for the individual partitions of the topic). If set to None, does not set any initial offsets. Defaults to None.
             config (dict(str, str), optional): Dictionary of strings (keys) and strings (values) to augment the consumer configuration. Defaults to {}.
-            key_type (str, optional): The key type ("bytes", "str", "json", "avro", "protobuf" or "pb", or "jsonschema"). Defaults to "str".
-            value_type (str, optional): The value type ("bytes", "str", "json", "avro", "protobuf" or "pb", or "jsonschema"). Defaults to "str".
+            key_type (:obj:`str`, optional): The key type ("bytes", "str", "json", "avro", "protobuf" or "pb", or "jsonschema"). Defaults to "str".
+            value_type (:obj:`str`, optional): The value type ("bytes", "str", "json", "avro", "protobuf" or "pb", or "jsonschema"). Defaults to "str".
 
         Returns:
             (str, str): Pair of the topic subscribed to (string) and the used consumer group name (string).
@@ -2319,14 +2319,14 @@ class Cluster:
         Subscribe to and consume messages from a topic and transform them in a foldl-like manner, optionally explicitly set the consumer group, initial offsets, and augment the consumer configuration. Stops either if the consume timeout is exceeded (``consume.timeout`` in the kash.py cluster configuration) or the number of messages specified in ``n`` has been consumed.
 
         Args:
-            topic_str (str): The topic to subscribe to and consume from.
+            topic_str (:obj:`str`): The topic to subscribe to and consume from.
             foldl_function (function): Foldl function (takes an accumulator (any type) and a message dictionary and returns the updated accumulator).
             initial_acc: Initial value of the accumulator (any type).
-            group (str, optional): Consumer group name used for subscribing to the topic. Creates a new unique consumer group name if set to None. Defaults to None.
+            group (:obj:`str`, optional): Consumer group name used for subscribing to the topic. Creates a new unique consumer group name if set to None. Defaults to None.
             offsets (dict, optional): Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for subscribing to the topic. If set to None, subscribe to the topic using the offsets from the consumer group. Defaults to None.
             config (dict(str, str), optional): Dictionary of strings (keys) and strings (values) to augment the consumer configuration for the topic. Defaults to {}.
-            key_type (str, optional): Message key type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "str".
-            value_type (str, optional): Message value type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "str".
+            key_type (:obj:`str`, optional): Message key type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "str".
+            value_type (:obj:`str`, optional): Message value type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "str".
             n (int, optional): Number of messages to consume from the topic. Defaults to ALL_MESSAGES = -1.
             batch_size (int, optional): Maximum number of messages to consume from the topic at a time. Defaults to 1.
 
@@ -2372,13 +2372,13 @@ class Cluster:
         Subscribe to and consume messages from a topic and transform them in a flatmap-like manner, optionally explicitly set the consumer group, initial offsets, and augment the consumer configuration. Stops either if the consume timeout is exceeded (``consume.timeout`` in the kash.py cluster configuration) or the number of messages specified in ``n`` has been consumed.
 
         Args:
-            topic_str (str): The topic to subscribe to and consume from.
+            topic_str (:obj:`str`): The topic to subscribe to and consume from.
             flatmap_function (function): Flatmap function (takes a message dictionary and returns a list of message dictionaries).
-            group (str, optional): Consumer group name used for subscribing to the topic. If set to None, creates a new unique consumer group name. Defaults to None.
+            group (:obj:`str`, optional): Consumer group name used for subscribing to the topic. If set to None, creates a new unique consumer group name. Defaults to None.
             offsets (dict, optional): Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for subscribing to the topic. If set to None, subscribe to the topic using the offsets from the consumer group. Defaults to None.
             config (dict(str, str), optional): Dictionary of strings (keys) and strings (values) to augment the consumer configuration for the topic. Defaults to {}.
-            key_type (str, optional): Message key type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "str".
-            value_type (str, optional): Message value type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "str".
+            key_type (:obj:`str`, optional): Message key type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "str".
+            value_type (:obj:`str`, optional): Message value type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "str".
             n (int, optional): Number of messages to consume from the topic. Defaults to ALL_MESSAGES = -1.
             batch_size (int, optional): Maximum number of messages to consume from the topic at a time. Defaults to 1.
 
@@ -2406,13 +2406,13 @@ class Cluster:
         Subscribe to and consume messages from a topic and transform them in a map-like manner, optionally explicitly set the consumer group, initial offsets, and augment the consumer configuration. Stops either if the consume timeout is exceeded (``consume.timeout`` in the kash.py cluster configuration) or the number of messages specified in ``n`` has been consumed.
 
         Args:
-            topic_str (str): The topic to subscribe to and consume from.
+            topic_str (:obj:`str`): The topic to subscribe to and consume from.
             map_function (function): Map function (takes a message dictionary and returns a message dictionary).
-            group (str, optional): Consumer group name used for subscribing to the topic. If set to None, creates a new unique consumer group name. Defaults to None.
+            group (:obj:`str`, optional): Consumer group name used for subscribing to the topic. If set to None, creates a new unique consumer group name. Defaults to None.
             offsets (dict, optional): Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for subscribing to the topic. If set to None, subscribe to the topic using the offsets from the consumer group. Defaults to None.
             config (dict(str, str), optional): Dictionary of strings (keys) and strings (values) to augment the consumer configuration for the topic. Defaults to {}.
-            key_type (str, optional): Message key type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "str".
-            value_type (str, optional): Message value type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "str".
+            key_type (:obj:`str`, optional): Message key type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "str".
+            value_type (:obj:`str`, optional): Message value type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "str".
             n (int, optional): Number of messages to consume from the topic. Defaults to ALL_MESSAGES = -1.
             batch_size (int, optional): Maximum number of messages to consume from the topic at a time. Defaults to 1.
 
@@ -2440,13 +2440,13 @@ class Cluster:
         Subscribe to and consume messages from a topic and call an operation on each of them, optionally explicitly set the consumer group, initial offsets, and augment the consumer configuration. Stops either if the consume timeout is exceeded (``consume.timeout`` in the kash.py cluster configuration) or the number of messages specified in ``n`` has been consumed.
 
         Args:
-            topic_str (str): The topic to subscribe to and consume from.
+            topic_str (:obj:`str`): The topic to subscribe to and consume from.
             foreach_function (function): Foreach function (takes a message dictionary and returns None).
-            group (str, optional): Consumer group name used for subscribing to the topic. If set to None, creates a new unique consumer group name. Defaults to None.
+            group (:obj:`str`, optional): Consumer group name used for subscribing to the topic. If set to None, creates a new unique consumer group name. Defaults to None.
             offsets (dict, optional): Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for subscribing to the topic. If set to None, subscribe to the topic using the offsets from the consumer group. Defaults to None.
             config (dict(str, str), optional): Dictionary of strings (keys) and strings (values) to augment the consumer configuration for the topic. Defaults to {}.
-            key_type (str, optional): Message key type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "str".
-            value_type (str, optional): Message value type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "str".
+            key_type (:obj:`str`, optional): Message key type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "str".
+            value_type (:obj:`str`, optional): Message value type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "str".
             n (int, optional): Number of messages to consume from the topic. Defaults to ALL_MESSAGES = -1.
             batch_size (int, optional): Maximum number of messages to consume from the topic at a time. Defaults to 1.
 
@@ -2477,13 +2477,13 @@ class Cluster:
         Subscribe to and consume messages from a topic and call an operation on each of them, optionally explicitly set the consumer group, initial offsets, and augment the consumer configuration. Stops either if the consume timeout is exceeded (``consume.timeout`` in the kash.py cluster configuration) or the number of messages specified in ``n`` has been consumed.
 
         Args:
-            topic_str (str): The topic to subscribe to and consume from.
+            topic_str (:obj:`str`): The topic to subscribe to and consume from.
             foreach_function (function, optional): Foreach function (takes a message dictionary and returns None). Defaults to ``print``.
-            group (str, optional): Consumer group name used for subscribing to the topic. If set to None, creates a new unique consumer group name. Defaults to None.
+            group (:obj:`str`, optional): Consumer group name used for subscribing to the topic. If set to None, creates a new unique consumer group name. Defaults to None.
             offsets (dict, optional): Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for subscribing to the topic. If set to None, subscribe to the topic using the offsets from the consumer group. Defaults to None.
             config (dict(str, str), optional): Dictionary of strings (keys) and strings (values) to augment the consumer configuration for the topic. Defaults to {}.
-            key_type (str, optional): Message key type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "str".
-            value_type (str, optional): Message value type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "str".
+            key_type (:obj:`str`, optional): Message key type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "str".
+            value_type (:obj:`str`, optional): Message value type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "str".
             n (int, optional): Number of messages to consume from the topic. Defaults to ALL_MESSAGES = -1.
             batch_size (int, optional): Maximum number of messages to consume from the topic at a time. Defaults to 1.
 
@@ -2504,13 +2504,13 @@ class Cluster:
         Find matching messages in a topic using a custom match function match_function. Optionally explicitly set the consumer group, initial offsets, and augment the consumer configuration. Stops either if the consume timeout is exceeded (``consume.timeout`` in the kash.py cluster configuration) or the number of messages specified in ``n`` has been consumed.
 
         Args:
-            topic_str (str): The topic to subscribe to and consume from.
+            topic_str (:obj:`str`): The topic to subscribe to and consume from.
             match_function (function): Match function (takes a message dictionary and returns a True for a match and False otherwise).
-            group (str, optional): Consumer group name used for subscribing to the topic. If set to None, creates a new unique consumer group name. Defaults to None.
+            group (:obj:`str`, optional): Consumer group name used for subscribing to the topic. If set to None, creates a new unique consumer group name. Defaults to None.
             offsets (dict, optional): Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for subscribing to the topic. If set to None, subscribe to the topic using the offsets from the consumer group. Defaults to None.
             config (dict(str, str), optional): Dictionary of strings (keys) and strings (values) to augment the consumer configuration for the topic. Defaults to {}.
-            key_type (str, optional): Message key type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "str".
-            value_type (str, optional): Message value type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "str".
+            key_type (:obj:`str`, optional): Message key type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "str".
+            value_type (:obj:`str`, optional): Message value type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "str".
             n (int, optional): Number of messages to consume from the topic. Defaults to ALL_MESSAGES = -1.
             batch_size (int, optional): Maximum number of messages to consume from the topic at a time. Defaults to 1.
 
@@ -2545,13 +2545,13 @@ class Cluster:
         Find matching messages in a topic using regular expression matching. Optionally explicitly set the consumer group, initial offsets, and augment the consumer configuration. Stops either if the consume timeout is exceeded (``consume.timeout`` in the kash.py cluster configuration) or the number of messages specified in ``n`` has been consumed.
 
         Args:
-            topic_str (str): The topic to subscribe to and consume from.
-            re_pattern_str (str): Regular expression to for matching messages.
-            group (str, optional): Consumer group name used for subscribing to the topic. If set to None, creates a new unique consumer group name. Defaults to None.
+            topic_str (:obj:`str`): The topic to subscribe to and consume from.
+            re_pattern_str (:obj:`str`): Regular expression to for matching messages.
+            group (:obj:`str`, optional): Consumer group name used for subscribing to the topic. If set to None, creates a new unique consumer group name. Defaults to None.
             offsets (dict, optional): Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for subscribing to the topic. If set to None, subscribe to the topic using the offsets from the consumer group. Defaults to None.
             config (dict(str, str), optional): Dictionary of strings (keys) and strings (values) to augment the consumer configuration for the topic. Defaults to {}.
-            key_type (str, optional): Message key type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "str".
-            value_type (str, optional): Message value type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "str".
+            key_type (:obj:`str`, optional): Message key type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "str".
+            value_type (:obj:`str`, optional): Message value type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "str".
             n (int, optional): Number of messages to consume from the topic. Defaults to ALL_MESSAGES = -1.
             batch_size (int, optional): Maximum number of messages to consume from the topic at a time. Defaults to 1.
 
@@ -2578,12 +2578,12 @@ class Cluster:
         Count the number of messages, words, and bytes in a topic. Optionally explicitly set the consumer group, initial offsets, and augment the consumer configuration. Stops either if the consume timeout is exceeded (``consume.timeout`` in the kash.py cluster configuration) or the number of messages specified in ``n`` has been consumed.
 
         Args:
-            topic_str (str): The topic to subscribe to and consume from.
-            group (str, optional): Consumer group name used for subscribing to the topic. If set to None, creates a new unique consumer group name. Defaults to None.
+            topic_str (:obj:`str`): The topic to subscribe to and consume from.
+            group (:obj:`str`, optional): Consumer group name used for subscribing to the topic. If set to None, creates a new unique consumer group name. Defaults to None.
             offsets (dict, optional): Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for subscribing to the topic. If set to None, subscribe to the topic using the offsets from the consumer group. Defaults to None.
             config (dict(str, str), optional): Dictionary of strings (keys) and strings (values) to augment the consumer configuration for the topic. Defaults to {}.
-            key_type (str, optional): Message key type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "str".
-            value_type (str, optional): Message value type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "str".
+            key_type (:obj:`str`, optional): Message key type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "str".
+            value_type (:obj:`str`, optional): Message value type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "str".
             n (int, optional): Number of messages to consume from the topic. Defaults to ALL_MESSAGES = -1.
             batch_size (int, optional): Maximum number of messages to consume from the topic at a time. Defaults to 1.
 
@@ -2624,15 +2624,15 @@ class Cluster:
         Subscribe to and consume messages from a topic, transform them in a flatmap-like manner and write the resulting messages to a local file, optionally explicitly set the consumer group, initial offsets, and augment the consumer configuration. Stops either if the consume timeout is exceeded (``consume.timeout`` in the kash.py cluster configuration) or the number of messages specified in ``n`` has been consumed.
 
         Args:
-            topic_str (str): The topic to subscribe to and consume from.
+            topic_str (:obj:`str`): The topic to subscribe to and consume from.
             flatmap_function (function): Flatmap function (takes a message dictionary and returns a list of message dictionaries).
-            group (str, optional): Consumer group name used for subscribing to the topic. If set to None, creates a new unique consumer group name. Defaults to None.
+            group (:obj:`str`, optional): Consumer group name used for subscribing to the topic. If set to None, creates a new unique consumer group name. Defaults to None.
             offsets (dict, optional): Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for subscribing to the topic. If set to None, subscribe to the topic using the offsets from the consumer group. Defaults to None.
             config (dict(str, str), optional): Dictionary of strings (keys) and strings (values) to augment the consumer configuration for the topic. Defaults to {}.
-            key_type (str, optional): Message key type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "str".
-            value_type (str, optional): Message value type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "str".
-            key_value_separator (str, optional): The separator between the keys and the values in the local file to write to, e.g. ":". If set to None, only write the values, not the keys. Defaults to None.
-            message_separator (str, optional): The separator between individual messages in the local file to write to. Defaults to the newline character.
+            key_type (:obj:`str`, optional): Message key type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "str".
+            value_type (:obj:`str`, optional): Message value type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "str".
+            key_value_separator (:obj:`str`, optional): The separator between the keys and the values in the local file to write to, e.g. ":". If set to None, only write the values, not the keys. Defaults to None.
+            message_separator (:obj:`str`, optional): The separator between individual messages in the local file to write to. Defaults to the newline character.
             overwrite (bool, optional): Overwrite the local file if set to True, append to it otherwise. Defaults to True.
             n (int, optional): Number of messages to consume from the topic. Defaults to ALL_MESSAGES = -1.
             batch_size (int, optional): Maximum number of messages to consume from the topic at a time. Defaults to 1.
@@ -2693,15 +2693,15 @@ class Cluster:
         Subscribe to and consume messages from a topic, optionally transform them in a flatmap-like manner and write the resulting messages to a local file, optionally explicitly set the consumer group, initial offsets, and augment the consumer configuration. Stops either if the consume timeout is exceeded (``consume.timeout`` in the kash.py cluster configuration) or the number of messages specified in ``n`` has been consumed.
 
         Args:
-            topic_str (str): The topic to subscribe to and consume from.
+            topic_str (:obj:`str`): The topic to subscribe to and consume from.
             flatmap_function (function, optional): Flatmap function (takes a message dictionary and returns a list of message dictionaries). Defaults to lambda x: [x] (=the identify function for flatmap, leading to a one-to-one copy from the messages in the topic to the messages in the file).
-            group (str, optional): Consumer group name used for subscribing to the topic. If set to None, creates a new unique consumer group name. Defaults to None.
+            group (:obj:`str`, optional): Consumer group name used for subscribing to the topic. If set to None, creates a new unique consumer group name. Defaults to None.
             offsets (dict, optional): Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for subscribing to the topic. If set to None, subscribe to the topic using the offsets from the consumer group. Defaults to None.
             config (dict(str, str), optional): Dictionary of strings (keys) and strings (values) to augment the consumer configuration for the topic. Defaults to {}.
-            key_type (str, optional): Message key type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "str".
-            value_type (str, optional): Message value type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "str".
-            key_value_separator (str, optional): The separator between the keys and the values in the local file to write to, e.g. ":". If set to None, only write the values, not the keys. Defaults to None.
-            message_separator (str, optional): The separator between individual messages in the local file to write to. Defaults to the newline character.
+            key_type (:obj:`str`, optional): Message key type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "str".
+            value_type (:obj:`str`, optional): Message value type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "str".
+            key_value_separator (:obj:`str`, optional): The separator between the keys and the values in the local file to write to, e.g. ":". If set to None, only write the values, not the keys. Defaults to None.
+            message_separator (:obj:`str`, optional): The separator between individual messages in the local file to write to. Defaults to the newline character.
             overwrite (bool, optional): Overwrite the local file if set to True, append to it otherwise. Defaults to True.
             n (int, optional): Number of messages to consume from the topic. Defaults to ALL_MESSAGES = -1.
             batch_size (int, optional): Maximum number of messages to consume from the topic at a time. Defaults to 1.
@@ -2721,20 +2721,20 @@ class Cluster:
         Copy files to topics, topics to files, or topics to topics. Uses ``Cluster.upload()`` for copying files to topics, ``Cluster.download()`` for copying topics to files, and ``cp`` for copying topics to topics. Paths to local files are distinguished from topics by having a forward slash "/" in their path.
 
         Args:
-            source_str (str): The source local file/topic.
-            target_str (str): The target local file/topic.
-            group (str, optional): Consumer group name used for subscribing to the topic to consume from. If set to None, creates a new unique consumer group name. Defaults to None.
+            source_str (:obj:`str`): The source local file/topic.
+            target_str (:obj:`str`): The target local file/topic.
+            group (:obj:`str`, optional): Consumer group name used for subscribing to the topic to consume from. If set to None, creates a new unique consumer group name. Defaults to None.
             offsets (dict, optional): Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for subscribing to the topic to consume from. If set to None, subscribe to the topic using the offsets from the consumer group. Defaults to None.
             config (dict(str, str), optional): Dictionary of strings (keys) and strings (values) to augment the consumer configuration for the topic. Defaults to {}.
             flatmap_function (function, optional): Flatmap function (either takes a message dictionary and returns a list of message dictionaries if source_str points to a topic, or takes a pair of strings (keys and values) of the messages read from the local file if source_str points to a local file). Defaults to lambda x: [x] (=the identify function for flatmap, leading to a one-to-one copy).
-            source_key_type (str, optional): Source message key type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "str".
-            source_value_type (str, optional): Source message value type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "str".
-            target_key_type (str, optional): Target message key type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "str".
-            target_value_type (str, optional): Target message value type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "str".
-            target_key_schema (str, optional): Target key message type schema (for "avro", "protobuf"/"pb" or "jsonschema"). Defaults to None.
-            target_value_schema (str, optional): Target value message type schema (for "avro", "protobuf"/"pb" or "jsonschema"). Defaults to None.
-            key_value_separator (str, optional): The separator between the keys and the values in the local file to read from/write to, e.g. ":". If set to None, only read/write the values, not the keys. Defaults to None.
-            message_separator (str, optional): The separator between individual messages in the local file to read from/write to. Defaults to the newline character.
+            source_key_type (:obj:`str`, optional): Source message key type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "str".
+            source_value_type (:obj:`str`, optional): Source message value type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "str".
+            target_key_type (:obj:`str`, optional): Target message key type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "str".
+            target_value_type (:obj:`str`, optional): Target message value type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "str".
+            target_key_schema (:obj:`str`, optional): Target key message type schema (for "avro", "protobuf"/"pb" or "jsonschema"). Defaults to None.
+            target_value_schema (:obj:`str`, optional): Target value message type schema (for "avro", "protobuf"/"pb" or "jsonschema"). Defaults to None.
+            key_value_separator (:obj:`str`, optional): The separator between the keys and the values in the local file to read from/write to, e.g. ":". If set to None, only read/write the values, not the keys. Defaults to None.
+            message_separator (:obj:`str`, optional): The separator between individual messages in the local file to read from/write to. Defaults to the newline character.
             overwrite (bool, optional): Overwrite the target local file if set to True, append to it otherwise. Defaults to True.
             keep_timestamps (bool, optional): Replicate the timestamps of the source messages in the target messages. Defaults to True.
             n (int, optional): Number of messages to consume from the topic. Defaults to ALL_MESSAGES = -1.
@@ -2769,7 +2769,7 @@ class Cluster:
         Recreate a topic by 1) replicating it to a temporary topic, 2) deleting the original topic, 3) re-creating the original topic, and 4) replicating the temporary topic back to the original topic. Can be very useful if you happen to come across a consumer that is not able to consume from the beginning of a topic - and you still wish to read the entire topic.
 
         Args:
-            topic_str (str): The topic to recreate.
+            topic_str (:obj:`str`): The topic to recreate.
 
         Returns:
             tuple(tuple(int, int), tuple(int, int)): Pair of pairs of the number of messages; the first pair indicating the number of messages consumed from the original topic and produced to the temporary topic, the second pair indicating the number of messages consumed from the temporary topic and produced back to the re-created original topic.
@@ -2795,20 +2795,20 @@ class Cluster:
         Consume (parts of) a topic (topic_str1) and another topic (topic_str2) and combine them using a foldl function. Stops on either topic/cluster if either the consume timeout is exceeded (``consume.timeout`` in the kash.py cluster configuration) or the number of messages specified in ``n`` has been consumed.
 
         Args:
-            topic_str1 (str): Topic 1
-            topic_str2 (str): Topic 2
+            topic_str1 (:obj:`str`): Topic 1
+            topic_str2 (:obj:`str`): Topic 2
             zip_foldl_function (function): Foldl function (takes an accumulator (any type) and a message dictionary and returns the updated accumulator).
             initial_acc: Initial value of the accumulator (any type).
-            group1 (str, optional): Consumer group name used for consuming from topic 1. If set to None, creates a new unique consumer group name. Defaults to None.
-            group2 (str, optional): Consumer group name used for consuming from topic 2. If set to None, creates a new unique consumer group name. Defaults to None.
+            group1 (:obj:`str`, optional): Consumer group name used for consuming from topic 1. If set to None, creates a new unique consumer group name. Defaults to None.
+            group2 (:obj:`str`, optional): Consumer group name used for consuming from topic 2. If set to None, creates a new unique consumer group name. Defaults to None.
             offsets1 (dict, optional): Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for consuming from topic 1. If set to None, consume topic 1 using the offsets from the consumer group for topic 1. Defaults to None.
             offsets2 (dict, optional): Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for consuming from topic 2. If set to None, consume topic 2 using the offsets from the consumer group for topic 2. Defaults to None.
             config1 (dict(str, str), optional): Dictionary of strings (keys) and strings (values) to augment the consumer configuration for topic 1 on cluster 1. Defaults to {}.
             config2 (dict(str, str), optional): Dictionary of strings (keys) and strings (values) to augment the consumer configuration for topic 2 on cluster 2. Defaults to {}.
-            key_type1 (str, optional): Topic 1 message key type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "bytes".
-            value_type1 (str, optional): Topic 1 message value type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "bytes".
-            key_type2 (str, optional): Topic 2 message key type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). If set to None, target_key_type = source_key_type. Defaults to None.
-            value_type2 (str, optional): Topic 2 message value type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). If set to None, target_value_type = source_value_type. Defaults to None.
+            key_type1 (:obj:`str`, optional): Topic 1 message key type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "bytes".
+            value_type1 (:obj:`str`, optional): Topic 1 message value type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "bytes".
+            key_type2 (:obj:`str`, optional): Topic 2 message key type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). If set to None, target_key_type = source_key_type. Defaults to None.
+            value_type2 (:obj:`str`, optional): Topic 2 message value type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). If set to None, target_value_type = source_value_type. Defaults to None.
             n (int, optional): Number of messages to consume from topic 1 and topic 2. Defaults to ALL_MESSAGES = -1.
             batch_size (int, optional): Maximum number of messages to consume from topic 1 and topic 2 at a time. Defaults to 1.
 
@@ -2827,17 +2827,17 @@ class Cluster:
         Create a diff of (parts of) a topic (topic_str1) and another topic (topic_str2) using a diff function (diff_function). Stops on either topic/cluster if either the consume timeout is exceeded (``consume.timeout`` in the kash.py cluster configuration) or the number of messages specified in ``n`` has been consumed.
 
         Args:
-            topic_str1 (str): Topic 1
-            topic_str2 (str): Topic 2
+            topic_str1 (:obj:`str`): Topic 1
+            topic_str2 (:obj:`str`): Topic 2
             diff_function (function): Diff function (takes a message dictionary from topic 1 and a message dictionary from topic 2 and returns the updated accumulator)
-            group1 (str, optional): Consumer group name used for consuming from topic 1. If set to None, creates a new unique consumer group name. Defaults to None.
-            group2 (str, optional): Consumer group name used for consuming from topic 2. If set to None, creates a new unique consumer group name. Defaults to None.
+            group1 (:obj:`str`, optional): Consumer group name used for consuming from topic 1. If set to None, creates a new unique consumer group name. Defaults to None.
+            group2 (:obj:`str`, optional): Consumer group name used for consuming from topic 2. If set to None, creates a new unique consumer group name. Defaults to None.
             offsets1 (dict, optional): Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for consuming from topic 1. If set to None, consume topic 1 using the offsets from the consumer group for topic 1. Defaults to None.
             offsets2 (dict, optional): Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for consuming from topic 2. If set to None, consume topic 2 using the offsets from the consumer group for topic 2. Defaults to None.
-            key_type1 (str, optional): Topic 1 message key type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "bytes".
-            value_type1 (str, optional): Topic 1 message value type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "bytes".
-            key_type2 (str, optional): Topic 2 message key type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). If set to None, target_key_type = source_key_type. Defaults to None.
-            value_type2 (str, optional): Topic 2 message value type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). If set to None, target_value_type = source_value_type. Defaults to None.
+            key_type1 (:obj:`str`, optional): Topic 1 message key type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "bytes".
+            value_type1 (:obj:`str`, optional): Topic 1 message value type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "bytes".
+            key_type2 (:obj:`str`, optional): Topic 2 message key type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). If set to None, target_key_type = source_key_type. Defaults to None.
+            value_type2 (:obj:`str`, optional): Topic 2 message value type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). If set to None, target_value_type = source_value_type. Defaults to None.
             n (int, optional): Number of messages to consume from the topic 1 and topic 2. Defaults to ALL_MESSAGES = -1.
             batch_size (int, optional): Maximum number of messages to consume from topic 1 and topic 2 at a time. Defaults to 1.
 
@@ -2856,16 +2856,16 @@ class Cluster:
         Create a diff of (parts of) a topic (topic_str1) and another topic (topic_str2) with respect to their keys and values. Stops on either topic/cluster if either the consume timeout is exceeded (``consume.timeout`` in the kash.py cluster configuration) or the number of messages specified in ``n`` has been consumed.
 
         Args:
-            topic_str1 (str): Topic 1
-            topic_str2 (str): Topic 2
-            group1 (str, optional): Consumer group name used for consuming from topic 1. If set to None, creates a new unique consumer group name. Defaults to None.
-            group2 (str, optional): Consumer group name used for consuming from topic 2. If set to None, creates a new unique consumer group name. Defaults to None.
+            topic_str1 (:obj:`str`): Topic 1
+            topic_str2 (:obj:`str`): Topic 2
+            group1 (:obj:`str`, optional): Consumer group name used for consuming from topic 1. If set to None, creates a new unique consumer group name. Defaults to None.
+            group2 (:obj:`str`, optional): Consumer group name used for consuming from topic 2. If set to None, creates a new unique consumer group name. Defaults to None.
             offsets1 (dict, optional): Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for consuming from topic 1. If set to None, consume topic 1 using the offsets from the consumer group for topic 1. Defaults to None.
             offsets2 (dict, optional): Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for consuming from topic 2. If set to None, consume topic 2 using the offsets from the consumer group for topic 2. Defaults to None.
-            key_type1 (str, optional): Topic 1 message key type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "bytes".
-            value_type1 (str, optional): Topic 1 message value type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "bytes".
-            key_type2 (str, optional): Topic 2 message key type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). If set to None, target_key_type = source_key_type. Defaults to None.
-            value_type2 (str, optional): Topic 2 message value type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). If set to None, target_value_type = source_value_type. Defaults to None.
+            key_type1 (:obj:`str`, optional): Topic 1 message key type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "bytes".
+            value_type1 (:obj:`str`, optional): Topic 1 message value type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "bytes".
+            key_type2 (:obj:`str`, optional): Topic 2 message key type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). If set to None, target_key_type = source_key_type. Defaults to None.
+            value_type2 (:obj:`str`, optional): Topic 2 message value type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). If set to None, target_value_type = source_value_type. Defaults to None.
             n (int, optional): Number of messages to consume from the topic 1 and topic 2. Defaults to ALL_MESSAGES = -1.
             batch_size (int, optional): Maximum number of messages to consume from topic 1 and topic 2 at a time. Defaults to 1.
 

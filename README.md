@@ -10,7 +10,7 @@ The idea behind *kash.py* is to make it as easy as possible to interact with Kaf
 
 *kash.py* supports *Avro*, *Protobuf* and *JSONSchema*, Confluent Cloud, Redpanda, etc...and it will give you *Kafka superpowers* of a kind you have never experienced before. Honestly :)
 
-Check out the full [kash module documentation](https://github.com/xdgrulez/kash.py/blob/main/docs/_build/markdown/source/kash.md) if you are interested in seeing the entire functionality of *kash.py*.
+Check out the full [kashpy package documentation](https://github.com/xdgrulez/kash.py/blob/main/docs/_build/markdown/source/kashpy.md) if you are interested in seeing the entire functionality of *kash.py*.
 
 ## Installation
 

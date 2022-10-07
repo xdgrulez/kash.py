@@ -1,7 +1,11 @@
-# kash module
+# kashpy package
+
+## Submodules
+
+## kashpy.kash module
 
 
-### _class_ kash.Cluster(cluster_str)
+### _class_ kashpy.kash.Cluster(cluster_str)
 Bases: `object`
 
 Initialize a kash.py Cluster object.
@@ -62,7 +66,7 @@ The “kash” section can be used to configure the following:
 
 * **Parameters**
 
-    **cluster_str** (*str*) – Name of the cluster; kash.py searches the two folders “clusters_secured” and “clusters_unsecured” for kash.py configuration files named “<cluster.str>.conf”.
+    **cluster_str** (`str`) – Name of the cluster; kash.py searches the two folders “clusters_secured” and “clusters_unsecured” for kash.py configuration files named “<cluster.str>.conf”.
 
 
 ### Examples
@@ -166,25 +170,25 @@ List ACLs of the cluster.
 * **Parameters**
 
     
-    * **restype** (*str**, **optional*) – The resource type (“unknown”, “any”, “topic”, “group” or “broker”). Defaults to “any”.
+    * **restype** (`str`, optional) – The resource type (“unknown”, “any”, “topic”, “group” or “broker”). Defaults to “any”.
 
 
-    * **name** (*str**, **optional*) – The name. Defaults to None.
+    * **name** (`str`, optional) – The name. Defaults to None.
 
 
-    * **resource_pattern_type** (*str**, **optional*) – The resource pattern type (“unknown”, “any”, “match”, “literal” or “prefixed”). Defaults to “any”.
+    * **resource_pattern_type** (`str`, optional) – The resource pattern type (“unknown”, “any”, “match”, “literal” or “prefixed”). Defaults to “any”.
 
 
-    * **principal** (*str**, **optional*) – The principal. Defaults to None.
+    * **principal** (`str`, optional) – The principal. Defaults to None.
 
 
-    * **host** (*str**, **optional*) – The host. Defaults to None.
+    * **host** (`str`, optional) – The host. Defaults to None.
 
 
-    * **operation** (*str**, **optional*) – The operation (“unknown”, “any”, “all”, “read”, “write”, “create”, “delete”, “alter”, “describe”, “cluster_action”, “describe_configs”, “alter_configs”, “idempotent_write”). Defaults to “any”
+    * **operation** (`str`, optional) – The operation (“unknown”, “any”, “all”, “read”, “write”, “create”, “delete”, “alter”, “describe”, “cluster_action”, “describe_configs”, “alter_configs”, “idempotent_write”). Defaults to “any”
 
 
-    * **permission_type** (*str**, **optional*) – The permission type (“unknown”, “any”, “deny” or “allow”). Defaults to “any”.
+    * **permission_type** (`str`, optional) – The permission type (“unknown”, “any”, “deny” or “allow”). Defaults to “any”.
 
 
 
@@ -209,6 +213,8 @@ c.acls(restype=”topic”):
 
     List all ACLs for the topics of the cluster.
 
+
+#### block_topic(topic_str, exists=True)
 
 #### broker_config(pattern_int_or_str_or_int_or_str_list)
 List the configurations of brokers of the cluster.
@@ -278,6 +284,12 @@ c.brokers([0, 1])
     List only the brokers 0 and 1 of the cluster.
 
 
+#### bytes_avro_to_dict(bytes, key_bool)
+
+#### bytes_jsonschema_to_dict(bytes, key_bool)
+
+#### bytes_protobuf_to_dict(bytes, key_bool)
+
 #### cat(topic_str, foreach_function=<built-in function print>, group=None, offsets=None, config={}, key_type='str', value_type='str', n=-1, batch_size=1)
 Subscribe to and consume messages from a topic and call an operation on each of them.
 
@@ -287,13 +299,13 @@ Subscribe to and consume messages from a topic and call an operation on each of 
 * **Parameters**
 
     
-    * **topic_str** (*str*) – The topic to subscribe to and consume from.
+    * **topic_str** (`str`) – The topic to subscribe to and consume from.
 
 
     * **foreach_function** (*function**, **optional*) – Foreach function (takes a message dictionary and returns None). Defaults to `print`.
 
 
-    * **group** (*str**, **optional*) – Consumer group name used for subscribing to the topic. If set to None, creates a new unique consumer group name. Defaults to None.
+    * **group** (`str`, optional) – Consumer group name used for subscribing to the topic. If set to None, creates a new unique consumer group name. Defaults to None.
 
 
     * **offsets** (*dict**, **optional*) – Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for subscribing to the topic. If set to None, subscribe to the topic using the offsets from the consumer group. Defaults to None.
@@ -302,10 +314,10 @@ Subscribe to and consume messages from a topic and call an operation on each of 
     * **config** (*dict**(**str**, **str**)**, **optional*) – Dictionary of strings (keys) and strings (values) to augment the consumer configuration for the topic. Defaults to {}.
 
 
-    * **key_type** (*str**, **optional*) – Message key type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to “str”.
+    * **key_type** (`str`, optional) – Message key type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to “str”.
 
 
-    * **value_type** (*str**, **optional*) – Message value type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to “str”.
+    * **value_type** (`str`, optional) – Message value type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to “str”.
 
 
     * **n** (*int**, **optional*) – Number of messages to consume from the topic. Defaults to ALL_MESSAGES = -1.
@@ -428,13 +440,13 @@ Copy files to topics, topics to files, or topics to topics. Uses `Cluster.upload
 * **Parameters**
 
     
-    * **source_str** (*str*) – The source local file/topic.
+    * **source_str** (`str`) – The source local file/topic.
 
 
-    * **target_str** (*str*) – The target local file/topic.
+    * **target_str** (`str`) – The target local file/topic.
 
 
-    * **group** (*str**, **optional*) – Consumer group name used for subscribing to the topic to consume from. If set to None, creates a new unique consumer group name. Defaults to None.
+    * **group** (`str`, optional) – Consumer group name used for subscribing to the topic to consume from. If set to None, creates a new unique consumer group name. Defaults to None.
 
 
     * **offsets** (*dict**, **optional*) – Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for subscribing to the topic to consume from. If set to None, subscribe to the topic using the offsets from the consumer group. Defaults to None.
@@ -446,28 +458,28 @@ Copy files to topics, topics to files, or topics to topics. Uses `Cluster.upload
     * **flatmap_function** (*function**, **optional*) – Flatmap function (either takes a message dictionary and returns a list of message dictionaries if source_str points to a topic, or takes a pair of strings (keys and values) of the messages read from the local file if source_str points to a local file). Defaults to lambda x: [x] (=the identify function for flatmap, leading to a one-to-one copy).
 
 
-    * **source_key_type** (*str**, **optional*) – Source message key type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to “str”.
+    * **source_key_type** (`str`, optional) – Source message key type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to “str”.
 
 
-    * **source_value_type** (*str**, **optional*) – Source message value type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to “str”.
+    * **source_value_type** (`str`, optional) – Source message value type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to “str”.
 
 
-    * **target_key_type** (*str**, **optional*) – Target message key type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to “str”.
+    * **target_key_type** (`str`, optional) – Target message key type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to “str”.
 
 
-    * **target_value_type** (*str**, **optional*) – Target message value type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to “str”.
+    * **target_value_type** (`str`, optional) – Target message value type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to “str”.
 
 
-    * **target_key_schema** (*str**, **optional*) – Target key message type schema (for “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to None.
+    * **target_key_schema** (`str`, optional) – Target key message type schema (for “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to None.
 
 
-    * **target_value_schema** (*str**, **optional*) – Target value message type schema (for “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to None.
+    * **target_value_schema** (`str`, optional) – Target value message type schema (for “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to None.
 
 
-    * **key_value_separator** (*str**, **optional*) – The separator between the keys and the values in the local file to read from/write to, e.g. “:”. If set to None, only read/write the values, not the keys. Defaults to None.
+    * **key_value_separator** (`str`, optional) – The separator between the keys and the values in the local file to read from/write to, e.g. “:”. If set to None, only read/write the values, not the keys. Defaults to None.
 
 
-    * **message_separator** (*str**, **optional*) – The separator between individual messages in the local file to read from/write to. Defaults to the newline character.
+    * **message_separator** (`str`, optional) – The separator between individual messages in the local file to read from/write to. Defaults to the newline character.
 
 
     * **overwrite** (*bool**, **optional*) – Overwrite the target local file if set to True, append to it otherwise. Defaults to True.
@@ -521,7 +533,7 @@ Create a topic.
 * **Parameters**
 
     
-    * **topic_str** (*str*) – The name of the topic to be created.
+    * **topic_str** (`str`) – The name of the topic to be created.
 
 
     * **partitions** (*int**, **optional*) – The number of partitions for the topic to be created. Defaults to 1.
@@ -573,25 +585,25 @@ Create an ACL on the cluster.
 * **Parameters**
 
     
-    * **restype** (*str**, **optional*) – The resource type (“unknown”, “any”, “topic”, “group” or “broker”). Defaults to “any”.
+    * **restype** (`str`, optional) – The resource type (“unknown”, “any”, “topic”, “group” or “broker”). Defaults to “any”.
 
 
-    * **name** (*str**, **optional*) – The name. Defaults to None.
+    * **name** (`str`, optional) – The name. Defaults to None.
 
 
-    * **resource_pattern_type** (*str**, **optional*) – The resource pattern type (“unknown”, “any”, “match”, “literal” or “prefixed”). Defaults to “any”.
+    * **resource_pattern_type** (`str`, optional) – The resource pattern type (“unknown”, “any”, “match”, “literal” or “prefixed”). Defaults to “any”.
 
 
-    * **principal** (*str**, **optional*) – The principal. Defaults to None.
+    * **principal** (`str`, optional) – The principal. Defaults to None.
 
 
-    * **host** (*str**, **optional*) – The host. Defaults to None.
+    * **host** (`str`, optional) – The host. Defaults to None.
 
 
-    * **operation** (*str**, **optional*) – The operation (“unknown”, “any”, “all”, “read”, “write”, “create”, “delete”, “alter”, “describe”, “cluster_action”, “describe_configs”, “alter_configs”, “idempotent_write”). Defaults to “any”
+    * **operation** (`str`, optional) – The operation (“unknown”, “any”, “all”, “read”, “write”, “create”, “delete”, “alter”, “describe”, “cluster_action”, “describe_configs”, “alter_configs”, “idempotent_write”). Defaults to “any”
 
 
-    * **permission_type** (*str**, **optional*) – The permission type (“unknown”, “any”, “deny” or “allow”). Defaults to “any”.
+    * **permission_type** (`str`, optional) – The permission type (“unknown”, “any”, “deny” or “allow”). Defaults to “any”.
 
 
 
@@ -637,7 +649,7 @@ Delete those topics whose names match the bash-like pattern (or list of patterns
 
 * **Return type**
 
-    list(str)
+    `list(str)`
 
 
 ### Examples
@@ -664,25 +676,25 @@ Delete ACLs from the cluster.
 * **Parameters**
 
     
-    * **restype** (*str**, **optional*) – The resource type (“unknown”, “any”, “topic”, “group” or “broker”). Defaults to “any”.
+    * **restype** (`str`, optional) – The resource type (“unknown”, “any”, “topic”, “group” or “broker”). Defaults to “any”.
 
 
-    * **name** (*str**, **optional*) – The name. Defaults to None.
+    * **name** (`str`, optional) – The name. Defaults to None.
 
 
-    * **resource_pattern_type** (*str**, **optional*) – The resource pattern type (“unknown”, “any”, “match”, “literal” or “prefixed”). Defaults to “any”.
+    * **resource_pattern_type** (`str`, optional) – The resource pattern type (“unknown”, “any”, “match”, “literal” or “prefixed”). Defaults to “any”.
 
 
-    * **principal** (*str**, **optional*) – The principal. Defaults to None.
+    * **principal** (`str`, optional) – The principal. Defaults to None.
 
 
-    * **host** (*str**, **optional*) – The host. Defaults to None.
+    * **host** (`str`, optional) – The host. Defaults to None.
 
 
-    * **operation** (*str**, **optional*) – The operation (“unknown”, “any”, “all”, “read”, “write”, “create”, “delete”, “alter”, “describe”, “cluster_action”, “describe_configs”, “alter_configs”, “idempotent_write”). Defaults to “any”
+    * **operation** (`str`, optional) – The operation (“unknown”, “any”, “all”, “read”, “write”, “create”, “delete”, “alter”, “describe”, “cluster_action”, “describe_configs”, “alter_configs”, “idempotent_write”). Defaults to “any”
 
 
-    * **permission_type** (*str**, **optional*) – The permission type (“unknown”, “any”, “deny” or “allow”). Defaults to “any”.
+    * **permission_type** (`str`, optional) – The permission type (“unknown”, “any”, “deny” or “allow”). Defaults to “any”.
 
 
 
@@ -746,7 +758,7 @@ Describe consumer groups on the cluster whose names match bash-like patterns.
 
 * **Parameters**
 
-    **pattern** (*str** | **list**(**str**)**, **optional*) – The pattern or list of patterns for selecting those consumer groups which shall be listed. Defaults to None.
+    **pattern_str_or_str_list** (`str` | `list(str)`, optional) – The pattern or list of patterns for selecting those consumer groups which shall be listed. Defaults to None.
 
 
 
@@ -781,16 +793,16 @@ Create a diff of (parts of) a topic (topic_str1) and another topic (topic_str2) 
 * **Parameters**
 
     
-    * **topic_str1** (*str*) – Topic 1
+    * **topic_str1** (`str`) – Topic 1
 
 
-    * **topic_str2** (*str*) – Topic 2
+    * **topic_str2** (`str`) – Topic 2
 
 
-    * **group1** (*str**, **optional*) – Consumer group name used for consuming from topic 1. If set to None, creates a new unique consumer group name. Defaults to None.
+    * **group1** (`str`, optional) – Consumer group name used for consuming from topic 1. If set to None, creates a new unique consumer group name. Defaults to None.
 
 
-    * **group2** (*str**, **optional*) – Consumer group name used for consuming from topic 2. If set to None, creates a new unique consumer group name. Defaults to None.
+    * **group2** (`str`, optional) – Consumer group name used for consuming from topic 2. If set to None, creates a new unique consumer group name. Defaults to None.
 
 
     * **offsets1** (*dict**, **optional*) – Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for consuming from topic 1. If set to None, consume topic 1 using the offsets from the consumer group for topic 1. Defaults to None.
@@ -799,16 +811,16 @@ Create a diff of (parts of) a topic (topic_str1) and another topic (topic_str2) 
     * **offsets2** (*dict**, **optional*) – Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for consuming from topic 2. If set to None, consume topic 2 using the offsets from the consumer group for topic 2. Defaults to None.
 
 
-    * **key_type1** (*str**, **optional*) – Topic 1 message key type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to “bytes”.
+    * **key_type1** (`str`, optional) – Topic 1 message key type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to “bytes”.
 
 
-    * **value_type1** (*str**, **optional*) – Topic 1 message value type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to “bytes”.
+    * **value_type1** (`str`, optional) – Topic 1 message value type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to “bytes”.
 
 
-    * **key_type2** (*str**, **optional*) – Topic 2 message key type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). If set to None, target_key_type = source_key_type. Defaults to None.
+    * **key_type2** (`str`, optional) – Topic 2 message key type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). If set to None, target_key_type = source_key_type. Defaults to None.
 
 
-    * **value_type2** (*str**, **optional*) – Topic 2 message value type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). If set to None, target_value_type = source_value_type. Defaults to None.
+    * **value_type2** (`str`, optional) – Topic 2 message value type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). If set to None, target_value_type = source_value_type. Defaults to None.
 
 
     * **n** (*int**, **optional*) – Number of messages to consume from the topic 1 and topic 2. Defaults to ALL_MESSAGES = -1.
@@ -845,19 +857,19 @@ Create a diff of (parts of) a topic (topic_str1) and another topic (topic_str2) 
 * **Parameters**
 
     
-    * **topic_str1** (*str*) – Topic 1
+    * **topic_str1** (`str`) – Topic 1
 
 
-    * **topic_str2** (*str*) – Topic 2
+    * **topic_str2** (`str`) – Topic 2
 
 
     * **diff_function** (*function*) – Diff function (takes a message dictionary from topic 1 and a message dictionary from topic 2 and returns the updated accumulator)
 
 
-    * **group1** (*str**, **optional*) – Consumer group name used for consuming from topic 1. If set to None, creates a new unique consumer group name. Defaults to None.
+    * **group1** (`str`, optional) – Consumer group name used for consuming from topic 1. If set to None, creates a new unique consumer group name. Defaults to None.
 
 
-    * **group2** (*str**, **optional*) – Consumer group name used for consuming from topic 2. If set to None, creates a new unique consumer group name. Defaults to None.
+    * **group2** (`str`, optional) – Consumer group name used for consuming from topic 2. If set to None, creates a new unique consumer group name. Defaults to None.
 
 
     * **offsets1** (*dict**, **optional*) – Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for consuming from topic 1. If set to None, consume topic 1 using the offsets from the consumer group for topic 1. Defaults to None.
@@ -866,16 +878,16 @@ Create a diff of (parts of) a topic (topic_str1) and another topic (topic_str2) 
     * **offsets2** (*dict**, **optional*) – Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for consuming from topic 2. If set to None, consume topic 2 using the offsets from the consumer group for topic 2. Defaults to None.
 
 
-    * **key_type1** (*str**, **optional*) – Topic 1 message key type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to “bytes”.
+    * **key_type1** (`str`, optional) – Topic 1 message key type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to “bytes”.
 
 
-    * **value_type1** (*str**, **optional*) – Topic 1 message value type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to “bytes”.
+    * **value_type1** (`str`, optional) – Topic 1 message value type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to “bytes”.
 
 
-    * **key_type2** (*str**, **optional*) – Topic 2 message key type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). If set to None, target_key_type = source_key_type. Defaults to None.
+    * **key_type2** (`str`, optional) – Topic 2 message key type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). If set to None, target_key_type = source_key_type. Defaults to None.
 
 
-    * **value_type2** (*str**, **optional*) – Topic 2 message value type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). If set to None, target_value_type = source_value_type. Defaults to None.
+    * **value_type2** (`str`, optional) – Topic 2 message value type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). If set to None, target_value_type = source_value_type. Defaults to None.
 
 
     * **n** (*int**, **optional*) – Number of messages to consume from the topic 1 and topic 2. Defaults to ALL_MESSAGES = -1.
@@ -912,13 +924,13 @@ Subscribe to and consume messages from a topic, optionally transform them in a f
 * **Parameters**
 
     
-    * **topic_str** (*str*) – The topic to subscribe to and consume from.
+    * **topic_str** (`str`) – The topic to subscribe to and consume from.
 
 
     * **flatmap_function** (*function**, **optional*) – Flatmap function (takes a message dictionary and returns a list of message dictionaries). Defaults to lambda x: [x] (=the identify function for flatmap, leading to a one-to-one copy from the messages in the topic to the messages in the file).
 
 
-    * **group** (*str**, **optional*) – Consumer group name used for subscribing to the topic. If set to None, creates a new unique consumer group name. Defaults to None.
+    * **group** (`str`, optional) – Consumer group name used for subscribing to the topic. If set to None, creates a new unique consumer group name. Defaults to None.
 
 
     * **offsets** (*dict**, **optional*) – Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for subscribing to the topic. If set to None, subscribe to the topic using the offsets from the consumer group. Defaults to None.
@@ -927,16 +939,16 @@ Subscribe to and consume messages from a topic, optionally transform them in a f
     * **config** (*dict**(**str**, **str**)**, **optional*) – Dictionary of strings (keys) and strings (values) to augment the consumer configuration for the topic. Defaults to {}.
 
 
-    * **key_type** (*str**, **optional*) – Message key type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to “str”.
+    * **key_type** (`str`, optional) – Message key type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to “str”.
 
 
-    * **value_type** (*str**, **optional*) – Message value type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to “str”.
+    * **value_type** (`str`, optional) – Message value type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to “str”.
 
 
-    * **key_value_separator** (*str**, **optional*) – The separator between the keys and the values in the local file to write to, e.g. “:”. If set to None, only write the values, not the keys. Defaults to None.
+    * **key_value_separator** (`str`, optional) – The separator between the keys and the values in the local file to write to, e.g. “:”. If set to None, only write the values, not the keys. Defaults to None.
 
 
-    * **message_separator** (*str**, **optional*) – The separator between individual messages in the local file to write to. Defaults to the newline character.
+    * **message_separator** (`str`, optional) – The separator between individual messages in the local file to write to. Defaults to the newline character.
 
 
     * **overwrite** (*bool**, **optional*) – Overwrite the local file if set to True, append to it otherwise. Defaults to True.
@@ -975,7 +987,7 @@ Test whether a topic exists on the cluster.
 
 * **Parameters**
 
-    **topic_str** (*str*) – A topic.
+    **topic_str** (`str`) – A topic.
 
 
 
@@ -1006,13 +1018,13 @@ Subscribe to and consume messages from a topic and transform them in a flatmap-l
 * **Parameters**
 
     
-    * **topic_str** (*str*) – The topic to subscribe to and consume from.
+    * **topic_str** (`str`) – The topic to subscribe to and consume from.
 
 
     * **flatmap_function** (*function*) – Flatmap function (takes a message dictionary and returns a list of message dictionaries).
 
 
-    * **group** (*str**, **optional*) – Consumer group name used for subscribing to the topic. If set to None, creates a new unique consumer group name. Defaults to None.
+    * **group** (`str`, optional) – Consumer group name used for subscribing to the topic. If set to None, creates a new unique consumer group name. Defaults to None.
 
 
     * **offsets** (*dict**, **optional*) – Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for subscribing to the topic. If set to None, subscribe to the topic using the offsets from the consumer group. Defaults to None.
@@ -1021,10 +1033,10 @@ Subscribe to and consume messages from a topic and transform them in a flatmap-l
     * **config** (*dict**(**str**, **str**)**, **optional*) – Dictionary of strings (keys) and strings (values) to augment the consumer configuration for the topic. Defaults to {}.
 
 
-    * **key_type** (*str**, **optional*) – Message key type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to “str”.
+    * **key_type** (`str`, optional) – Message key type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to “str”.
 
 
-    * **value_type** (*str**, **optional*) – Message value type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to “str”.
+    * **value_type** (`str`, optional) – Message value type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to “str”.
 
 
     * **n** (*int**, **optional*) – Number of messages to consume from the topic. Defaults to ALL_MESSAGES = -1.
@@ -1065,34 +1077,34 @@ Read messages from a local file with path path_str and produce them to topic top
 * **Parameters**
 
     
-    * **path_str** (*str*) – The path to the local file to read from.
+    * **path_str** (`str`) – The path to the local file to read from.
 
 
-    * **topic_str** (*str*) – The topic to produce to.
+    * **topic_str** (`str`) – The topic to produce to.
 
 
     * **flatmap_function** (*function*) – Flatmap function (takes a message and returns a list of messages)
 
 
-    * **key_type** (*str**, **optional*) – The key type (“bytes”, “str”, “json”, “avro”, “protobuf” or “pb”, or “jsonschema”). Defaults to “str”.
+    * **key_type** (`str`, optional) – The key type (“bytes”, “str”, “json”, “avro”, “protobuf” or “pb”, or “jsonschema”). Defaults to “str”.
 
 
-    * **value_type** (*str**, **optional*) – The value type (“bytes”, “str”, “json”, “avro”, “protobuf” or “pb”, or “jsonschema”). Defaults to “str”.
+    * **value_type** (`str`, optional) – The value type (“bytes”, “str”, “json”, “avro”, “protobuf” or “pb”, or “jsonschema”). Defaults to “str”.
 
 
-    * **key_schema** (*str**, **optional*) – The schema of the key of the message to be produced (if key_type is either “avro”, “protobuf” or “pb”, or “jsonschema”). Defaults to None.
+    * **key_schema** (`str`, optional) – The schema of the key of the message to be produced (if key_type is either “avro”, “protobuf” or “pb”, or “jsonschema”). Defaults to None.
 
 
-    * **value_schema** (*str**, **optional*) – The schema of the value of the message to be produced (if key_type is either “avro”, “protobuf” or “pb”, or “jsonschema”). Defaults to None.
+    * **value_schema** (`str`, optional) – The schema of the value of the message to be produced (if key_type is either “avro”, “protobuf” or “pb”, or “jsonschema”). Defaults to None.
 
 
     * **partition** (*int**, **optional*) – The partition to produce to. Defaults to RD_KAFKA_PARTITION_UA = -1, i.e., the partition is selected by configured built-in partitioner.
 
 
-    * **key_value_separator** (*str**, **optional*) – The separator between the keys and the values in the local file to read from, e.g. “:”. If set to None, only read the values, not the keys. Defaults to None.
+    * **key_value_separator** (`str`, optional) – The separator between the keys and the values in the local file to read from, e.g. “:”. If set to None, only read the values, not the keys. Defaults to None.
 
 
-    * **message_separator** (*str**, **optional*) – The separator between individual messages in the local file to read from. Defaults to the newline character.
+    * **message_separator** (`str`, optional) – The separator between individual messages in the local file to read from. Defaults to the newline character.
 
 
     * **n** (*int**, **optional*) – The number of messages to read from the local file. Defaults to ALL_MESSAGES = -1.
@@ -1137,13 +1149,13 @@ Subscribe to and consume messages from a topic, transform them in a flatmap-like
 * **Parameters**
 
     
-    * **topic_str** (*str*) – The topic to subscribe to and consume from.
+    * **topic_str** (`str`) – The topic to subscribe to and consume from.
 
 
     * **flatmap_function** (*function*) – Flatmap function (takes a message dictionary and returns a list of message dictionaries).
 
 
-    * **group** (*str**, **optional*) – Consumer group name used for subscribing to the topic. If set to None, creates a new unique consumer group name. Defaults to None.
+    * **group** (`str`, optional) – Consumer group name used for subscribing to the topic. If set to None, creates a new unique consumer group name. Defaults to None.
 
 
     * **offsets** (*dict**, **optional*) – Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for subscribing to the topic. If set to None, subscribe to the topic using the offsets from the consumer group. Defaults to None.
@@ -1152,16 +1164,16 @@ Subscribe to and consume messages from a topic, transform them in a flatmap-like
     * **config** (*dict**(**str**, **str**)**, **optional*) – Dictionary of strings (keys) and strings (values) to augment the consumer configuration for the topic. Defaults to {}.
 
 
-    * **key_type** (*str**, **optional*) – Message key type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to “str”.
+    * **key_type** (`str`, optional) – Message key type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to “str”.
 
 
-    * **value_type** (*str**, **optional*) – Message value type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to “str”.
+    * **value_type** (`str`, optional) – Message value type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to “str”.
 
 
-    * **key_value_separator** (*str**, **optional*) – The separator between the keys and the values in the local file to write to, e.g. “:”. If set to None, only write the values, not the keys. Defaults to None.
+    * **key_value_separator** (`str`, optional) – The separator between the keys and the values in the local file to write to, e.g. “:”. If set to None, only write the values, not the keys. Defaults to None.
 
 
-    * **message_separator** (*str**, **optional*) – The separator between individual messages in the local file to write to. Defaults to the newline character.
+    * **message_separator** (`str`, optional) – The separator between individual messages in the local file to write to. Defaults to the newline character.
 
 
     * **overwrite** (*bool**, **optional*) – Overwrite the local file if set to True, append to it otherwise. Defaults to True.
@@ -1211,7 +1223,7 @@ Subscribe to and consume messages from a topic and transform them in a foldl-lik
 * **Parameters**
 
     
-    * **topic_str** (*str*) – The topic to subscribe to and consume from.
+    * **topic_str** (`str`) – The topic to subscribe to and consume from.
 
 
     * **foldl_function** (*function*) – Foldl function (takes an accumulator (any type) and a message dictionary and returns the updated accumulator).
@@ -1220,7 +1232,7 @@ Subscribe to and consume messages from a topic and transform them in a foldl-lik
     * **initial_acc** – Initial value of the accumulator (any type).
 
 
-    * **group** (*str**, **optional*) – Consumer group name used for subscribing to the topic. Creates a new unique consumer group name if set to None. Defaults to None.
+    * **group** (`str`, optional) – Consumer group name used for subscribing to the topic. Creates a new unique consumer group name if set to None. Defaults to None.
 
 
     * **offsets** (*dict**, **optional*) – Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for subscribing to the topic. If set to None, subscribe to the topic using the offsets from the consumer group. Defaults to None.
@@ -1229,10 +1241,10 @@ Subscribe to and consume messages from a topic and transform them in a foldl-lik
     * **config** (*dict**(**str**, **str**)**, **optional*) – Dictionary of strings (keys) and strings (values) to augment the consumer configuration for the topic. Defaults to {}.
 
 
-    * **key_type** (*str**, **optional*) – Message key type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to “str”.
+    * **key_type** (`str`, optional) – Message key type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to “str”.
 
 
-    * **value_type** (*str**, **optional*) – Message value type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to “str”.
+    * **value_type** (`str`, optional) – Message value type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to “str”.
 
 
     * **n** (*int**, **optional*) – Number of messages to consume from the topic. Defaults to ALL_MESSAGES = -1.
@@ -1273,13 +1285,13 @@ Subscribe to and consume messages from a topic and call an operation on each of 
 * **Parameters**
 
     
-    * **topic_str** (*str*) – The topic to subscribe to and consume from.
+    * **topic_str** (`str`) – The topic to subscribe to and consume from.
 
 
     * **foreach_function** (*function*) – Foreach function (takes a message dictionary and returns None).
 
 
-    * **group** (*str**, **optional*) – Consumer group name used for subscribing to the topic. If set to None, creates a new unique consumer group name. Defaults to None.
+    * **group** (`str`, optional) – Consumer group name used for subscribing to the topic. If set to None, creates a new unique consumer group name. Defaults to None.
 
 
     * **offsets** (*dict**, **optional*) – Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for subscribing to the topic. If set to None, subscribe to the topic using the offsets from the consumer group. Defaults to None.
@@ -1288,10 +1300,10 @@ Subscribe to and consume messages from a topic and call an operation on each of 
     * **config** (*dict**(**str**, **str**)**, **optional*) – Dictionary of strings (keys) and strings (values) to augment the consumer configuration for the topic. Defaults to {}.
 
 
-    * **key_type** (*str**, **optional*) – Message key type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to “str”.
+    * **key_type** (`str`, optional) – Message key type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to “str”.
 
 
-    * **value_type** (*str**, **optional*) – Message value type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to “str”.
+    * **value_type** (`str`, optional) – Message value type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to “str”.
 
 
     * **n** (*int**, **optional*) – Number of messages to consume from the topic. Defaults to ALL_MESSAGES = -1.
@@ -1319,6 +1331,8 @@ c.foreach(“test”, print)
     Consume topic “test” and print out all the consumed messages to standard out/the console.
 
 
+#### get_config_dict(resourceType, resource_str)
+
 #### grep(topic_str, re_pattern_str, group=None, offsets=None, config={}, key_type='str', value_type='str', n=-1, batch_size=1)
 Find matching messages in a topic (regular expression matching).
 
@@ -1328,13 +1342,13 @@ Find matching messages in a topic using regular expression matching. Optionally 
 * **Parameters**
 
     
-    * **topic_str** (*str*) – The topic to subscribe to and consume from.
+    * **topic_str** (`str`) – The topic to subscribe to and consume from.
 
 
-    * **re_pattern_str** (*str*) – Regular expression to for matching messages.
+    * **re_pattern_str** (`str`) – Regular expression to for matching messages.
 
 
-    * **group** (*str**, **optional*) – Consumer group name used for subscribing to the topic. If set to None, creates a new unique consumer group name. Defaults to None.
+    * **group** (`str`, optional) – Consumer group name used for subscribing to the topic. If set to None, creates a new unique consumer group name. Defaults to None.
 
 
     * **offsets** (*dict**, **optional*) – Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for subscribing to the topic. If set to None, subscribe to the topic using the offsets from the consumer group. Defaults to None.
@@ -1343,10 +1357,10 @@ Find matching messages in a topic using regular expression matching. Optionally 
     * **config** (*dict**(**str**, **str**)**, **optional*) – Dictionary of strings (keys) and strings (values) to augment the consumer configuration for the topic. Defaults to {}.
 
 
-    * **key_type** (*str**, **optional*) – Message key type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to “str”.
+    * **key_type** (`str`, optional) – Message key type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to “str”.
 
 
-    * **value_type** (*str**, **optional*) – Message value type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to “str”.
+    * **value_type** (`str`, optional) – Message value type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to “str”.
 
 
     * **n** (*int**, **optional*) – Number of messages to consume from the topic. Defaults to ALL_MESSAGES = -1.
@@ -1383,13 +1397,13 @@ Find matching messages in a topic using a custom match function match_function. 
 * **Parameters**
 
     
-    * **topic_str** (*str*) – The topic to subscribe to and consume from.
+    * **topic_str** (`str`) – The topic to subscribe to and consume from.
 
 
     * **match_function** (*function*) – Match function (takes a message dictionary and returns a True for a match and False otherwise).
 
 
-    * **group** (*str**, **optional*) – Consumer group name used for subscribing to the topic. If set to None, creates a new unique consumer group name. Defaults to None.
+    * **group** (`str`, optional) – Consumer group name used for subscribing to the topic. If set to None, creates a new unique consumer group name. Defaults to None.
 
 
     * **offsets** (*dict**, **optional*) – Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for subscribing to the topic. If set to None, subscribe to the topic using the offsets from the consumer group. Defaults to None.
@@ -1398,10 +1412,10 @@ Find matching messages in a topic using a custom match function match_function. 
     * **config** (*dict**(**str**, **str**)**, **optional*) – Dictionary of strings (keys) and strings (values) to augment the consumer configuration for the topic. Defaults to {}.
 
 
-    * **key_type** (*str**, **optional*) – Message key type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to “str”.
+    * **key_type** (`str`, optional) – Message key type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to “str”.
 
 
-    * **value_type** (*str**, **optional*) – Message value type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to “str”.
+    * **value_type** (`str`, optional) – Message value type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to “str”.
 
 
     * **n** (*int**, **optional*) – Number of messages to consume from the topic. Defaults to ALL_MESSAGES = -1.
@@ -1449,7 +1463,7 @@ List consumer groups on the cluster. Optionally return only those consumer group
 
 * **Return type**
 
-    list(str)
+    `list(str)`)
 
 
 ### Examples
@@ -1476,7 +1490,7 @@ List topics on the cluster. Optionally return only those topics whose names matc
 * **Parameters**
 
     
-    * **pattern** (*str**, **optional*) – The pattern or list of patterns for selecting those topics which shall be listed. Defaults to None.
+    * **pattern** (`str`, optional) – The pattern or list of patterns for selecting those topics which shall be listed. Defaults to None.
 
 
     * **size** (*bool**, **optional*) – Return the total sizes of the topics if set to True. Defaults to True.
@@ -1533,7 +1547,7 @@ List topics on the cluster. Optionally return only those topics whose names matc
 * **Parameters**
 
     
-    * **pattern** (*str**, **optional*) – The pattern or list of patterns for selecting those topics which shall be listed. Defaults to None.
+    * **pattern** (`str`, optional) – The pattern or list of patterns for selecting those topics which shall be listed. Defaults to None.
 
 
     * **size** (*bool**, **optional*) – Return the total sizes of the topics if set to True. Defaults to True.
@@ -1590,7 +1604,7 @@ List topics on the cluster. Optionally return only those topics whose names matc
 * **Parameters**
 
     
-    * **pattern** (*str**, **optional*) – The pattern or list of patterns for selecting those topics which shall be listed. Defaults to None.
+    * **pattern** (`str`, optional) – The pattern or list of patterns for selecting those topics which shall be listed. Defaults to None.
 
 
     * **size** (*bool**, **optional*) – Return the total sizes of the topics if set to True. Defaults to False.
@@ -1647,13 +1661,13 @@ Subscribe to and consume messages from a topic and transform them in a map-like 
 * **Parameters**
 
     
-    * **topic_str** (*str*) – The topic to subscribe to and consume from.
+    * **topic_str** (`str`) – The topic to subscribe to and consume from.
 
 
     * **map_function** (*function*) – Map function (takes a message dictionary and returns a message dictionary).
 
 
-    * **group** (*str**, **optional*) – Consumer group name used for subscribing to the topic. If set to None, creates a new unique consumer group name. Defaults to None.
+    * **group** (`str`, optional) – Consumer group name used for subscribing to the topic. If set to None, creates a new unique consumer group name. Defaults to None.
 
 
     * **offsets** (*dict**, **optional*) – Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for subscribing to the topic. If set to None, subscribe to the topic using the offsets from the consumer group. Defaults to None.
@@ -1662,10 +1676,10 @@ Subscribe to and consume messages from a topic and transform them in a map-like 
     * **config** (*dict**(**str**, **str**)**, **optional*) – Dictionary of strings (keys) and strings (values) to augment the consumer configuration for the topic. Defaults to {}.
 
 
-    * **key_type** (*str**, **optional*) – Message key type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to “str”.
+    * **key_type** (`str`, optional) – Message key type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to “str”.
 
 
-    * **value_type** (*str**, **optional*) – Message value type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to “str”.
+    * **value_type** (`str`, optional) – Message value type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to “str”.
 
 
     * **n** (*int**, **optional*) – Number of messages to consume from the topic. Defaults to ALL_MESSAGES = -1.
@@ -1696,6 +1710,8 @@ c.map(“test”, lambda x: x[“value”].update({“colour”: “yellow”}) 
 
 > Consume topic “test” and return a list of all its messages where the “colour” is set to “yellow”.
 
+
+#### message_to_message_dict(message, key_type='str', value_type='str')
 
 #### offsets(timeout=-1.0)
 Get committed offsets of the subscribed topic.
@@ -1806,6 +1822,8 @@ c.partitions([“test\*”, “bla\*”])
     Get the numbers of partitions of all topics whose names start with “test” or “bla”.
 
 
+#### post_schema(schema_str, schema_type_str, topic_str, key_bool)
+
 #### produce(topic_str, value, key=None, key_type='str', value_type='str', key_schema=None, value_schema=None, partition=-1, timestamp=0, headers=None)
 Produce a message to a topic.
 
@@ -1815,7 +1833,7 @@ Produce a message to a topic. The key and the value of the message can be either
 * **Parameters**
 
     
-    * **topic_str** (*str*) – The topic to produce to.
+    * **topic_str** (`str`) – The topic to produce to.
 
 
     * **value** (*bytes** | **str** | **dict*) – The value of the message to be produced.
@@ -1824,16 +1842,16 @@ Produce a message to a topic. The key and the value of the message can be either
     * **key** (*bytes** | **str** | **dict**, **optional*) – The key of the message to be produced. Defaults to None.
 
 
-    * **key_type** (*str**, **optional*) – The key type (“bytes”, “str”, “json”, “avro”, “protobuf” or “pb”, or “jsonschema”). Defaults to “str”.
+    * **key_type** (`str`, optional) – The key type (“bytes”, “str”, “json”, “avro”, “protobuf” or “pb”, or “jsonschema”). Defaults to “str”.
 
 
-    * **value_type** (*str**, **optional*) – The value type (“bytes”, “str”, “json”, “avro”, “protobuf” or “pb”, or “jsonschema”). Defaults to “str”.
+    * **value_type** (`str`, optional) – The value type (“bytes”, “str”, “json”, “avro”, “protobuf” or “pb”, or “jsonschema”). Defaults to “str”.
 
 
-    * **key_schema** (*str**, **optional*) – The schema of the key of the message to be produced (if key_type is either “avro”, “protobuf” or “pb”, or “jsonschema”). Defaults to None.
+    * **key_schema** (`str`, optional) – The schema of the key of the message to be produced (if key_type is either “avro”, “protobuf” or “pb”, or “jsonschema”). Defaults to None.
 
 
-    * **value_schema** (*str**, **optional*) – The schema of the value of the message to be produced (if key_type is either “avro”, “protobuf” or “pb”, or “jsonschema”). Defaults to None.
+    * **value_schema** (`str`, optional) – The schema of the value of the message to be produced (if key_type is either “avro”, “protobuf” or “pb”, or “jsonschema”). Defaults to None.
 
 
     * **partition** (*int**, **optional*) – The partition to produce to. Defaults to RD_KAFKA_PARTITION_UA = -1, i.e., the partition is selected by configured built-in partitioner.
@@ -1904,7 +1922,7 @@ Recreate a topic by 1) replicating it to a temporary topic, 2) deleting the orig
 
 * **Parameters**
 
-    **topic_str** (*str*) – The topic to recreate.
+    **topic_str** (`str`) – The topic to recreate.
 
 
 
@@ -1944,13 +1962,13 @@ Delete those topics whose names match the bash-like pattern (or list of patterns
 
 * **Returns**
 
-    List of strings of names of the deleted topics.
+    list(str): List of strings of names of the deleted topics.
 
 
 
 * **Return type**
 
-    list(str)
+    obj
 
 
 ### Examples
@@ -1968,6 +1986,16 @@ c.rm([“test\*”, “bla\*”])
     Delete all topics starting with “test” or “bla”.
 
 
+#### schema_id_int_and_schema_str_to_generalizedProtocolMessageType(schema_id_int, schema_str)
+
+#### schema_id_int_to_avro_schema_str(schema_id_int)
+
+#### schema_id_int_to_generalizedProtocolMessageType_protobuf_schema_str_tuple(schema_id_int)
+
+#### schema_id_int_to_jsonschema_str(schema_id_int)
+
+#### schema_str_to_generalizedProtocolMessageType(schema_str, topic_str, key_bool)
+
 #### set_broker_config(pattern_int_or_str_or_int_or_str_list, key_str, value_str, test=False)
 Set a configuration item of brokers.
 
@@ -1980,10 +2008,10 @@ Set the configuration item with key key_str and value value_str of those brokers
     * **pattern_str_or_str_list** (*str** | **list**(**str**)*) – The pattern (or list of patterns) for selecting those topics whose configuration shall be changed.
 
 
-    * **key_str** (*str*) – Configuration key.
+    * **key_str** (`str`) – Configuration key.
 
 
-    * **value_str** (*str*) – Configuration value.
+    * **value_str** (`str`) – Configuration value.
 
 
     * **test** (*bool**, **optional*) – If True, the request is only validated without changing the configuration. Defaults to False.
@@ -2158,10 +2186,10 @@ Subscribe to a topic, optionally explicitly set the consumer group, initial offs
 * **Parameters**
 
     
-    * **topic_str** (*str*) – The topic to subscribe to.
+    * **topic_str** (`str`) – The topic to subscribe to.
 
 
-    * **group** (*str**, **optional*) – The consumer group name. If set to None, automatically create a new unique consumer group name. Defaults to None.
+    * **group** (`str`, optional) – The consumer group name. If set to None, automatically create a new unique consumer group name. Defaults to None.
 
 
     * **offsets** (*dict**(**int**, **int**)**, **optional*) – Dictionary of integers (partitions) and integers (initial offsets for the individual partitions of the topic). If set to None, does not set any initial offsets. Defaults to None.
@@ -2170,10 +2198,10 @@ Subscribe to a topic, optionally explicitly set the consumer group, initial offs
     * **config** (*dict**(**str**, **str**)**, **optional*) – Dictionary of strings (keys) and strings (values) to augment the consumer configuration. Defaults to {}.
 
 
-    * **key_type** (*str**, **optional*) – The key type (“bytes”, “str”, “json”, “avro”, “protobuf” or “pb”, or “jsonschema”). Defaults to “str”.
+    * **key_type** (`str`, optional) – The key type (“bytes”, “str”, “json”, “avro”, “protobuf” or “pb”, or “jsonschema”). Defaults to “str”.
 
 
-    * **value_type** (*str**, **optional*) – The value type (“bytes”, “str”, “json”, “avro”, “protobuf” or “pb”, or “jsonschema”). Defaults to “str”.
+    * **value_type** (`str`, optional) – The value type (“bytes”, “str”, “json”, “avro”, “protobuf” or “pb”, or “jsonschema”). Defaults to “str”.
 
 
 
@@ -2277,7 +2305,7 @@ Create a topic (shell synonym for `Cluster.create()`)
 * **Parameters**
 
     
-    * **topic_str** (*str*) – The name of the topic to be created.
+    * **topic_str** (`str`) – The name of the topic to be created.
 
 
     * **partitions** (*int**, **optional*) – The number of partitions for the topic to be created. Defaults to 1.
@@ -2347,34 +2375,34 @@ Read messages from a local file with path path_str and produce them to topic top
 * **Parameters**
 
     
-    * **path_str** (*str*) – The path to the local file to read from.
+    * **path_str** (`str`) – The path to the local file to read from.
 
 
-    * **topic_str** (*str*) – The topic to produce to.
+    * **topic_str** (`str`) – The topic to produce to.
 
 
     * **flatmap_function** (*function**, **optional*) – Flatmap function (takes a message and returns a list of messages). Defaults to lambda x: [x] (=the identify function for flatmap, leading to a one-to-one copy from the messages in the file to the messages in the topic).
 
 
-    * **key_type** (*str**, **optional*) – The key type (“bytes”, “str”, “json”, “avro”, “protobuf” or “pb”, or “jsonschema”). Defaults to “str”.
+    * **key_type** (`str`, optional) – The key type (“bytes”, “str”, “json”, “avro”, “protobuf” or “pb”, or “jsonschema”). Defaults to “str”.
 
 
-    * **value_type** (*str**, **optional*) – The value type (“bytes”, “str”, “json”, “avro”, “protobuf” or “pb”, or “jsonschema”). Defaults to “str”.
+    * **value_type** (`str`, optional) – The value type (“bytes”, “str”, “json”, “avro”, “protobuf” or “pb”, or “jsonschema”). Defaults to “str”.
 
 
-    * **key_schema** (*str**, **optional*) – The schema of the key of the message to be produced (if key_type is either “avro”, “protobuf” or “pb”, or “jsonschema”). Defaults to None.
+    * **key_schema** (`str`, optional) – The schema of the key of the message to be produced (if key_type is either “avro”, “protobuf” or “pb”, or “jsonschema”). Defaults to None.
 
 
-    * **value_schema** (*str**, **optional*) – The schema of the value of the message to be produced (if key_type is either “avro”, “protobuf” or “pb”, or “jsonschema”). Defaults to None.
+    * **value_schema** (`str`, optional) – The schema of the value of the message to be produced (if key_type is either “avro”, “protobuf” or “pb”, or “jsonschema”). Defaults to None.
 
 
     * **partition** (*int**, **optional*) – The partition to produce to. Defaults to RD_KAFKA_PARTITION_UA = -1, i.e., the partition is selected by configured built-in partitioner.
 
 
-    * **key_value_separator** (*str**, **optional*) – The separator between the keys and the values in the local file to read from, e.g. “:”. If set to None, only read the values, not the keys. Defaults to None.
+    * **key_value_separator** (`str`, optional) – The separator between the keys and the values in the local file to read from, e.g. “:”. If set to None, only read the values, not the keys. Defaults to None.
 
 
-    * **message_separator** (*str**, **optional*) – The separator between individual messages in the local file to read from. Defaults to the newline character.
+    * **message_separator** (`str`, optional) – The separator between individual messages in the local file to read from. Defaults to the newline character.
 
 
     * **n** (*int**, **optional*) – The number of messages to read from the local file. Defaults to ALL_MESSAGES = -1.
@@ -2473,10 +2501,10 @@ Count the number of messages, words, and bytes in a topic. Optionally explicitly
 * **Parameters**
 
     
-    * **topic_str** (*str*) – The topic to subscribe to and consume from.
+    * **topic_str** (`str`) – The topic to subscribe to and consume from.
 
 
-    * **group** (*str**, **optional*) – Consumer group name used for subscribing to the topic. If set to None, creates a new unique consumer group name. Defaults to None.
+    * **group** (`str`, optional) – Consumer group name used for subscribing to the topic. If set to None, creates a new unique consumer group name. Defaults to None.
 
 
     * **offsets** (*dict**, **optional*) – Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for subscribing to the topic. If set to None, subscribe to the topic using the offsets from the consumer group. Defaults to None.
@@ -2485,10 +2513,10 @@ Count the number of messages, words, and bytes in a topic. Optionally explicitly
     * **config** (*dict**(**str**, **str**)**, **optional*) – Dictionary of strings (keys) and strings (values) to augment the consumer configuration for the topic. Defaults to {}.
 
 
-    * **key_type** (*str**, **optional*) – Message key type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to “str”.
+    * **key_type** (`str`, optional) – Message key type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to “str”.
 
 
-    * **value_type** (*str**, **optional*) – Message value type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to “str”.
+    * **value_type** (`str`, optional) – Message value type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to “str”.
 
 
     * **n** (*int**, **optional*) – Number of messages to consume from the topic. Defaults to ALL_MESSAGES = -1.
@@ -2525,10 +2553,10 @@ Consume (parts of) a topic (topic_str1) and another topic (topic_str2) and combi
 * **Parameters**
 
     
-    * **topic_str1** (*str*) – Topic 1
+    * **topic_str1** (`str`) – Topic 1
 
 
-    * **topic_str2** (*str*) – Topic 2
+    * **topic_str2** (`str`) – Topic 2
 
 
     * **zip_foldl_function** (*function*) – Foldl function (takes an accumulator (any type) and a message dictionary and returns the updated accumulator).
@@ -2537,10 +2565,10 @@ Consume (parts of) a topic (topic_str1) and another topic (topic_str2) and combi
     * **initial_acc** – Initial value of the accumulator (any type).
 
 
-    * **group1** (*str**, **optional*) – Consumer group name used for consuming from topic 1. If set to None, creates a new unique consumer group name. Defaults to None.
+    * **group1** (`str`, optional) – Consumer group name used for consuming from topic 1. If set to None, creates a new unique consumer group name. Defaults to None.
 
 
-    * **group2** (*str**, **optional*) – Consumer group name used for consuming from topic 2. If set to None, creates a new unique consumer group name. Defaults to None.
+    * **group2** (`str`, optional) – Consumer group name used for consuming from topic 2. If set to None, creates a new unique consumer group name. Defaults to None.
 
 
     * **offsets1** (*dict**, **optional*) – Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for consuming from topic 1. If set to None, consume topic 1 using the offsets from the consumer group for topic 1. Defaults to None.
@@ -2555,16 +2583,16 @@ Consume (parts of) a topic (topic_str1) and another topic (topic_str2) and combi
     * **config2** (*dict**(**str**, **str**)**, **optional*) – Dictionary of strings (keys) and strings (values) to augment the consumer configuration for topic 2 on cluster 2. Defaults to {}.
 
 
-    * **key_type1** (*str**, **optional*) – Topic 1 message key type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to “bytes”.
+    * **key_type1** (`str`, optional) – Topic 1 message key type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to “bytes”.
 
 
-    * **value_type1** (*str**, **optional*) – Topic 1 message value type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to “bytes”.
+    * **value_type1** (`str`, optional) – Topic 1 message value type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to “bytes”.
 
 
-    * **key_type2** (*str**, **optional*) – Topic 2 message key type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). If set to None, target_key_type = source_key_type. Defaults to None.
+    * **key_type2** (`str`, optional) – Topic 2 message key type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). If set to None, target_key_type = source_key_type. Defaults to None.
 
 
-    * **value_type2** (*str**, **optional*) – Topic 2 message value type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). If set to None, target_value_type = source_value_type. Defaults to None.
+    * **value_type2** (`str`, optional) – Topic 2 message value type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). If set to None, target_value_type = source_value_type. Defaults to None.
 
 
     * **n** (*int**, **optional*) – Number of messages to consume from topic 1 and topic 2. Defaults to ALL_MESSAGES = -1.
@@ -2592,7 +2620,13 @@ c.zip_foldl(“topic1”, “topic2”, lambda acc, message_dict1, message_dict2
     Consume “topic1” and “topic2” and return a list of pairs of message dictionaries from topic 1 and topic 2, respectively.
 
 
-### kash.cp(source_cluster, source_topic_str, target_cluster, target_topic_str, flatmap_function=<function <lambda>>, group=None, offsets=None, config={}, source_key_type='bytes', source_value_type='bytes', target_key_type=None, target_value_type=None, target_key_schema=None, target_value_schema=None, keep_timestamps=True, n=-1, batch_size=1)
+### kashpy.kash.aclBinding_to_dict(aclBinding)
+
+### kashpy.kash.aclOperation_to_str(aclOperation)
+
+### kashpy.kash.aclPermissionType_to_str(aclPermissionType)
+
+### kashpy.kash.cp(source_cluster, source_topic_str, target_cluster, target_topic_str, flatmap_function=<function <lambda>>, group=None, offsets=None, config={}, source_key_type='bytes', source_value_type='bytes', target_key_type=None, target_value_type=None, target_key_schema=None, target_value_schema=None, keep_timestamps=True, n=-1, batch_size=1)
 Replicate a topic and optionally transform the messages in a flatmap-like manner.
 
 Replicate (parts of) a topic (source_topic_str) on one cluster (source_cluster) to another topic (target_topic_str) on another (or the same) cluster (target_cluster). Each replicated message can be transformed into a list of other messages in a flatmap-like manner. The source and target topics can have different message key and value types; e.g. the source topic can have value type Avro whereas the target topic will be written with value type Protobuf. Stops either if the consume timeout is exceeded on the source cluster (`consume.timeout` in the kash.py cluster configuration) or the number of messages specified in `n` has been consumed.
@@ -2604,19 +2638,19 @@ Replicate (parts of) a topic (source_topic_str) on one cluster (source_cluster) 
     * **source_cluster** (*Cluster*) – Source cluster
 
 
-    * **source_topic_str** (*str*) – Source topic
+    * **source_topic_str** (`str`) – Source topic
 
 
     * **target_cluster** (*Cluster*) – Target cluster
 
 
-    * **target_topic_str** (*str*) – Target topic
+    * **target_topic_str** (`str`) – Target topic
 
 
     * **flatmap_function** (*function**, **optional*) – Flatmap function (takes a message dictionary and returns a list of message dictionaries). Defaults to lambda x: [x].
 
 
-    * **group** (*str**, **optional*) – Consumer group name used for subscribing to the source topic. If set to None, creates a new unique consumer group name. Defaults to None.
+    * **group** (`str`, optional) – Consumer group name used for subscribing to the source topic. If set to None, creates a new unique consumer group name. Defaults to None.
 
 
     * **offsets** (*dict**, **optional*) – Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for subscribing to the source topic. If set to None, subscribe to the topic using the offsets from the consumer group for the topic. Defaults to None.
@@ -2625,22 +2659,22 @@ Replicate (parts of) a topic (source_topic_str) on one cluster (source_cluster) 
     * **config** (*dict**(**str**, **str**)**, **optional*) – Dictionary of strings (keys) and strings (values) to augment the consumer configuration for the source topic. Defaults to {}.
 
 
-    * **source_key_type** (*str**, **optional*) – Source topic message key type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to “bytes”.
+    * **source_key_type** (`str`, optional) – Source topic message key type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to “bytes”.
 
 
-    * **source_value_type** (*str**, **optional*) – Source topic message value type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to “bytes”.
+    * **source_value_type** (`str`, optional) – Source topic message value type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to “bytes”.
 
 
-    * **target_key_type** (*str**, **optional*) – Target topic message key type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). If set to None, target_key_type = source_key_type. Defaults to None.
+    * **target_key_type** (`str`, optional) – Target topic message key type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). If set to None, target_key_type = source_key_type. Defaults to None.
 
 
-    * **target_value_type** (*str**, **optional*) – Target topic message value type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). If set to None, target_value_type = source_value_type. Defaults to None.
+    * **target_value_type** (`str`, optional) – Target topic message value type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). If set to None, target_value_type = source_value_type. Defaults to None.
 
 
-    * **target_key_schema** (*str**, **optional*) – Target key message type schema (for “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to None.
+    * **target_key_schema** (`str`, optional) – Target key message type schema (for “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to None.
 
 
-    * **target_value_schema** (*str**, **optional*) – Target value message type schema (for “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to None.
+    * **target_value_schema** (`str`, optional) – Target value message type schema (for “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to None.
 
 
     * **keep_timestamps** (*bool**, **optional*) – Replicate the timestamps of the source messages in the target messages. Defaults to True.
@@ -2683,7 +2717,9 @@ cp(cluster1, “topic1”, cluster2, “topic2”, offsets={0:100}, keep_timesta
     Replicate the messages 100-600 from “topic1” on cluster1 to “topic2” on cluster2. Create new timestamps for the messages produced to the target topic.
 
 
-### kash.diff(cluster1, topic_str1, cluster2, topic_str2, group1=None, group2=None, offsets1=None, offsets2=None, key_type1='bytes', value_type1='bytes', key_type2='bytes', value_type2='bytes', n=-1, batch_size=1)
+### kashpy.kash.create_unique_group_id()
+
+### kashpy.kash.diff(cluster1, topic_str1, cluster2, topic_str2, group1=None, group2=None, offsets1=None, offsets2=None, key_type1='bytes', value_type1='bytes', key_type2='bytes', value_type2='bytes', n=-1, batch_size=1)
 Create a diff of topic 1 on cluster 1 and topic 2 on cluster 2 using a diff function.
 
 Create a diff of (parts of) a topic (topic_str1) on one cluster (cluster1) and another topic (topic_str2) on another (or the same) cluster (cluster2) with respect to their keys and values. Stops on either topic/cluster if either the consume timeout is exceeded (`consume.timeout` in the kash.py cluster configuration) or the number of messages specified in `n` has been consumed. If cluster 1 and cluster 2 are the same, a new temporary Cluster object is created under the covers.
@@ -2695,19 +2731,19 @@ Create a diff of (parts of) a topic (topic_str1) on one cluster (cluster1) and a
     * **cluster1** (*Cluster*) – Cluster 1
 
 
-    * **topic_str1** (*str*) – Topic 1
+    * **topic_str1** (`str`) – Topic 1
 
 
     * **cluster2** (*Cluster*) – Cluster 2
 
 
-    * **topic_str2** (*str*) – Topic 2
+    * **topic_str2** (`str`) – Topic 2
 
 
-    * **group1** (*str**, **optional*) – Consumer group name used for consuming from topic 1. If set to None, creates a new unique consumer group name. Defaults to None.
+    * **group1** (`str`, optional) – Consumer group name used for consuming from topic 1. If set to None, creates a new unique consumer group name. Defaults to None.
 
 
-    * **group2** (*str**, **optional*) – Consumer group name used for consuming from topic 2. If set to None, creates a new unique consumer group name. Defaults to None.
+    * **group2** (`str`, optional) – Consumer group name used for consuming from topic 2. If set to None, creates a new unique consumer group name. Defaults to None.
 
 
     * **offsets1** (*dict**, **optional*) – Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for consuming from topic 1. If set to None, consume topic 1 using the offsets from the consumer group for topic 1. Defaults to None.
@@ -2716,16 +2752,16 @@ Create a diff of (parts of) a topic (topic_str1) on one cluster (cluster1) and a
     * **offsets2** (*dict**, **optional*) – Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for consuming from topic 2. If set to None, consume topic 2 using the offsets from the consumer group for topic 2. Defaults to None.
 
 
-    * **key_type1** (*str**, **optional*) – Topic 1 message key type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to “bytes”.
+    * **key_type1** (`str`, optional) – Topic 1 message key type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to “bytes”.
 
 
-    * **value_type1** (*str**, **optional*) – Topic 1 message value type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to “bytes”.
+    * **value_type1** (`str`, optional) – Topic 1 message value type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to “bytes”.
 
 
-    * **key_type2** (*str**, **optional*) – Topic 2 message key type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). If set to None, target_key_type = source_key_type. Defaults to “bytes”.
+    * **key_type2** (`str`, optional) – Topic 2 message key type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). If set to None, target_key_type = source_key_type. Defaults to “bytes”.
 
 
-    * **value_type2** (*str**, **optional*) – Topic 2 message value type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). If set to None, target_value_type = source_value_type. Defaults to “bytes”.
+    * **value_type2** (`str`, optional) – Topic 2 message value type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). If set to None, target_value_type = source_value_type. Defaults to “bytes”.
 
 
     * **n** (*int**, **optional*) – Number of messages to consume from the topic 1 and topic 2. Defaults to ALL_MESSAGES = -1.
@@ -2753,7 +2789,7 @@ diff(cluster1, “topic1”, cluster2, “topic2”)
     Create a diff of “topic1” on cluster1 and “topic2” on cluster2 with respect to their keys and values.
 
 
-### kash.diff_fun(cluster1, topic_str1, cluster2, topic_str2, diff_function, group1=None, group2=None, offsets1=None, offsets2=None, key_type1='bytes', value_type1='bytes', key_type2='bytes', value_type2='bytes', n=-1, batch_size=1)
+### kashpy.kash.diff_fun(cluster1, topic_str1, cluster2, topic_str2, diff_function, group1=None, group2=None, offsets1=None, offsets2=None, key_type1='bytes', value_type1='bytes', key_type2='bytes', value_type2='bytes', n=-1, batch_size=1)
 Create a diff of topic 1 on cluster 1 and topic 2 on cluster 2 using a diff function.
 
 Create a diff of (parts of) a topic (topic_str1) on one cluster (cluster1) and another topic (topic_str2) on another (or the same) cluster (cluster2) using a diff function (diff_function). Stops on either topic/cluster if either the consume timeout is exceeded (`consume.timeout` in the kash.py cluster configuration) or the number of messages specified in `n` has been consumed. If cluster 1 and cluster 2 are the same, a new temporary Cluster object is created under the covers.
@@ -2765,22 +2801,22 @@ Create a diff of (parts of) a topic (topic_str1) on one cluster (cluster1) and a
     * **cluster1** (*Cluster*) – Cluster 1
 
 
-    * **topic_str1** (*str*) – Topic 1
+    * **topic_str1** (`str`) – Topic 1
 
 
     * **cluster2** (*Cluster*) – Cluster 2
 
 
-    * **topic_str2** (*str*) – Topic 2
+    * **topic_str2** (`str`) – Topic 2
 
 
     * **diff_function** (*function*) – Diff function (takes a message dictionary from topic 1 and a message dictionary from topic 2 and returns the updated accumulator)
 
 
-    * **group1** (*str**, **optional*) – Consumer group name used for consuming from topic 1. If set to None, creates a new unique consumer group name. Defaults to None.
+    * **group1** (`str`, optional) – Consumer group name used for consuming from topic 1. If set to None, creates a new unique consumer group name. Defaults to None.
 
 
-    * **group2** (*str**, **optional*) – Consumer group name used for consuming from topic 2. If set to None, creates a new unique consumer group name. Defaults to None.
+    * **group2** (`str`, optional) – Consumer group name used for consuming from topic 2. If set to None, creates a new unique consumer group name. Defaults to None.
 
 
     * **offsets1** (*dict**, **optional*) – Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for consuming from topic 1. If set to None, consume topic 1 using the offsets from the consumer group for topic 1. Defaults to None.
@@ -2789,16 +2825,16 @@ Create a diff of (parts of) a topic (topic_str1) on one cluster (cluster1) and a
     * **offsets2** (*dict**, **optional*) – Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for consuming from topic 2. If set to None, consume topic 2 using the offsets from the consumer group for topic 2. Defaults to None.
 
 
-    * **key_type1** (*str**, **optional*) – Topic 1 message key type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to “bytes”.
+    * **key_type1** (`str`, optional) – Topic 1 message key type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to “bytes”.
 
 
-    * **value_type1** (*str**, **optional*) – Topic 1 message value type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to “bytes”.
+    * **value_type1** (`str`, optional) – Topic 1 message value type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to “bytes”.
 
 
-    * **key_type2** (*str**, **optional*) – Topic 2 message key type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). If set to None, target_key_type = source_key_type. Defaults to “bytes”.
+    * **key_type2** (`str`, optional) – Topic 2 message key type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). If set to None, target_key_type = source_key_type. Defaults to “bytes”.
 
 
-    * **value_type2** (*str**, **optional*) – Topic 2 message value type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). If set to None, target_value_type = source_value_type. Defaults to “bytes”.
+    * **value_type2** (`str`, optional) – Topic 2 message value type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). If set to None, target_value_type = source_value_type. Defaults to “bytes”.
 
 
     * **n** (*int**, **optional*) – Number of messages to consume from the topic 1 and topic 2. Defaults to ALL_MESSAGES = -1.
@@ -2826,7 +2862,7 @@ diff_fun(cluster1, “topic1”, cluster2, “topic2”, lambda message_dict1, m
     Create a diff of “topic1” on cluster1 and “topic2” on cluster2 by comparing the message values.
 
 
-### kash.flatmap(source_cluster, source_topic_str, target_cluster, target_topic_str, flatmap_function, group=None, offsets=None, config={}, source_key_type='bytes', source_value_type='bytes', target_key_type=None, target_value_type=None, target_key_schema=None, target_value_schema=None, keep_timestamps=True, n=-1, batch_size=1)
+### kashpy.kash.flatmap(source_cluster, source_topic_str, target_cluster, target_topic_str, flatmap_function, group=None, offsets=None, config={}, source_key_type='bytes', source_value_type='bytes', target_key_type=None, target_value_type=None, target_key_schema=None, target_value_schema=None, keep_timestamps=True, n=-1, batch_size=1)
 Replicate a topic and transform the messages in a flatmap-like manner.
 
 Replicate (parts of) a topic (source_topic_str) on one cluster (source_cluster) to another topic (target_topic_str) on another (or the same) cluster (target_cluster). Each replicated message is transformed into a list of other messages in a flatmap-like manner. The source and target topics can have different message key and value types; e.g. the source topic can have value type Avro whereas the target topic will be written with value type Protobuf.
@@ -2835,22 +2871,22 @@ Replicate (parts of) a topic (source_topic_str) on one cluster (source_cluster) 
 * **Parameters**
 
     
-    * **source_cluster** (*Cluster*) – Source cluster
+    * **source_cluster** (`Cluster`) – Source cluster
 
 
-    * **source_topic_str** (*str*) – Source topic
+    * **source_topic_str** (`str`) – Source topic
 
 
     * **target_cluster** (*Cluster*) – Target cluster
 
 
-    * **target_topic_str** (*str*) – Target topic
+    * **target_topic_str** (`str`) – Target topic
 
 
     * **flatmap_function** (*function*) – Flatmap function (takes a message dictionary and returns a list of message dictionaries)
 
 
-    * **group** (*str**, **optional*) – Consumer group name used for subscribing to the source topic. If set to None, creates a new unique consumer group name. Defaults to None.
+    * **group** (`str`, optional) – Consumer group name used for subscribing to the source topic. If set to None, creates a new unique consumer group name. Defaults to None.
 
 
     * **offsets** (*dict**, **optional*) – Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for subscribing to the source topic. If set to None, subscribe to the topic using the offsets from the consumer group for the topic. Defaults to None.
@@ -2859,22 +2895,22 @@ Replicate (parts of) a topic (source_topic_str) on one cluster (source_cluster) 
     * **config** (*dict**(**str**, **str**)**, **optional*) – Dictionary of strings (keys) and strings (values) to augment the consumer configuration for the source topic. Defaults to {}.
 
 
-    * **source_key_type** (*str**, **optional*) – Source topic message key type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to “bytes”.
+    * **source_key_type** (`str`, optional) – Source topic message key type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to “bytes”.
 
 
-    * **source_value_type** (*str**, **optional*) – Source topic message value type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to “bytes”.
+    * **source_value_type** (`str`, optional) – Source topic message value type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to “bytes”.
 
 
-    * **target_key_type** (*str**, **optional*) – Target topic message key type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). If set to None, target_key_type = source_key_type. Defaults to None.
+    * **target_key_type** (`str`, optional) – Target topic message key type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). If set to None, target_key_type = source_key_type. Defaults to None.
 
 
-    * **target_value_type** (*str**, **optional*) – Target topic message value type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). If set to None, target_value_type = source_value_type. Defaults to None.
+    * **target_value_type** (`str`, optional) – Target topic message value type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). If set to None, target_value_type = source_value_type. Defaults to None.
 
 
-    * **target_key_schema** (*str**, **optional*) – Target key message type schema (for “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to None.
+    * **target_key_schema** (`str`, optional) – Target key message type schema (for “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to None.
 
 
-    * **target_value_schema** (*str**, **optional*) – Target value message type schema (for “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to None.
+    * **target_value_schema** (`str`, optional) – Target value message type schema (for “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to None.
 
 
     * **keep_timestamps** (*bool**, **optional*) – Replicate the timestamps of the source messages in the target messages. Defaults to True.
@@ -2917,7 +2953,31 @@ flatmap(cluster1, “topic1”, cluster2, “topic2”, lambda message_dict: [me
     Replicate the messages 100-600 from “topic1” on cluster1 to “topic2” on cluster2. Create new timestamps for the messages produced to the target topic.
 
 
-### kash.map(source_cluster, source_topic_str, target_cluster, target_topic_str, map_function, group=None, offsets=None, config={}, source_key_type='bytes', source_value_type='bytes', target_key_type=None, target_value_type=None, target_key_schema=None, target_value_schema=None, keep_timestamps=True, n=-1, batch_size=1)
+### kashpy.kash.foldl_file(path_str, foldl_function, initial_acc, delimiter='\\n', n=-1, bufsize=4096, verbose=0, progress_num_lines=1000)
+
+### kashpy.kash.get_adminClient(config_dict)
+
+### kashpy.kash.get_config_dict(cluster_str)
+
+### kashpy.kash.get_consumer(config_dict)
+
+### kashpy.kash.get_millis()
+
+### kashpy.kash.get_producer(config_dict)
+
+### kashpy.kash.get_schemaRegistryClient(config_dict)
+
+### kashpy.kash.groupMember_to_dict(groupMember)
+
+### kashpy.kash.groupMetadata_to_group_dict(groupMetadata)
+
+### kashpy.kash.is_file(str)
+
+### kashpy.kash.is_interactive()
+
+### kashpy.kash.kafkaError_to_error_dict(kafkaError)
+
+### kashpy.kash.map(source_cluster, source_topic_str, target_cluster, target_topic_str, map_function, group=None, offsets=None, config={}, source_key_type='bytes', source_value_type='bytes', target_key_type=None, target_value_type=None, target_key_schema=None, target_value_schema=None, keep_timestamps=True, n=-1, batch_size=1)
 Replicate a topic and optionally transform the messages in a map-like manner.
 
 Replicate (parts of) a topic (source_topic_str) on one cluster (source_cluster) to another topic (target_topic_str) on another (or the same) cluster (target_cluster). Each replicated message can be transformed into another messages in a map-like manner. The source and target topics can have different message key and value types; e.g. the source topic can have value type Avro whereas the target topic will be written with value type Protobuf. Stops either if the consume timeout is exceeded on the source cluster (`consume.timeout` in the kash.py cluster configuration) or the number of messages specified in `n` has been consumed.
@@ -2929,19 +2989,19 @@ Replicate (parts of) a topic (source_topic_str) on one cluster (source_cluster) 
     * **source_cluster** (*Cluster*) – Source cluster
 
 
-    * **source_topic_str** (*str*) – Source topic
+    * **source_topic_str** (`str`) – Source topic
 
 
     * **target_cluster** (*Cluster*) – Target cluster
 
 
-    * **target_topic_str** (*str*) – Target topic
+    * **target_topic_str** (`str`) – Target topic
 
 
     * **map_function** (*function**, **optional*) – Map function (takes a message dictionary and returns a message dictionary). Defaults to lambda x: [x].
 
 
-    * **group** (*str**, **optional*) – Consumer group name used for subscribing to the source topic. If set to None, creates a new unique consumer group name. Defaults to None.
+    * **group** (`str`, optional) – Consumer group name used for subscribing to the source topic. If set to None, creates a new unique consumer group name. Defaults to None.
 
 
     * **offsets** (*dict**, **optional*) – Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for subscribing to the source topic. If set to None, subscribe to the topic using the offsets from the consumer group for the topic. Defaults to None.
@@ -2950,22 +3010,22 @@ Replicate (parts of) a topic (source_topic_str) on one cluster (source_cluster) 
     * **config** (*dict**(**str**, **str**)**, **optional*) – Dictionary of strings (keys) and strings (values) to augment the consumer configuration for the source topic. Defaults to {}.
 
 
-    * **source_key_type** (*str**, **optional*) – Source topic message key type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to “bytes”.
+    * **source_key_type** (`str`, optional) – Source topic message key type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to “bytes”.
 
 
-    * **source_value_type** (*str**, **optional*) – Source topic message value type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to “bytes”.
+    * **source_value_type** (`str`, optional) – Source topic message value type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to “bytes”.
 
 
-    * **target_key_type** (*str**, **optional*) – Target topic message key type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). If set to None, target_key_type = source_key_type. Defaults to None.
+    * **target_key_type** (`str`, optional) – Target topic message key type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). If set to None, target_key_type = source_key_type. Defaults to None.
 
 
-    * **target_value_type** (*str**, **optional*) – Target topic message value type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). If set to None, target_value_type = source_value_type. Defaults to None.
+    * **target_value_type** (`str`, optional) – Target topic message value type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). If set to None, target_value_type = source_value_type. Defaults to None.
 
 
-    * **target_key_schema** (*str**, **optional*) – Target key message type schema (for “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to None.
+    * **target_key_schema** (`str`, optional) – Target key message type schema (for “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to None.
 
 
-    * **target_value_schema** (*str**, **optional*) – Target value message type schema (for “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to None.
+    * **target_value_schema** (`str`, optional) – Target value message type schema (for “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to None.
 
 
     * **keep_timestamps** (*bool**, **optional*) – Replicate the timestamps of the source messages in the target messages. Defaults to True.
@@ -2996,7 +3056,27 @@ map(cluster1, “topic1”, cluster2, “topic2”, lambda x: x)
     Replicate “topic1” on cluster1 to “topic2” on cluster2.
 
 
-### kash.zip_foldl(cluster1, topic_str1, cluster2, topic_str2, zip_foldl_function, initial_acc, group1=None, group2=None, offsets1=None, offsets2=None, config1={}, config2={}, key_type1='bytes', value_type1='bytes', key_type2='bytes', value_type2='bytes', n=-1, batch_size=1)
+### kashpy.kash.offset_int_to_int_or_str(offset_int)
+
+### kashpy.kash.partitionMetadata_to_partition_dict(partitionMetadata)
+
+### kashpy.kash.resourcePatternType_to_str(resourcePatternType)
+
+### kashpy.kash.resourceType_to_str(resourceType)
+
+### kashpy.kash.str_to_aclOperation(operation_str)
+
+### kashpy.kash.str_to_aclPermissionType(permission_type_str)
+
+### kashpy.kash.str_to_bool(str)
+
+### kashpy.kash.str_to_resourcePatternType(resource_pattern_type_str)
+
+### kashpy.kash.str_to_resourceType(restype_str)
+
+### kashpy.kash.topicMetadata_to_topic_dict(topicMetadata)
+
+### kashpy.kash.zip_foldl(cluster1, topic_str1, cluster2, topic_str2, zip_foldl_function, initial_acc, group1=None, group2=None, offsets1=None, offsets2=None, config1={}, config2={}, key_type1='bytes', value_type1='bytes', key_type2='bytes', value_type2='bytes', n=-1, batch_size=1)
 Subscribe to and consume from topic 1 on cluster 1 and topic 2 on cluster 2 and combine the messages using a foldl function.
 
 Consume (parts of) a topic (topic_str1) on one cluster (cluster1) and another topic (topic_str2) on another (or the same) cluster (cluster2) and combine them using a foldl function. Stops on either topic/cluster if either the consume timeout is exceeded (`consume.timeout` in the kash.py cluster configuration) or the number of messages specified in `n` has been consumed. If cluster 1 and cluster 2 are the same, a new temporary Cluster object is created under the covers.
@@ -3008,13 +3088,13 @@ Consume (parts of) a topic (topic_str1) on one cluster (cluster1) and another to
     * **cluster1** (*Cluster*) – Cluster 1
 
 
-    * **topic_str1** (*str*) – Topic 1
+    * **topic_str1** (`str`) – Topic 1
 
 
     * **cluster2** (*Cluster*) – Cluster 2
 
 
-    * **topic_str2** (*str*) – Topic 2
+    * **topic_str2** (`str`) – Topic 2
 
 
     * **zip_foldl_function** (*function*) – Foldl function (takes an accumulator (any type) and a message dictionary and returns the updated accumulator).
@@ -3023,10 +3103,10 @@ Consume (parts of) a topic (topic_str1) on one cluster (cluster1) and another to
     * **initial_acc** – Initial value of the accumulator (any type).
 
 
-    * **group1** (*str**, **optional*) – Consumer group name used for consuming from topic 1. If set to None, creates a new unique consumer group name. Defaults to None.
+    * **group1** (`str`, optional) – Consumer group name used for consuming from topic 1. If set to None, creates a new unique consumer group name. Defaults to None.
 
 
-    * **group2** (*str**, **optional*) – Consumer group name used for consuming from topic 2. If set to None, creates a new unique consumer group name. Defaults to None.
+    * **group2** (`str`, optional) – Consumer group name used for consuming from topic 2. If set to None, creates a new unique consumer group name. Defaults to None.
 
 
     * **offsets1** (*dict**, **optional*) – Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for consuming from topic 1. If set to None, consume topic 1 using the offsets from the consumer group for topic 1. Defaults to None.
@@ -3041,16 +3121,16 @@ Consume (parts of) a topic (topic_str1) on one cluster (cluster1) and another to
     * **config2** (*dict**(**str**, **str**)**, **optional*) – Dictionary of strings (keys) and strings (values) to augment the consumer configuration for topic 2 on cluster 2. Defaults to {}.
 
 
-    * **key_type1** (*str**, **optional*) – Topic 1 message key type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to “bytes”.
+    * **key_type1** (`str`, optional) – Topic 1 message key type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to “bytes”.
 
 
-    * **value_type1** (*str**, **optional*) – Topic 1 message value type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to “bytes”.
+    * **value_type1** (`str`, optional) – Topic 1 message value type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to “bytes”.
 
 
-    * **key_type2** (*str**, **optional*) – Topic 2 message key type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). If set to None, target_key_type = source_key_type. Defaults to “bytes”.
+    * **key_type2** (`str`, optional) – Topic 2 message key type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). If set to None, target_key_type = source_key_type. Defaults to “bytes”.
 
 
-    * **value_type2** (*str**, **optional*) – Topic 2 message value type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). If set to None, target_value_type = source_value_type. Defaults to “bytes”.
+    * **value_type2** (`str`, optional) – Topic 2 message value type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). If set to None, target_value_type = source_value_type. Defaults to “bytes”.
 
 
     * **n** (*int**, **optional*) – Number of messages to consume from topic 1 and topic 2. Defaults to ALL_MESSAGES = -1.
@@ -3076,3 +3156,5 @@ Consume (parts of) a topic (topic_str1) on one cluster (cluster1) and another to
 zip_foldl(cluster1, “topic1”, cluster2, “topic2”, lambda acc, message_dict1, message_dict2: acc + [(message_dict1, message_dict2)], [])
 
     Consume “topic1” on cluster1 and “topic2” on cluster2 and return a list of pairs of message dictionaries from topic 1 and topic 2, respectively.
+
+## Module contents
