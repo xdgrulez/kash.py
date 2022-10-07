@@ -374,20 +374,20 @@ def flatmap(source_cluster, source_topic_str, target_cluster, target_topic_str, 
         batch_size (:obj:`int`, optional): Maximum number of messages to consume from the source topic at a time. Defaults to 1.
 
     Returns:
-        tuple(int, int): Pair of the number of messages consumed from the source topic and the number of messages produced to the target topic.
+        :obj:`tuple(int, int)`: Pair of the number of messages consumed from the source topic and the number of messages produced to the target topic.
 
     Examples:
-        flatmap(cluster1, "topic1", cluster2, "topic2", lambda message_dict: [message_dict])
-            Replicate "topic1" on cluster1 to "topic2" on cluster2.
+        Replicate "topic1" on cluster1 to "topic2" on cluster2.
+            flatmap(cluster1, "topic1", cluster2, "topic2", lambda message_dict: [message_dict])
 
-        flatmap(cluster1, "topic1", cluster2, "topic2", lambda message_dict: [message_dict, message_dict])
-            Replicate "topic1" on cluster1 to "topic2" on cluster2, while duplicating each message from topic1 in topic2.
+        Replicate "topic1" on cluster1 to "topic2" on cluster2, while duplicating each message from topic1 in topic2.
+            flatmap(cluster1, "topic1", cluster2, "topic2", lambda message_dict: [message_dict, message_dict])
 
-        flatmap(cluster1, "topic1", cluster2, "topic2", lambda message_dict: [message_dict], source_value_type="avro", target_value_type="protobuf", target_value_schema="message Snack { required string name = 1; required float calories = 2; optional string colour = 3; }", n=100)
-            Replicate the first 100 messages from "topic1" on cluster1 to "topic2" on cluster2, changing the value schema from avro to protobuf.
+        Replicate "topic1" on cluster1 to "topic2" on cluster2, while duplicating each message from topic1 in topic2.
+            flatmap(cluster1, "topic1", cluster2, "topic2", lambda message_dict: [message_dict], source_value_type="avro", target_value_type="protobuf", target_value_schema="message Snack { required string name = 1; required float calories = 2; optional string colour = 3; }", n=100)
 
-        flatmap(cluster1, "topic1", cluster2, "topic2", lambda message_dict: [message_dict], offsets={0:100}, keep_timestamps=False, n=500)
-            Replicate the messages 100-600 from "topic1" on cluster1 to "topic2" on cluster2. Create new timestamps for the messages produced to the target topic.
+        Replicate the messages 100-600 from "topic1" on cluster1 to "topic2" on cluster2. Create new timestamps for the messages produced to the target topic.
+            flatmap(cluster1, "topic1", cluster2, "topic2", lambda message_dict: [message_dict], offsets={0:100}, keep_timestamps=False, n=500)
     """
     source_key_type_str = source_key_type
     source_value_type_str = source_value_type
@@ -448,7 +448,7 @@ def map(source_cluster, source_topic_str, target_cluster, target_topic_str, map_
         source_topic_str (:obj:`str`): Source topic
         target_cluster (:obj:`Cluster`): Target cluster
         target_topic_str (:obj:`str`): Target topic
-        map_function (function, optional): Map function (takes a message dictionary and returns a message dictionary). Defaults to lambda x: [x].
+        map_function (:obj:`function`, optional): Map function (takes a message dictionary and returns a message dictionary). Defaults to lambda x: [x].
         group (:obj:`str`, optional): Consumer group name used for subscribing to the source topic. If set to None, creates a new unique consumer group name. Defaults to None.
         offsets (:obj:`dict(int, int)`, optional): Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for subscribing to the source topic. If set to None, subscribe to the topic using the offsets from the consumer group for the topic. Defaults to None.
         config (:obj:`dict(str, str)`, optional): Dictionary of strings (keys) and strings (values) to augment the consumer configuration for the source topic. Defaults to {}.
@@ -463,7 +463,7 @@ def map(source_cluster, source_topic_str, target_cluster, target_topic_str, map_
         batch_size (:obj:`int`, optional): Maximum number of messages to consume from the source topic at a time. Defaults to 1.
 
     Returns:
-        tuple(int, int): Pair of the number of messages consumed from the source topic and the number of messages produced to the target topic.
+        :obj:`tuple(int, int)`: Pair of the number of messages consumed from the source topic and the number of messages produced to the target topic.
 
     Examples:
         map(cluster1, "topic1", cluster2, "topic2", lambda x: x)
@@ -485,7 +485,7 @@ def cp(source_cluster, source_topic_str, target_cluster, target_topic_str, flatm
         source_topic_str (:obj:`str`): Source topic
         target_cluster (:obj:`Cluster`): Target cluster
         target_topic_str (:obj:`str`): Target topic
-        flatmap_function (function, optional): Flatmap function (takes a message dictionary and returns a list of message dictionaries). Defaults to lambda x: [x].
+        flatmap_function (:obj:`function`, optional): Flatmap function (takes a message dictionary and returns a list of message dictionaries). Defaults to lambda x: [x].
         group (:obj:`str`, optional): Consumer group name used for subscribing to the source topic. If set to None, creates a new unique consumer group name. Defaults to None.
         offsets (:obj:`dict(int, int)`, optional): Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for subscribing to the source topic. If set to None, subscribe to the topic using the offsets from the consumer group for the topic. Defaults to None.
         config (:obj:`dict(str, str)`, optional): Dictionary of strings (keys) and strings (values) to augment the consumer configuration for the source topic. Defaults to {}.
@@ -500,7 +500,7 @@ def cp(source_cluster, source_topic_str, target_cluster, target_topic_str, flatm
         batch_size (:obj:`int`, optional): Maximum number of messages to consume from the source topic at a time. Defaults to 1.
 
     Returns:
-        tuple(int, int): Pair of the number of messages consumed from the source topic and the number of messages produced to the target topic.
+        :obj:`tuple(int, int)`: Pair of the number of messages consumed from the source topic and the number of messages produced to the target topic.
 
     Examples:
         cp(cluster1, "topic1", cluster2, "topic2")
@@ -544,7 +544,7 @@ def zip_foldl(cluster1, topic_str1, cluster2, topic_str2, zip_foldl_function, in
         batch_size (:obj:`int`, optional): Maximum number of messages to consume from topic 1 and topic 2 at a time. Defaults to 1.
 
     Returns:
-        tuple(acc, int, int): Tuple of the accumulator (any type), the number of messages consumed from topic 1 and the number of messages consumed from topic 2.
+        :obj:`tuple(acc, int, int)`: Tuple of the accumulator (any type), the number of messages consumed from topic 1 and the number of messages consumed from topic 2.
 
     Examples:
         zip_foldl(cluster1, "topic1", cluster2, "topic2", lambda acc, message_dict1, message_dict2: acc + [(message_dict1, message_dict2)], [])
@@ -626,7 +626,7 @@ def diff_fun(cluster1, topic_str1, cluster2, topic_str2, diff_function, group1=N
         batch_size (:obj:`int`, optional): Maximum number of messages to consume from topic 1 and topic 2 at a time. Defaults to 1.
 
     Returns:
-        list(tuple(message_dict, message_dict)): Tuple of message dictionaries from topic 1 and topic 2 which are different according to the diff_function (=where diff_function(message_dict1, message_dict2) returned True).
+        :obj:`list(tuple(message_dict, message_dict))`: Tuple of message dictionaries from topic 1 and topic 2 which are different according to the diff_function (=where diff_function(message_dict1, message_dict2) returned True).
 
     Examples:
         diff_fun(cluster1, "topic1", cluster2, "topic2", lambda message_dict1, message_dict2: message_dict1["value"] != message_dict2["value"])
@@ -670,7 +670,7 @@ def diff(cluster1, topic_str1, cluster2, topic_str2, group1=None, group2=None, o
         batch_size (:obj:`int`, optional): Maximum number of messages to consume from topic 1 and topic 2 at a time. Defaults to 1.
 
     Returns:
-        list(tuple(message_dict, message_dict)): Tuple of message dictionaries from topic 1 and topic 2 which are different with respect to their keys and values.
+        :obj:`list(tuple(message_dict, message_dict))`: Tuple of message dictionaries from topic 1 and topic 2 which are different with respect to their keys and values.
 
     Examples:
         diff(cluster1, "topic1", cluster2, "topic2")
@@ -896,7 +896,7 @@ class Cluster:
         """Get verbosity level.
 
         Returns:
-            int: Verbosity level.
+            :obj:`int`: Verbosity level.
         """
         return self.verbose_int
 
@@ -1108,11 +1108,11 @@ class Cluster:
         List topics on the cluster whose names match the pattern pattern_str, their total sizes and the sizes of their partitions.
 
         Args:
-            pattern_str_or_str_list (str | :obj:`list(str)`): The pattern or a list of patterns for selecting those topics which shall be listed.
+            pattern_str_or_str_list (:obj:`str` | :obj:`list(str)`): The pattern or a list of patterns for selecting those topics which shall be listed.
             timeout (:obj:`float`, optional): The timeout (in seconds) for the internally used get_watermark_offsets() method calls from confluent_kafka.Consumer. Defaults to -1.0 (infinite=no timeout).
 
         Returns:
-            dict(str, tuple(int, dict(int, int))): Dictionary of strings (topic name) and pairs of integers (total size of the topic) and dictionaries of integers (partition) and integers (size of the partition).
+            :obj:`dict(str, tuple(int, dict(int, int)))`: Dictionary of strings (topic name) and pairs of integers (total size of the topic) and dictionaries of integers (partition) and integers (size of the partition).
 
         Examples:
             c.size("\*")
@@ -1141,11 +1141,11 @@ class Cluster:
         Returns a dictionary of the topics whose names match the bash-like pattern pattern_str and the low and high offsets of their partitions.
 
         Args:
-            pattern_str_or_str_list (str | :obj:`list(str)`): The pattern or list of patterns for selecting the topics.
+            pattern_str_or_str_list (:obj:`str` | :obj:`list(str)`): The pattern or list of patterns for selecting the topics.
             timeout (:obj:`float`, optional): The timeout (in seconds) for the individual get_watermark_offsets() method calls from confluent_kafka.Consumer. Defaults to -1.0 (infinite=no timeout).
 
         Returns:
-            dict(str, dict(int, tuple(int, int))): Dictionary of strings (topic names) and dictionaries of integers (partition) and pairs of integers (low and high offsets of the respective partition of the respective topic)
+            :obj:`dict(str, dict(int, tuple(int, int)))`: Dictionary of strings (topic names) and dictionaries of integers (partition) and pairs of integers (low and high offsets of the respective partition of the respective topic)
 
         Examples:
             c.watermarks("test*")
@@ -1174,12 +1174,12 @@ class Cluster:
         List topics on the cluster. Optionally return only those topics whose names match bash-like patterns. Optionally return the total sizes of the topics and the sizes of their individual partitions.
 
         Args:
-            pattern (str | :obj:`list(str)`, optional): The pattern or list of patterns for selecting those topics which shall be listed. Defaults to None.
+            pattern (:obj:`str` | :obj:`list(str)`, optional): The pattern or list of patterns for selecting those topics which shall be listed. Defaults to None.
             size (:obj:`bool`, optional): Return the total sizes of the topics if set to True. Defaults to False.
             partitions (:obj:`bool`, optional): Return the sizes of the individual partitions of the topics if set to True. Defaults to False.
 
         Returns:
-            :obj:`list(str)` | dict(str, int) | dict(str, dict(int, int)) | dict(str, tuple(int, dict(int, int))): List of strings if size=False and partitions=False; dictionary of strings (topic name) and integers (total size of the topic) if size=True and partitions=False; dictionary of strings (topic name) and dictionaries of integers (partition) and integers (size of the partition) if size=False and partitions=True; dictionary of strings (topic name) and pairs of integers (total size of the topic) and dictionaries of integers (partition) and integers (size of the partition) if size=True and partitions=True.
+            :obj:`list(str)` | :obj:`dict(str, int)` | :obj:`dict(str, dict(int, int))` | :obj:`dict(str, tuple(int, dict(int, int)))`: List of strings if size=False and partitions=False; dictionary of strings (topic name) and integers (total size of the topic) if size=True and partitions=False; dictionary of strings (topic name) and dictionaries of integers (partition) and integers (size of the partition) if size=False and partitions=True; dictionary of strings (topic name) and pairs of integers (total size of the topic) and dictionaries of integers (partition) and integers (size of the partition) if size=True and partitions=True.
 
         Examples:
             c.topics()
@@ -1236,7 +1236,7 @@ class Cluster:
         partitions (:obj:`bool`, optional): Return the sizes of the individual partitions of the topics if set to True. Defaults to False.
 
     Returns:
-        :obj:`list(str)` | dict(str, int) | dict(str, dict(int, int)) | dict(str, tuple(int, dict(int, int))): List of strings if size=False and partitions=False; dictionary of strings (topic name) and integers (total size of the topic) if size=True and partitions=False; dictionary of strings (topic name) and dictionaries of integers (partition) and integers (size of the partition) if size=False and partitions=True; dictionary of strings (topic name) and pairs of integers (total size of the topic) and dictionaries of integers (partition) and integers (size of the partition) if size=True and partitions=True.
+        :obj:`list(str)` | :obj:`dict(str, int)` | :obj:`dict(str, dict(int, int))` | :obj:`dict(str, tuple(int, dict(int, int)))`: List of strings if size=False and partitions=False; dictionary of strings (topic name) and integers (total size of the topic) if size=True and partitions=False; dictionary of strings (topic name) and dictionaries of integers (partition) and integers (size of the partition) if size=False and partitions=True; dictionary of strings (topic name) and pairs of integers (total size of the topic) and dictionaries of integers (partition) and integers (size of the partition) if size=True and partitions=True.
 
     Examples:
         c.ls()
@@ -1269,7 +1269,7 @@ class Cluster:
             partitions (:obj:`bool`, optional): Return the sizes of the individual partitions of the topics if set to True. Defaults to False.
 
         Returns:
-            :obj:`list(str)` | dict(str, int) | dict(str, dict(int, int)) | dict(str, tuple(int, dict(int, int))): List of strings if size=False and partitions=False; dictionary of strings (topic name) and integers (total size of the topic) if size=True and partitions=False; dictionary of strings (topic name) and dictionaries of integers (partition) and integers (size of the partition) if size=False and partitions=True; dictionary of strings (topic name) and pairs of integers (total size of the topic) and dictionaries of integers (partition) and integers (size of the partition) if size=True and partitions=True.
+            :obj:`list(str)` | :obj:`dict(str, int)` | :obj:`dict(str, dict(int, int))` | :obj:`dict(str, tuple(int, dict(int, int)))`: List of strings if size=False and partitions=False; dictionary of strings (topic name) and integers (total size of the topic) if size=True and partitions=False; dictionary of strings (topic name) and dictionaries of integers (partition) and integers (size of the partition) if size=False and partitions=True; dictionary of strings (topic name) and pairs of integers (total size of the topic) and dictionaries of integers (partition) and integers (size of the partition) if size=True and partitions=True.
 
         Examples:
             c.l()
@@ -1303,7 +1303,7 @@ class Cluster:
         partitions (:obj:`bool`, optional): Return the sizes of the individual partitions of the topics if set to True. Defaults to False.
 
     Returns:
-        list(str | dict(str, int) | dict(str, dict(int, int)) | dict(str, tuple(int, dict(int, int)))): List of strings if size=False and partitions=False; dictionary of strings (topic name) and integers (total size of the topic) if size=True and partitions=False; dictionary of strings (topic name) and dictionaries of integers (partition) and integers (size of the partition) if size=False and partitions=True; dictionary of strings (topic name) and pairs of integers (total size of the topic) and dictionaries of integers (partition) and integers (size of the partition) if size=True and partitions=True.
+        :obj:`list(str)` | :obj:`dict(str, int)` | :obj:`dict(str, dict(int, int))` | :obj:`dict(str, tuple(int, dict(int, int)))`: List of strings if size=False and partitions=False; dictionary of strings (topic name) and integers (total size of the topic) if size=True and partitions=False; dictionary of strings (topic name) and dictionaries of integers (partition) and integers (size of the partition) if size=False and partitions=True; dictionary of strings (topic name) and pairs of integers (total size of the topic) and dictionaries of integers (partition) and integers (size of the partition) if size=True and partitions=True.
 
     Examples:
         c.ll()
@@ -1331,7 +1331,7 @@ class Cluster:
         Return the configuration of those topics whose names match the bash-like pattern (or list of patterns) pattern_str_or_str_list.
 
         Args:
-            pattern_str_or_str_list (str | :obj:`list(str)`): The pattern (or list of patterns) for selecting the topics for which the configuration shall be returned.
+            pattern_str_or_str_list (:obj:`str` | :obj:`list(str)`): The pattern (or list of patterns) for selecting the topics for which the configuration shall be returned.
 
         Returns:
             dict(str, dict(str, str)): Dictionary of strings (topic names) and dictionaries of strings (configuration keys) and strings (configuration values).
@@ -1355,11 +1355,11 @@ class Cluster:
         Set the configuration item with key key_str and value value_str of those topics whose names match the bash-like pattern (or list of patterns) pattern_str_or_str_list.
 
         Args:
-            pattern_str_or_str_list (str | :obj:`list(str)`): The pattern (or list of patterns) for selecting those topics whose configuration shall be changed.
+            pattern_str_or_str_list (:obj:`str` | :obj:`list(str)`): The pattern (or list of patterns) for selecting those topics whose configuration shall be changed.
             test (:obj:`bool`, optional): If True, the request is only validated without changing the configuration. Defaults to False.
 
         Returns:
-            dict(str, tuple(str, str)): Dictionary of strings (topic names) and tuples of strings (configuration keys) and strings (configuration values)
+            :obj:`dict(str, tuple(str, str))`: Dictionary of strings (topic names) and tuples of strings (configuration keys) and strings (configuration values)
 
         Examples:
             c.set_config("test", "retention.ms", "4711")
@@ -1411,7 +1411,7 @@ class Cluster:
             block (:obj:`bool`, optional): Block until the topic is created. Defaults to True.
 
         Returns:
-            str: Name of the created topic.
+            :obj:`str`: Name of the created topic.
 
         Examples:
             c.create("test")
@@ -1452,7 +1452,7 @@ class Cluster:
         block (:obj:`bool`, optional): Block until the topic is created. Defaults to True.
 
     Returns:
-        str: Name of the created topic.
+        :obj:`str`: Name of the created topic.
 
     Examples:
         c.touch("test")
@@ -1474,7 +1474,7 @@ class Cluster:
         Delete those topics whose names match the bash-like pattern (or list of patterns) pattern_str_or_str_list.
 
         Args:
-            pattern_str_or_str_list (str | :obj:`list(str)`): The pattern (or list of patterns) for selecting the topics to be deleted.
+            pattern_str_or_str_list (:obj:`str` | :obj:`list(str)`): The pattern (or list of patterns) for selecting the topics to be deleted.
             block (:obj:`bool`, optional): Block until the topic is deleted. Defaults to True.
 
         Returns:
@@ -1508,7 +1508,7 @@ class Cluster:
     Delete those topics whose names match the bash-like pattern (or list of patterns) pattern_str_or_str_list (shell synonym for ``Cluster.delete()``).
 
     Args:
-        pattern_str_or_str_list (str | :obj:`list(str)`): The pattern (or list of patterns) for selecting the topics to be deleted.
+        pattern_str_or_str_list (:obj:`str` | :obj:`list(str)`): The pattern (or list of patterns) for selecting the topics to be deleted.
         block (:obj:`bool`, optional): Block until the topic is deleted. Defaults to True.
 
     Returns:
@@ -1531,12 +1531,12 @@ class Cluster:
         Look up those offsets in the individual partitions of all topics matching the bash-like pattern (or list of patterns) pattern_str_or_str_list which correspond to the timestamps provided in partition_int_timestamp_int_dict (for the individual partitions).
 
         Args:
-            pattern_str_or_str_list (str | :obj:`list(str)`): The pattern (or list of patterns) for selecting the topics.
+            pattern_str_or_str_list (:obj:`str` | :obj:`list(str)`): The pattern (or list of patterns) for selecting the topics.
             partition_int_timestamp_int_dict (:obj:`dict(int, int)`): Dictionary of integers (partitions) and integers (timestamps).
             timeout (:obj:`float`, optional): The timeout (in seconds) for the individual offsets_for_times() method calls from confluent_kafka.Consumer. Defaults to -1.0 (infinite=no timeout).
 
         Returns:
-            dict(str, dict(int, int)): Dictionary of strings (topic names) and dictionaries of integers (partitions) and integers (offsets).
+            :obj:`dict(str, dict(int, int))`: Dictionary of strings (topic names) and dictionaries of integers (partitions) and integers (offsets).
 
         Examples:
             c.offsets_for_times("test", {0: 1664644769886})
@@ -1571,10 +1571,10 @@ class Cluster:
         Describe all topics matching the bash-like pattern (or list of patterns) pattern_str_or_str_list.
 
         Args:
-            pattern_str_or_str_list (str | :obj:`list(str)`): The pattern (or list of patterns) for selecting the topics.
+            pattern_str_or_str_list (:obj:`str` | :obj:`list(str)`): The pattern (or list of patterns) for selecting the topics.
 
         Returns:
-            dict(str, topic_dict): Dictionary of strings (topic names) and topic dictionaries describing the topic (converted from confluent_kafka.TopicMetadata objects).
+            :obj:`dict(str, topic_dict)`: Dictionary of strings (topic names) and topic dictionaries describing the topic (converted from confluent_kafka.TopicMetadata objects).
 
         Examples:
             c.describe("test")
@@ -1601,7 +1601,7 @@ class Cluster:
             topic_str (:obj:`str`): A topic.
 
         Returns:
-            bool: True if the topic topic_str exists, False otherwise.
+            :obj:`bool`: True if the topic topic_str exists, False otherwise.
 
         Examples:
             c.exists("test")
@@ -1615,10 +1615,10 @@ class Cluster:
         Get the number of partitions of all topics matching the bash-like pattern (or list of patterns) pattern_str_or_str_list.
 
         Args:
-            pattern_str_or_str_list (str | :obj:`list(str)`): The pattern (or list of patterns) for selecting the topics.
+            pattern_str_or_str_list (:obj:`str` | :obj:`list(str)`): The pattern (or list of patterns) for selecting the topics.
 
         Returns:
-            dict(str, int): Dictionary of strings (topic names) and their respective numbers of partitions.
+            :obj:`dict(str, int)`: Dictionary of strings (topic names) and their respective numbers of partitions.
 
         Examples:
             c.partitions("test")
@@ -1642,12 +1642,12 @@ class Cluster:
         Set the number of partitions of all topics matching the bash-like pattern (or list of patterns) pattern_str_or_str_list. The number of partitions of a topic can only be increased but not decreased, i.e., only additional partitions can be created.
 
         Args:
-            pattern_str_or_str_list (str | :obj:`list(str)`): The pattern (or list of patterns) for selecting the topics.
-            num_partitions_int (int): The number of partitions to set for the selected topics. The number of partitions of a topic can only be increased but not decreased, i.e., only additional partitions can be created.
+            pattern_str_or_str_list (:obj:`str` | :obj:`list(str)`): The pattern (or list of patterns) for selecting the topics.
+            num_partitions_int (:obj:`int`): The number of partitions to set for the selected topics. The number of partitions of a topic can only be increased but not decreased, i.e., only additional partitions can be created.
             test (:obj:`bool`, optional): If True, the request is only validated without creating the partitions.
 
         Returns:
-            dict(str, int): Dictionary of strings (topic names) and their respective new numbers of partitions.
+            :obj:`dict(str, int)`: Dictionary of strings (topic names) and their respective new numbers of partitions.
 
         Examples:
             c.set_partitions("test", 2)
@@ -1677,7 +1677,7 @@ class Cluster:
         List consumer groups on the cluster. Optionally return only those consumer groups whose names match bash-like patterns.
 
         Args:
-            pattern (str | :obj:`list(str)`, optional): The pattern or list of patterns for selecting those consumer groups which shall be listed. Defaults to None.
+            pattern (:obj:`str` | :obj:`list(str)`, optional): The pattern or list of patterns for selecting those consumer groups which shall be listed. Defaults to None.
 
         Returns:
             :obj:`list(str)`): List of strings (consumer group names).
@@ -1714,7 +1714,7 @@ class Cluster:
             pattern_str_or_str_list (:obj:`str` | :obj:`list(str)`, optional): The pattern or list of patterns for selecting those consumer groups which shall be listed. Defaults to None.
 
         Returns:
-            dict(str, group_dict): Dictionary of strings (consumer group names) and group dictionaries describing the consumer group (converted from confluent_kafka.GroupMetadata objects).
+            :obj:`dict(str, group_dict)`: Dictionary of strings (consumer group names) and group dictionaries describing the consumer group (converted from confluent_kafka.GroupMetadata objects).
 
         Examples:
             c.describe_groups("test*")
@@ -1740,10 +1740,10 @@ class Cluster:
         List brokers of the cluster. Optionally only list those brokers whose identifiers match the pattern (or list of patterns) pattern.
 
         Args:
-            pattern (str | :obj:`list(str)`, optional): The pattern or list of patterns for selecting those brokers which shall be listed. Defaults to None.
+            pattern (:obj:`str` | :obj:`list(str)`, optional): The pattern or list of patterns for selecting those brokers which shall be listed. Defaults to None.
 
         Returns:
-            dict(int, str): Dictionary of integers (broker identifiers) and strings (broker URLs and ports).
+            :obj:`dict(int, str)`: Dictionary of integers (broker identifiers) and strings (broker URLs and ports).
 
         Examples:
             c.brokers()
@@ -1774,10 +1774,10 @@ class Cluster:
         List the configurations of brokers of the cluster. Optionally only list those brokers whose identifiers match the pattern (or list of patterns) pattern.
 
         Args:
-            pattern_int_or_str_or_int_or_str_list (str | :obj:`list(str)`, optional): The pattern or list of patterns for selecting those brokers which shall be listed. Defaults to None.
+            pattern_int_or_str_or_int_or_str_list (:obj:`str` | :obj:`list(str)`, optional): The pattern or list of patterns for selecting those brokers which shall be listed. Defaults to None.
 
         Returns:
-            dict(int, dict(str, str)): Dictionary of integers (broker identifiers) and configuration dictionaries (dictionaries of strings (keys) and strings (values)).
+            :obj:`dict(int, dict(str, str))`: Dictionary of integers (broker identifiers) and configuration dictionaries (dictionaries of strings (keys) and strings (values)).
 
         Examples:
             c.broker_config(0)
@@ -1798,13 +1798,13 @@ class Cluster:
         Set the configuration item with key key_str and value value_str of those brokers whose identifiers match the bash-like pattern (or list of patterns) pattern_int_or_str_or_int_or_str_list.
 
         Args:
-            pattern_str_or_str_list (str | :obj:`list(str)`): The pattern (or list of patterns) for selecting those topics whose configuration shall be changed.
+            pattern_str_or_str_list (:obj:`str` | :obj:`list(str)`): The pattern (or list of patterns) for selecting those topics whose configuration shall be changed.
             key_str (:obj:`str`): Configuration key.
             value_str (:obj:`str`): Configuration value.
             test (:obj:`bool`, optional): If True, the request is only validated without changing the configuration. Defaults to False.
 
         Returns:
-            dict(int, tuple(str, str)): Dictionary of integers (broker identifiers) and tuples of strings (configuration keys) and strings (configuration values)
+            :obj:`dict(int, tuple(str, str))`: Dictionary of integers (broker identifiers) and tuples of strings (configuration keys) and strings (configuration values)
 
         Examples:
             c.set_broker_config(0, "background.threads", "5")
@@ -1843,7 +1843,7 @@ class Cluster:
             permission_type (:obj:`str`, optional): The permission type ("unknown", "any", "deny" or "allow"). Defaults to "any".
 
         Returns:
-            list(aclBinding_dict): List of ACL Binding dictionaries (converted from confluent_kafka.AclBinding objects) of the selected ACLs.
+            :obj:`list(aclBinding_dict)`: List of ACL Binding dictionaries (converted from confluent_kafka.AclBinding objects) of the selected ACLs.
 
         Examples:
             c.acls():
@@ -1880,7 +1880,7 @@ class Cluster:
             permission_type (:obj:`str`, optional): The permission type ("unknown", "any", "deny" or "allow"). Defaults to "any".
 
         Returns:
-            aclBinding_dict: ACL Binding dictionary (converted from an confluent_kafka.AclBinding object) of the created ACL.
+            :obj:`aclBinding_dict`: ACL Binding dictionary (converted from an confluent_kafka.AclBinding object) of the created ACL.
 
         Examples:
             c.create_acl(restype="topic", name="test", resource_pattern_type="literal", principal="User:abc", host="*", operation="read", permission_type="allow"):
@@ -1914,7 +1914,7 @@ class Cluster:
             permission_type (:obj:`str`, optional): The permission type ("unknown", "any", "deny" or "allow"). Defaults to "any".
 
         Returns:
-            List(aclBinding_dict): List of ACL Binding dictionaries (converted from confluent_kafka.AclBinding objects) of the deleted ACLs.
+            :obj:`list(aclBinding_dict)`: List of ACL Binding dictionaries (converted from confluent_kafka.AclBinding objects) of the deleted ACLs.
 
         Examples:
             c.delete_acl(restype="topic", name="test", resource_pattern_type="literal", principal="User:abc", host="*", operation="read", permission_type="allow"):
@@ -1953,7 +1953,7 @@ class Cluster:
             headers (:obj:`dict` | :obj:`list`): Message headers to set on the message. The header key must be a string while the value must be binary, unicode or None. Accepts a list of (key,value) or a dict.
 
         Returns:
-            tuple(bytes | str, bytes | str): Pair of bytes or string and bytes or string (=the key and the value of the produced message).
+            :obj:`tuple(bytes | str, bytes | str)`: Pair of bytes or string and bytes or string (=the key and the value of the produced message).
 
         Examples:
             c.produce("test", "value 1")
@@ -2119,7 +2119,7 @@ class Cluster:
         Args:
             path_str (:obj:`str`): The path to the local file to read from.
             topic_str (:obj:`str`): The topic to produce to.
-            flatmap_function (function, optional): Flatmap function (takes a message and returns a list of messages). Defaults to lambda x: [x] (=the identify function for flatmap, leading to a one-to-one copy from the messages in the file to the messages in the topic).
+            flatmap_function (:obj:`function`, optional): Flatmap function (takes a message and returns a list of messages). Defaults to lambda x: [x] (=the identify function for flatmap, leading to a one-to-one copy from the messages in the file to the messages in the topic).
             key_type (:obj:`str`, optional): The key type ("bytes", "str", "json", "avro", "protobuf" or "pb", or "jsonschema"). Defaults to "str".
             value_type (:obj:`str`, optional): The value type ("bytes", "str", "json", "avro", "protobuf" or "pb", or "jsonschema"). Defaults to "str".
             key_schema (:obj:`str`, optional): The schema of the key of the message to be produced (if key_type is either "avro", "protobuf" or "pb", or "jsonschema"). Defaults to None.
@@ -2250,7 +2250,7 @@ class Cluster:
             n (:obj:`int`, optional): Maximum number of messages to return. Defaults to 1.
 
         Returns:
-            list(message_dict): List of message dictionaries (converted from confluent_kafka.Message).
+            :obj:`list(message_dict)`: List of message dictionaries (converted from confluent_kafka.Message).
 
         Examples:
             c.consume()
@@ -2278,7 +2278,7 @@ class Cluster:
         Commit the last consumed message from the topic subscribed to.
 
         Returns:
-            message_dict: Last consumed message dictionary (converted from confluent_kafka.Message).
+            :obj:`message_dict`: Last consumed message dictionary (converted from confluent_kafka.Message).
         """
         self.consumer.commit(self.last_consumed_message)
         #
@@ -2293,7 +2293,7 @@ class Cluster:
             timeout (:obj:`float`, optional): Timeout (in seconds) for calling confluent_kafka.committed(). Defaults to -1.0 (no timeout).
 
         Returns:
-            offsets_dict: Dictionary of partitions (integers) and offsets (integers).
+            :obj:`offsets_dict`: Dictionary of partitions (integers) and offsets (integers).
 
         Examples:
             c.offsets()
@@ -2331,7 +2331,7 @@ class Cluster:
             batch_size (:obj:`int`, optional): Maximum number of messages to consume from the topic at a time. Defaults to 1.
 
         Returns:
-            tuple(acc, int): Pair of the accumulator (any type) and the number of messages consumed from the topic (integer).
+            :obj:`tuple(acc, int)`: Pair of the accumulator (any type) and the number of messages consumed from the topic (integer).
 
         Examples:
             c.foldl("test", lambda acc, message_dict: acc + [message_dict], [])
@@ -2383,7 +2383,7 @@ class Cluster:
             batch_size (:obj:`int`, optional): Maximum number of messages to consume from the topic at a time. Defaults to 1.
 
         Returns:
-            tuple(list(message_dict), int): Pair of the list of message dictionaries and the number of messages consumed from the topic (integer).
+            :obj:`tuple(list(message_dict), int)`: Pair of the list of message dictionaries and the number of messages consumed from the topic (integer).
 
         Examples:
             c.flatmap("test", lambda x: [x])
@@ -2417,7 +2417,7 @@ class Cluster:
             batch_size (:obj:`int`, optional): Maximum number of messages to consume from the topic at a time. Defaults to 1.
 
         Returns:
-            tuple(list(message_dict), int): Pair of the list of message dictionaries and the number of messages consumed from the topic (integer).
+            :obj:`tuple(list(message_dict), int)`: Pair of the list of message dictionaries and the number of messages consumed from the topic (integer).
 
         Examples:
             c.map("test", lambda x: x)
@@ -2451,7 +2451,7 @@ class Cluster:
             batch_size (:obj:`int`, optional): Maximum number of messages to consume from the topic at a time. Defaults to 1.
 
         Returns:
-            int: Number of messages consumed from the topic (integer).
+            :obj:`int`: Number of messages consumed from the topic (integer).
 
         Examples:
             c.foreach("test", print)
@@ -2478,7 +2478,7 @@ class Cluster:
 
         Args:
             topic_str (:obj:`str`): The topic to subscribe to and consume from.
-            foreach_function (function, optional): Foreach function (takes a message dictionary and returns None). Defaults to ``print``.
+            foreach_function (:obj:`function`, optional): Foreach function (takes a message dictionary and returns None). Defaults to ``print``.
             group (:obj:`str`, optional): Consumer group name used for subscribing to the topic. If set to None, creates a new unique consumer group name. Defaults to None.
             offsets (:obj:`dict(int, int)`, optional): Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for subscribing to the topic. If set to None, subscribe to the topic using the offsets from the consumer group. Defaults to None.
             config (:obj:`dict(str, str)`, optional): Dictionary of strings (keys) and strings (values) to augment the consumer configuration for the topic. Defaults to {}.
@@ -2488,7 +2488,7 @@ class Cluster:
             batch_size (:obj:`int`, optional): Maximum number of messages to consume from the topic at a time. Defaults to 1.
 
         Returns:
-            int: Number of messages consumed from the topic (integer).
+            :obj:`int`: Number of messages consumed from the topic (integer).
 
         Examples:
             c.cat("test")
@@ -2515,7 +2515,7 @@ class Cluster:
             batch_size (:obj:`int`, optional): Maximum number of messages to consume from the topic at a time. Defaults to 1.
 
         Returns:
-            tuple(list(message_dict), int, int): Tuple of the list of message dictionaries of the matching messages, the number of matching messages (integer), and the number of messages consumed from the topic (integer).
+            :obj:`tuple(list(message_dict), int, int)`: Tuple of the list of message dictionaries of the matching messages, the number of matching messages (integer), and the number of messages consumed from the topic (integer).
 
         Examples:
             c.grep_fun("test", lambda x: x["value"]["name"] == "cake", value_type="json")
@@ -2556,7 +2556,7 @@ class Cluster:
             batch_size (:obj:`int`, optional): Maximum number of messages to consume from the topic at a time. Defaults to 1.
 
         Returns:
-            tuple(list(message_dict), int, int): Tuple of the list of message dictionaries of the matching messages, the number of matching messages (integer), and the number of messages consumed from the topic (integer).
+            :obj:`tuple(list(message_dict), int, int)`: Tuple of the list of message dictionaries of the matching messages, the number of matching messages (integer), and the number of messages consumed from the topic (integer).
 
         Examples:
             c.grep("test", ".*name.*cake")
@@ -2588,7 +2588,7 @@ class Cluster:
             batch_size (:obj:`int`, optional): Maximum number of messages to consume from the topic at a time. Defaults to 1.
 
         Returns:
-            tuple(int, int, int): Tuple of the number of messages (integer), the number of words (integer) and the number of bytes (int) in the topic.
+            :obj:`tuple(int, int, int)`: Tuple of the number of messages (integer), the number of words (integer) and the number of bytes (int) in the topic.
 
         Examples:
             c.wc("test")
@@ -2638,7 +2638,7 @@ class Cluster:
             batch_size (:obj:`int`, optional): Maximum number of messages to consume from the topic at a time. Defaults to 1.
 
         Returns:
-            tuple(int, int): Pair of integers of the number of messages consumed from the topic, and the number of lines/messages written to the local file.
+            :obj:`tuple(int, int)`: Pair of integers of the number of messages consumed from the topic, and the number of lines/messages written to the local file.
 
         Examples:
             c.flatmap_to_file("test", "./test.txt", lambda x: [x])
@@ -2694,7 +2694,7 @@ class Cluster:
 
         Args:
             topic_str (:obj:`str`): The topic to subscribe to and consume from.
-            flatmap_function (function, optional): Flatmap function (takes a message dictionary and returns a list of message dictionaries). Defaults to lambda x: [x] (=the identify function for flatmap, leading to a one-to-one copy from the messages in the topic to the messages in the file).
+            flatmap_function (:obj:`function`, optional): Flatmap function (takes a message dictionary and returns a list of message dictionaries). Defaults to lambda x: [x] (=the identify function for flatmap, leading to a one-to-one copy from the messages in the topic to the messages in the file).
             group (:obj:`str`, optional): Consumer group name used for subscribing to the topic. If set to None, creates a new unique consumer group name. Defaults to None.
             offsets (:obj:`dict(int, int)`, optional): Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for subscribing to the topic. If set to None, subscribe to the topic using the offsets from the consumer group. Defaults to None.
             config (:obj:`dict(str, str)`, optional): Dictionary of strings (keys) and strings (values) to augment the consumer configuration for the topic. Defaults to {}.
@@ -2707,7 +2707,7 @@ class Cluster:
             batch_size (:obj:`int`, optional): Maximum number of messages to consume from the topic at a time. Defaults to 1.
 
         Returns:
-            tuple(int, int): Pair of integers of the number of messages consumed from the topic, and the number of lines/messages written to the local file.
+            :obj:`tuple(int, int)`: Pair of integers of the number of messages consumed from the topic, and the number of lines/messages written to the local file.
 
         Examples:
             c.download("test", "./test.txt")
@@ -2726,7 +2726,7 @@ class Cluster:
             group (:obj:`str`, optional): Consumer group name used for subscribing to the topic to consume from. If set to None, creates a new unique consumer group name. Defaults to None.
             offsets (:obj:`dict(int, int)`, optional): Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for subscribing to the topic to consume from. If set to None, subscribe to the topic using the offsets from the consumer group. Defaults to None.
             config (:obj:`dict(str, str)`, optional): Dictionary of strings (keys) and strings (values) to augment the consumer configuration for the topic. Defaults to {}.
-            flatmap_function (function, optional): Flatmap function (either takes a message dictionary and returns a list of message dictionaries if source_str points to a topic, or takes a pair of strings (keys and values) of the messages read from the local file if source_str points to a local file). Defaults to lambda x: [x] (=the identify function for flatmap, leading to a one-to-one copy).
+            flatmap_function (:obj:`function`, optional): Flatmap function (either takes a message dictionary and returns a list of message dictionaries if source_str points to a topic, or takes a pair of strings (keys and values) of the messages read from the local file if source_str points to a local file). Defaults to lambda x: [x] (=the identify function for flatmap, leading to a one-to-one copy).
             source_key_type (:obj:`str`, optional): Source message key type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "str".
             source_value_type (:obj:`str`, optional): Source message value type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "str".
             target_key_type (:obj:`str`, optional): Target message key type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "str".
@@ -2742,7 +2742,7 @@ class Cluster:
             bufsize (:obj:`int`, optional): The buffer size for reading from the local file. Defaults to 4096.
 
         Returns:
-            tuple(int, int): Pair of the number of messages consumed from the source topic/read from the source local file and the number of messages produced to the target topic/written to the target local file.
+            :obj:`tuple(int, int)`: Pair of the number of messages consumed from the source topic/read from the source local file and the number of messages produced to the target topic/written to the target local file.
 
         Examples:
             c.cp("./test.txt", "test")
@@ -2772,7 +2772,7 @@ class Cluster:
             topic_str (:obj:`str`): The topic to recreate.
 
         Returns:
-            tuple(tuple(int, int), tuple(int, int)): Pair of pairs of the number of messages; the first pair indicating the number of messages consumed from the original topic and produced to the temporary topic, the second pair indicating the number of messages consumed from the temporary topic and produced back to the re-created original topic.
+            :obj:`tuple(tuple(int, int), tuple(int, int))`: Pair of pairs of the number of messages; the first pair indicating the number of messages consumed from the original topic and produced to the temporary topic, the second pair indicating the number of messages consumed from the temporary topic and produced back to the re-created original topic.
 
         Examples:
             c.recreate("test")
@@ -2813,7 +2813,7 @@ class Cluster:
             batch_size (:obj:`int`, optional): Maximum number of messages to consume from topic 1 and topic 2 at a time. Defaults to 1.
 
         Returns:
-            tuple(acc, int, int): Tuple of the accumulator (any type), the number of messages consumed from topic 1 and the number of messages consumed from topic 2.
+            :obj:`tuple(acc, int, int)`: Tuple of the accumulator (any type), the number of messages consumed from topic 1 and the number of messages consumed from topic 2.
 
         Examples:
             c.zip_foldl("topic1", "topic2", lambda acc, message_dict1, message_dict2: acc + [(message_dict1, message_dict2)], [])
@@ -2842,7 +2842,7 @@ class Cluster:
             batch_size (:obj:`int`, optional): Maximum number of messages to consume from topic 1 and topic 2 at a time. Defaults to 1.
 
         Returns:
-            list(tuple(message_dict, message_dict)): Tuple of message dictionaries from topic 1 and topic 2 which are different according to the diff_function (=where diff_function(message_dict1, message_dict2) returned True).
+            :obj:`list(tuple(message_dict, message_dict))`: Tuple of message dictionaries from topic 1 and topic 2 which are different according to the diff_function (=where diff_function(message_dict1, message_dict2) returned True).
 
         Examples:
             c.diff_fun("topic1", "topic2", lambda message_dict1, message_dict2: message_dict1["value"] != message_dict2["value"])
@@ -2870,7 +2870,7 @@ class Cluster:
             batch_size (:obj:`int`, optional): Maximum number of messages to consume from topic 1 and topic 2 at a time. Defaults to 1.
 
         Returns:
-            list(tuple(message_dict, message_dict)): Tuple of message dictionaries from topic 1 and topic 2 which are different with respect to their keys and values.
+            :obj:`list(tuple(message_dict, message_dict))`: Tuple of message dictionaries from topic 1 and topic 2 which are different with respect to their keys and values.
 
         Examples:
             diff(cluster1, "topic1", cluster2, "topic2")

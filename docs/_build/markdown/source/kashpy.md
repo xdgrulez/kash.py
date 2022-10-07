@@ -200,7 +200,7 @@ List ACLs of the cluster.
 
 * **Return type**
 
-    list(aclBinding_dict)
+    `list(aclBinding_dict)`
 
 
 ### Examples
@@ -224,7 +224,7 @@ List the configurations of brokers of the cluster. Optionally only list those br
 
 * **Parameters**
 
-    **pattern_int_or_str_or_int_or_str_list** (str | `list(str)`, optional) – The pattern or list of patterns for selecting those brokers which shall be listed. Defaults to None.
+    **pattern_int_or_str_or_int_or_str_list** (`str` | `list(str)`, optional) – The pattern or list of patterns for selecting those brokers which shall be listed. Defaults to None.
 
 
 
@@ -236,7 +236,7 @@ List the configurations of brokers of the cluster. Optionally only list those br
 
 * **Return type**
 
-    dict(int, dict(str, str))
+    `dict(int, dict(str, str))`
 
 
 ### Examples
@@ -258,7 +258,7 @@ List brokers of the cluster. Optionally only list those brokers whose identifier
 
 * **Parameters**
 
-    **pattern** (str | `list(str)`, optional) – The pattern or list of patterns for selecting those brokers which shall be listed. Defaults to None.
+    **pattern** (`str` | `list(str)`, optional) – The pattern or list of patterns for selecting those brokers which shall be listed. Defaults to None.
 
 
 
@@ -270,7 +270,7 @@ List brokers of the cluster. Optionally only list those brokers whose identifier
 
 * **Return type**
 
-    dict(int, str)
+    `dict(int, str)`
 
 
 ### Examples
@@ -302,7 +302,7 @@ Subscribe to and consume messages from a topic and call an operation on each of 
     * **topic_str** (`str`) – The topic to subscribe to and consume from.
 
 
-    * **foreach_function** (*function**, **optional*) – Foreach function (takes a message dictionary and returns None). Defaults to `print`.
+    * **foreach_function** (`function`, optional) – Foreach function (takes a message dictionary and returns None). Defaults to `print`.
 
 
     * **group** (`str`, optional) – Consumer group name used for subscribing to the topic. If set to None, creates a new unique consumer group name. Defaults to None.
@@ -335,7 +335,7 @@ Subscribe to and consume messages from a topic and call an operation on each of 
 
 * **Return type**
 
-    int
+    `int`
 
 
 ### Examples
@@ -359,7 +359,7 @@ Commit the last consumed message from the topic subscribed to.
 
 * **Return type**
 
-    message_dict
+    `message_dict`
 
 
 
@@ -371,7 +371,7 @@ Return the configuration of those topics whose names match the bash-like pattern
 
 * **Parameters**
 
-    **pattern_str_or_str_list** (str | `list(str)`) – The pattern (or list of patterns) for selecting the topics for which the configuration shall be returned.
+    **pattern_str_or_str_list** (`str` | `list(str)`) – The pattern (or list of patterns) for selecting the topics for which the configuration shall be returned.
 
 
 
@@ -417,7 +417,7 @@ Consume messages from a subscribed topic.
 
 * **Return type**
 
-    list(message_dict)
+    `list(message_dict)`
 
 
 ### Examples
@@ -455,7 +455,7 @@ Copy files to topics, topics to files, or topics to topics. Uses `Cluster.upload
     * **config** (`dict(str, str)`, optional) – Dictionary of strings (keys) and strings (values) to augment the consumer configuration for the topic. Defaults to {}.
 
 
-    * **flatmap_function** (*function**, **optional*) – Flatmap function (either takes a message dictionary and returns a list of message dictionaries if source_str points to a topic, or takes a pair of strings (keys and values) of the messages read from the local file if source_str points to a local file). Defaults to lambda x: [x] (=the identify function for flatmap, leading to a one-to-one copy).
+    * **flatmap_function** (`function`, optional) – Flatmap function (either takes a message dictionary and returns a list of message dictionaries if source_str points to a topic, or takes a pair of strings (keys and values) of the messages read from the local file if source_str points to a local file). Defaults to lambda x: [x] (=the identify function for flatmap, leading to a one-to-one copy).
 
 
     * **source_key_type** (`str`, optional) – Source message key type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to “str”.
@@ -506,7 +506,7 @@ Copy files to topics, topics to files, or topics to topics. Uses `Cluster.upload
 
 * **Return type**
 
-    tuple(int, int)
+    `tuple(int, int)`
 
 
 ### Examples
@@ -554,7 +554,7 @@ Create a topic.
 
 * **Return type**
 
-    str
+    `str`
 
 
 ### Examples
@@ -615,7 +615,7 @@ Create an ACL on the cluster.
 
 * **Return type**
 
-    aclBinding_dict
+    `aclBinding_dict`
 
 
 ### Examples
@@ -634,7 +634,7 @@ Delete those topics whose names match the bash-like pattern (or list of patterns
 * **Parameters**
 
     
-    * **pattern_str_or_str_list** (str | `list(str)`) – The pattern (or list of patterns) for selecting the topics to be deleted.
+    * **pattern_str_or_str_list** (`str` | `list(str)`) – The pattern (or list of patterns) for selecting the topics to be deleted.
 
 
     * **block** (`bool`, optional) – Block until the topic is deleted. Defaults to True.
@@ -706,7 +706,7 @@ Delete ACLs from the cluster.
 
 * **Return type**
 
-    List(aclBinding_dict)
+    `list(aclBinding_dict)`
 
 
 ### Examples
@@ -724,7 +724,7 @@ Describe all topics matching the bash-like pattern (or list of patterns) pattern
 
 * **Parameters**
 
-    **pattern_str_or_str_list** (str | `list(str)`) – The pattern (or list of patterns) for selecting the topics.
+    **pattern_str_or_str_list** (`str` | `list(str)`) – The pattern (or list of patterns) for selecting the topics.
 
 
 
@@ -736,7 +736,7 @@ Describe all topics matching the bash-like pattern (or list of patterns) pattern
 
 * **Return type**
 
-    dict(str, topic_dict)
+    `dict(str, topic_dict)`
 
 
 ### Examples
@@ -770,7 +770,7 @@ Describe consumer groups on the cluster whose names match bash-like patterns.
 
 * **Return type**
 
-    dict(str, group_dict)
+    `dict(str, group_dict)`
 
 
 ### Examples
@@ -838,7 +838,7 @@ Create a diff of (parts of) a topic (topic_str1) and another topic (topic_str2) 
 
 * **Return type**
 
-    list(tuple(message_dict, message_dict))
+    `list(tuple(message_dict, message_dict))`
 
 
 ### Examples
@@ -905,7 +905,7 @@ Create a diff of (parts of) a topic (topic_str1) and another topic (topic_str2) 
 
 * **Return type**
 
-    list(tuple(message_dict, message_dict))
+    `list(tuple(message_dict, message_dict))`
 
 
 ### Examples
@@ -927,7 +927,7 @@ Subscribe to and consume messages from a topic, optionally transform them in a f
     * **topic_str** (`str`) – The topic to subscribe to and consume from.
 
 
-    * **flatmap_function** (*function**, **optional*) – Flatmap function (takes a message dictionary and returns a list of message dictionaries). Defaults to lambda x: [x] (=the identify function for flatmap, leading to a one-to-one copy from the messages in the topic to the messages in the file).
+    * **flatmap_function** (`function`, optional) – Flatmap function (takes a message dictionary and returns a list of message dictionaries). Defaults to lambda x: [x] (=the identify function for flatmap, leading to a one-to-one copy from the messages in the topic to the messages in the file).
 
 
     * **group** (`str`, optional) – Consumer group name used for subscribing to the topic. If set to None, creates a new unique consumer group name. Defaults to None.
@@ -969,7 +969,7 @@ Subscribe to and consume messages from a topic, optionally transform them in a f
 
 * **Return type**
 
-    tuple(int, int)
+    `tuple(int, int)`
 
 
 ### Examples
@@ -999,7 +999,7 @@ Test whether a topic exists on the cluster.
 
 * **Return type**
 
-    bool
+    `bool`
 
 
 ### Examples
@@ -1054,7 +1054,7 @@ Subscribe to and consume messages from a topic and transform them in a flatmap-l
 
 * **Return type**
 
-    tuple(list(message_dict), int)
+    `tuple(list(message_dict), int)`
 
 
 ### Examples
@@ -1188,7 +1188,7 @@ Subscribe to and consume messages from a topic, transform them in a flatmap-like
 
 * **Return type**
 
-    tuple(int, int)
+    `tuple(int, int)`
 
 
 ### Examples
@@ -1256,7 +1256,7 @@ Subscribe to and consume messages from a topic and transform them in a foldl-lik
 
 * **Return type**
 
-    tuple(acc, int)
+    `tuple(acc, int)`
 
 
 ### Examples
@@ -1315,7 +1315,7 @@ Subscribe to and consume messages from a topic and call an operation on each of 
 
 * **Return type**
 
-    int
+    `int`
 
 
 ### Examples
@@ -1372,7 +1372,7 @@ Find matching messages in a topic using regular expression matching. Optionally 
 
 * **Return type**
 
-    tuple(list(message_dict), int, int)
+    `tuple(list(message_dict), int, int)`
 
 
 ### Examples
@@ -1427,7 +1427,7 @@ Find matching messages in a topic using a custom match function match_function. 
 
 * **Return type**
 
-    tuple(list(message_dict), int, int)
+    `tuple(list(message_dict), int, int)`
 
 
 ### Examples
@@ -1445,7 +1445,7 @@ List consumer groups on the cluster. Optionally return only those consumer group
 
 * **Parameters**
 
-    **pattern** (str | `list(str)`, optional) – The pattern or list of patterns for selecting those consumer groups which shall be listed. Defaults to None.
+    **pattern** (`str` | `list(str)`, optional) – The pattern or list of patterns for selecting those consumer groups which shall be listed. Defaults to None.
 
 
 
@@ -1502,7 +1502,7 @@ List topics on the cluster. Optionally return only those topics whose names matc
 
 * **Return type**
 
-    `list(str)` | dict(str, int) | dict(str, dict(int, int)) | dict(str, tuple(int, dict(int, int)))
+    `list(str)` | `dict(str, int)` | `dict(str, dict(int, int))` | `dict(str, tuple(int, dict(int, int)))`
 
 
 ### Examples
@@ -1559,7 +1559,7 @@ List topics on the cluster. Optionally return only those topics whose names matc
 
 * **Return type**
 
-    list(str | dict(str, int) | dict(str, dict(int, int)) | dict(str, tuple(int, dict(int, int))))
+    `list(str)` | `dict(str, int)` | `dict(str, dict(int, int))` | `dict(str, tuple(int, dict(int, int)))`
 
 
 ### Examples
@@ -1616,7 +1616,7 @@ List topics on the cluster. Optionally return only those topics whose names matc
 
 * **Return type**
 
-    `list(str)` | dict(str, int) | dict(str, dict(int, int)) | dict(str, tuple(int, dict(int, int)))
+    `list(str)` | `dict(str, int)` | `dict(str, dict(int, int))` | `dict(str, tuple(int, dict(int, int)))`
 
 
 ### Examples
@@ -1691,7 +1691,7 @@ Subscribe to and consume messages from a topic and transform them in a map-like 
 
 * **Return type**
 
-    tuple(list(message_dict), int)
+    `tuple(list(message_dict), int)`
 
 
 ### Examples
@@ -1727,7 +1727,7 @@ Get committed offsets of the subscribed topic.
 
 * **Return type**
 
-    offsets_dict
+    `offsets_dict`
 
 
 ### Examples
@@ -1750,7 +1750,7 @@ Look up those offsets in the individual partitions of all topics matching the ba
 * **Parameters**
 
     
-    * **pattern_str_or_str_list** (str | `list(str)`) – The pattern (or list of patterns) for selecting the topics.
+    * **pattern_str_or_str_list** (`str` | `list(str)`) – The pattern (or list of patterns) for selecting the topics.
 
 
     * **partition_int_timestamp_int_dict** (`dict(int, int)`) – Dictionary of integers (partitions) and integers (timestamps).
@@ -1768,7 +1768,7 @@ Look up those offsets in the individual partitions of all topics matching the ba
 
 * **Return type**
 
-    dict(str, dict(int, int))
+    `dict(str, dict(int, int))`
 
 
 ### Examples
@@ -1790,7 +1790,7 @@ Get the number of partitions of all topics matching the bash-like pattern (or li
 
 * **Parameters**
 
-    **pattern_str_or_str_list** (str | `list(str)`) – The pattern (or list of patterns) for selecting the topics.
+    **pattern_str_or_str_list** (`str` | `list(str)`) – The pattern (or list of patterns) for selecting the topics.
 
 
 
@@ -1802,7 +1802,7 @@ Get the number of partitions of all topics matching the bash-like pattern (or li
 
 * **Return type**
 
-    dict(str, int)
+    `dict(str, int)`
 
 
 ### Examples
@@ -1866,7 +1866,7 @@ Produce a message to a topic. The key and the value of the message can be either
 
 * **Return type**
 
-    tuple(bytes | str, bytes | str)
+    `tuple(bytes | str, bytes | str)`
 
 
 ### Examples
@@ -1928,7 +1928,7 @@ Recreate a topic by 1) replicating it to a temporary topic, 2) deleting the orig
 
 * **Return type**
 
-    tuple(tuple(int, int), tuple(int, int))
+    `tuple(tuple(int, int), tuple(int, int))`
 
 
 ### Examples
@@ -1947,7 +1947,7 @@ Delete those topics whose names match the bash-like pattern (or list of patterns
 * **Parameters**
 
     
-    * **pattern_str_or_str_list** (str | `list(str)`) – The pattern (or list of patterns) for selecting the topics to be deleted.
+    * **pattern_str_or_str_list** (`str` | `list(str)`) – The pattern (or list of patterns) for selecting the topics to be deleted.
 
 
     * **block** (`bool`, optional) – Block until the topic is deleted. Defaults to True.
@@ -1999,7 +1999,7 @@ Set the configuration item with key key_str and value value_str of those brokers
 * **Parameters**
 
     
-    * **pattern_str_or_str_list** (str | `list(str)`) – The pattern (or list of patterns) for selecting those topics whose configuration shall be changed.
+    * **pattern_str_or_str_list** (`str` | `list(str)`) – The pattern (or list of patterns) for selecting those topics whose configuration shall be changed.
 
 
     * **key_str** (`str`) – Configuration key.
@@ -2020,7 +2020,7 @@ Set the configuration item with key key_str and value value_str of those brokers
 
 * **Return type**
 
-    dict(int, tuple(str, str))
+    `dict(int, tuple(str, str))`
 
 
 ### Examples
@@ -2047,7 +2047,7 @@ Set the configuration item with key key_str and value value_str of those topics 
 * **Parameters**
 
     
-    * **pattern_str_or_str_list** (str | `list(str)`) – The pattern (or list of patterns) for selecting those topics whose configuration shall be changed.
+    * **pattern_str_or_str_list** (`str` | `list(str)`) – The pattern (or list of patterns) for selecting those topics whose configuration shall be changed.
 
 
     * **test** (`bool`, optional) – If True, the request is only validated without changing the configuration. Defaults to False.
@@ -2062,7 +2062,7 @@ Set the configuration item with key key_str and value value_str of those topics 
 
 * **Return type**
 
-    dict(str, tuple(str, str))
+    `dict(str, tuple(str, str))`
 
 
 ### Examples
@@ -2091,10 +2091,10 @@ Set the number of partitions of all topics matching the bash-like pattern (or li
 * **Parameters**
 
     
-    * **pattern_str_or_str_list** (str | `list(str)`) – The pattern (or list of patterns) for selecting the topics.
+    * **pattern_str_or_str_list** (`str` | `list(str)`) – The pattern (or list of patterns) for selecting the topics.
 
 
-    * **num_partitions_int** (*int*) – The number of partitions to set for the selected topics. The number of partitions of a topic can only be increased but not decreased, i.e., only additional partitions can be created.
+    * **num_partitions_int** (`int`) – The number of partitions to set for the selected topics. The number of partitions of a topic can only be increased but not decreased, i.e., only additional partitions can be created.
 
 
     * **test** (`bool`, optional) – If True, the request is only validated without creating the partitions.
@@ -2109,7 +2109,7 @@ Set the number of partitions of all topics matching the bash-like pattern (or li
 
 * **Return type**
 
-    dict(str, int)
+    `dict(str, int)`
 
 
 ### Examples
@@ -2142,7 +2142,7 @@ List topics on the cluster whose names match the pattern pattern_str, their tota
 * **Parameters**
 
     
-    * **pattern_str_or_str_list** (str | `list(str)`) – The pattern or a list of patterns for selecting those topics which shall be listed.
+    * **pattern_str_or_str_list** (`str` | `list(str)`) – The pattern or a list of patterns for selecting those topics which shall be listed.
 
 
     * **timeout** (`float`, optional) – The timeout (in seconds) for the internally used get_watermark_offsets() method calls from confluent_kafka.Consumer. Defaults to -1.0 (infinite=no timeout).
@@ -2157,7 +2157,7 @@ List topics on the cluster whose names match the pattern pattern_str, their tota
 
 * **Return type**
 
-    dict(str, tuple(int, dict(int, int)))
+    `dict(str, tuple(int, dict(int, int)))`
 
 
 ### Examples
@@ -2236,7 +2236,7 @@ List topics on the cluster. Optionally return only those topics whose names matc
 * **Parameters**
 
     
-    * **pattern** (str | `list(str)`, optional) – The pattern or list of patterns for selecting those topics which shall be listed. Defaults to None.
+    * **pattern** (`str` | `list(str)`, optional) – The pattern or list of patterns for selecting those topics which shall be listed. Defaults to None.
 
 
     * **size** (`bool`, optional) – Return the total sizes of the topics if set to True. Defaults to False.
@@ -2254,7 +2254,7 @@ List topics on the cluster. Optionally return only those topics whose names matc
 
 * **Return type**
 
-    `list(str)` | dict(str, int) | dict(str, dict(int, int)) | dict(str, tuple(int, dict(int, int)))
+    `list(str)` | `dict(str, int)` | `dict(str, dict(int, int))` | `dict(str, tuple(int, dict(int, int)))`
 
 
 ### Examples
@@ -2314,7 +2314,7 @@ Create a topic (shell synonym for `Cluster.create()`)
 
 * **Return type**
 
-    str
+    `str`
 
 
 ### Examples
@@ -2363,7 +2363,7 @@ Read messages from a local file with path path_str and produce them to topic top
     * **topic_str** (`str`) – The topic to produce to.
 
 
-    * **flatmap_function** (*function**, **optional*) – Flatmap function (takes a message and returns a list of messages). Defaults to lambda x: [x] (=the identify function for flatmap, leading to a one-to-one copy from the messages in the file to the messages in the topic).
+    * **flatmap_function** (`function`, optional) – Flatmap function (takes a message and returns a list of messages). Defaults to lambda x: [x] (=the identify function for flatmap, leading to a one-to-one copy from the messages in the file to the messages in the topic).
 
 
     * **key_type** (`str`, optional) – The key type (“bytes”, “str”, “json”, “avro”, “protobuf” or “pb”, or “jsonschema”). Defaults to “str”.
@@ -2426,7 +2426,7 @@ Get verbosity level.
 
 * **Return type**
 
-    int
+    `int`
 
 
 
@@ -2439,7 +2439,7 @@ Returns a dictionary of the topics whose names match the bash-like pattern patte
 * **Parameters**
 
     
-    * **pattern_str_or_str_list** (str | `list(str)`) – The pattern or list of patterns for selecting the topics.
+    * **pattern_str_or_str_list** (`str` | `list(str)`) – The pattern or list of patterns for selecting the topics.
 
 
     * **timeout** (`float`, optional) – The timeout (in seconds) for the individual get_watermark_offsets() method calls from confluent_kafka.Consumer. Defaults to -1.0 (infinite=no timeout).
@@ -2454,7 +2454,7 @@ Returns a dictionary of the topics whose names match the bash-like pattern patte
 
 * **Return type**
 
-    dict(str, dict(int, tuple(int, int)))
+    `dict(str, dict(int, tuple(int, int)))`
 
 
 ### Examples
@@ -2510,7 +2510,7 @@ Count the number of messages, words, and bytes in a topic. Optionally explicitly
 
 * **Return type**
 
-    tuple(int, int, int)
+    `tuple(int, int, int)`
 
 
 ### Examples
@@ -2586,7 +2586,7 @@ Consume (parts of) a topic (topic_str1) and another topic (topic_str2) and combi
 
 * **Return type**
 
-    tuple(acc, int, int)
+    `tuple(acc, int, int)`
 
 
 ### Examples
@@ -2623,7 +2623,7 @@ Replicate (parts of) a topic (source_topic_str) on one cluster (source_cluster) 
     * **target_topic_str** (`str`) – Target topic
 
 
-    * **flatmap_function** (*function**, **optional*) – Flatmap function (takes a message dictionary and returns a list of message dictionaries). Defaults to lambda x: [x].
+    * **flatmap_function** (`function`, optional) – Flatmap function (takes a message dictionary and returns a list of message dictionaries). Defaults to lambda x: [x].
 
 
     * **group** (`str`, optional) – Consumer group name used for subscribing to the source topic. If set to None, creates a new unique consumer group name. Defaults to None.
@@ -2671,7 +2671,7 @@ Replicate (parts of) a topic (source_topic_str) on one cluster (source_cluster) 
 
 * **Return type**
 
-    tuple(int, int)
+    `tuple(int, int)`
 
 
 ### Examples
@@ -2755,7 +2755,7 @@ Create a diff of (parts of) a topic (topic_str1) on one cluster (cluster1) and a
 
 * **Return type**
 
-    list(tuple(message_dict, message_dict))
+    `list(tuple(message_dict, message_dict))`
 
 
 ### Examples
@@ -2828,7 +2828,7 @@ Create a diff of (parts of) a topic (topic_str1) on one cluster (cluster1) and a
 
 * **Return type**
 
-    list(tuple(message_dict, message_dict))
+    `list(tuple(message_dict, message_dict))`
 
 
 ### Examples
@@ -2907,26 +2907,26 @@ Replicate (parts of) a topic (source_topic_str) on one cluster (source_cluster) 
 
 * **Return type**
 
-    tuple(int, int)
+    `tuple(int, int)`
 
 
 ### Examples
 
-flatmap(cluster1, “topic1”, cluster2, “topic2”, lambda message_dict: [message_dict])
+Replicate “topic1” on cluster1 to “topic2” on cluster2.
 
-    Replicate “topic1” on cluster1 to “topic2” on cluster2.
+    flatmap(cluster1, “topic1”, cluster2, “topic2”, lambda message_dict: [message_dict])
 
-flatmap(cluster1, “topic1”, cluster2, “topic2”, lambda message_dict: [message_dict, message_dict])
+Replicate “topic1” on cluster1 to “topic2” on cluster2, while duplicating each message from topic1 in topic2.
 
-    Replicate “topic1” on cluster1 to “topic2” on cluster2, while duplicating each message from topic1 in topic2.
+    flatmap(cluster1, “topic1”, cluster2, “topic2”, lambda message_dict: [message_dict, message_dict])
 
-flatmap(cluster1, “topic1”, cluster2, “topic2”, lambda message_dict: [message_dict], source_value_type=”avro”, target_value_type=”protobuf”, target_value_schema=”message Snack { required string name = 1; required float calories = 2; optional string colour = 3; }”, n=100)
+Replicate “topic1” on cluster1 to “topic2” on cluster2, while duplicating each message from topic1 in topic2.
 
-    Replicate the first 100 messages from “topic1” on cluster1 to “topic2” on cluster2, changing the value schema from avro to protobuf.
+    flatmap(cluster1, “topic1”, cluster2, “topic2”, lambda message_dict: [message_dict], source_value_type=”avro”, target_value_type=”protobuf”, target_value_schema=”message Snack { required string name = 1; required float calories = 2; optional string colour = 3; }”, n=100)
 
-flatmap(cluster1, “topic1”, cluster2, “topic2”, lambda message_dict: [message_dict], offsets={0:100}, keep_timestamps=False, n=500)
+Replicate the messages 100-600 from “topic1” on cluster1 to “topic2” on cluster2. Create new timestamps for the messages produced to the target topic.
 
-    Replicate the messages 100-600 from “topic1” on cluster1 to “topic2” on cluster2. Create new timestamps for the messages produced to the target topic.
+    flatmap(cluster1, “topic1”, cluster2, “topic2”, lambda message_dict: [message_dict], offsets={0:100}, keep_timestamps=False, n=500)
 
 
 ### kashpy.kash.foldl_file(path_str, foldl_function, initial_acc, delimiter='\\n', n=-1, bufsize=4096, verbose=0, progress_num_lines=1000)
@@ -2974,7 +2974,7 @@ Replicate (parts of) a topic (source_topic_str) on one cluster (source_cluster) 
     * **target_topic_str** (`str`) – Target topic
 
 
-    * **map_function** (*function**, **optional*) – Map function (takes a message dictionary and returns a message dictionary). Defaults to lambda x: [x].
+    * **map_function** (`function`, optional) – Map function (takes a message dictionary and returns a message dictionary). Defaults to lambda x: [x].
 
 
     * **group** (`str`, optional) – Consumer group name used for subscribing to the source topic. If set to None, creates a new unique consumer group name. Defaults to None.
@@ -3022,7 +3022,7 @@ Replicate (parts of) a topic (source_topic_str) on one cluster (source_cluster) 
 
 * **Return type**
 
-    tuple(int, int)
+    `tuple(int, int)`
 
 
 ### Examples
@@ -3124,7 +3124,7 @@ Consume (parts of) a topic (topic_str1) on one cluster (cluster1) and another to
 
 * **Return type**
 
-    tuple(acc, int, int)
+    `tuple(acc, int, int)`
 
 
 ### Examples
