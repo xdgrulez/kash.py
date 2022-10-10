@@ -2,7 +2,7 @@
 
 *kash.py* is a Kafka shell based on Python, or, in other words, a Python-based client library for Kafka based on [confluent-kafka-python](https://github.com/confluentinc/confluent-kafka-python) by Magnus Edenhill, which is itself based on the native Kafka client library [librdkafka](https://github.com/edenhill/librdkafka) by the same author.
 
-The idea behind *kash.py* is to make it as easy as possible to interact with Kafka using Python, without having to know any of the implementation details of the underlying [confluent-kafka-python](https://github.com/confluentinc/confluent-kafka-python) module. To this end, not only the functions/methods are simpler to use, but also all classes are converted to simple Python dictionaries.
+The idea behind *kash.py* is to make it as easy as possible to interact with Kafka using Python, without having to know any of the implementation details of the underlying [confluent-kafka-python](https://github.com/confluentinc/confluent-kafka-python) module. To this end, not only are the functions/methods are simpler to use, but also all classes are converted to simple Python types like tuples and dictionaries.
 
 *kash.py* has been built for Kafka users of all kinds:
 * For *developers and devops engineers* to view and manipulate Kafka topics using familiar shell syntax (you have *ls*, *touch*, *rm*, *cp*, *cat*, *grep*, *wc* etc.), interactively or non-interactively.
@@ -18,7 +18,41 @@ Just write...
 ```
 pip install kashpy
 ```
-...and off you go. For interactive use, e.g. using your local cluster configured in the file "clusters_unsecured/local.conf", just do the following to list the topics:
+...and off you go.
+
+## Configuration
+
+*kash.py* makes use of configuration files suffixed ``.conf`` which are being searched for in one of these two folders: ``clusters_unsecured`` or ``clusters_secured``. A barebones configuration file looks like this (including Schema Registry):
+
+```
+[kafka]
+bootstrap.servers=localhost:9092
+
+[schema_registry]
+schema.registry.url=http://localhost:8081
+```
+
+You can also set some of the defaults of *kash.py* in the ``[kash]`` section like this:
+
+```
+[kash]
+flush.num.messages=10000
+flush.timeout=-1.0
+retention.ms=-1
+consume.timeout=1.0
+auto.offset.reset=earliest
+enable.auto.commit=true
+session.timeout.ms=10000
+progress.num.messages=1000
+block.num.retries.int=50
+block.interval=0.1
+```
+
+You can find an in-depth explanation of these settings in the [kashpy package documentation](https://github.com/xdgrulez/kash.py/blob/main/docs/_build/markdown/source/kashpy.md), including example configuration files for connecting to [Confluent Cloud](https://www.confluent.io/confluent-cloud/) etc.
+
+## Getting Started
+
+For interactive use, e.g. using your local cluster configured in the file "clusters_unsecured/local.conf", just do the following to list the topics:
 ```
 $ python3
 >>> from kashpy.kash import *
