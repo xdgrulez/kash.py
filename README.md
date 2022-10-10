@@ -22,7 +22,9 @@ pip install kashpy
 
 ## Configuration
 
-*kash.py* makes use of configuration files suffixed ``.conf`` which are being searched for in one of these two folders: ``clusters_unsecured`` or ``clusters_secured``. A barebones configuration file looks like this (including Schema Registry):
+*kash.py* makes use of configuration files suffixed ``.conf`` which are being searched for in one of these two folders: ``clusters_unsecured`` or ``clusters_secured``, starting 1) from the directory in the KASHPY_HOME environment variable, or, if that environment variable is not set, 2) from the current directory.
+
+A barebones configuration file looks like this (including Schema Registry):
 
 ```
 [kafka]

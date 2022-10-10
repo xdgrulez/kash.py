@@ -12,6 +12,8 @@ Initialize a kash.py Cluster object.
 
 Initialize a kash.py Cluster object based on a kash.py cluster configuration file.
 
+kash.py cluster configuration files are searched for in the directories “cluster_secured” and “cluster_unsecured” starting 1) from the directory in the KASHPY_HOME environment variable, or, if that environment variable is not set, 2) from the current directory.
+
 kash.py cluster configuration files have up to three sections: “kafka”, “schema_registry”, and “kash”.
 
 The “kafka” and “schema_registry” sections configure the Kafka cluster and Schema Registry according to the confluent_kafka/librdkafka configuration.
