@@ -105,7 +105,7 @@ def get_config_dict(cluster_str):
         rawConfigParser.read(f"{home_str}/clusters_unsecured/{cluster_str}.conf")
         cluster_dir_str = "clusters_unsecured"
     else:
-        raise Exception(f"No cluster configuration file \"{cluster_str}.conf\" found in \"clusters_secured\" and \"clusters_unsecured\" (from: {home_str}; use KASHPY_HOME environment variable to set kash.py home directory).")
+        raise Exception(f"No cluster configuration file \"{cluster_str}.conf\" found in \"clusters_secured\" and \"clusters_unsecured\" (from: {home_str}; use KASHPY_HOME environment variable to set the kash.py home directory).")
     #
     config_dict = dict(rawConfigParser.items("kafka"))
     #
@@ -3006,4 +3006,4 @@ class Cluster:
 
                 diff(cluster1, "topic1", cluster2, "topic2")
         """
-        return diff(self, topic_str1, self, topic_str2, group1=group1, group2=group2, offsets1=offsets2, offsets2=offsets2, key_type1=key_type1, value_type1=value_type1, key_type2=key_type2, value_type2=value_type2, n=n, batch_size=batch_size)
+        return diff(self, topic_str1, self, topic_str2, group1=group1, group2=group2, offsets1=offsets1, offsets2=offsets2, key_type1=key_type1, value_type1=value_type1, key_type2=key_type2, value_type2=value_type2, n=n, batch_size=batch_size)
