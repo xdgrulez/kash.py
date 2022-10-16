@@ -78,7 +78,7 @@ class Test(unittest.TestCase):
         cluster.create(topic_str)
         new_topic_str_list = cluster.ls(["test_*"])
         self.assertIn(topic_str, new_topic_str_list)
-        cluster.produce(topic_str, "message 1")
+        cluster.produce(topic_str, "message 1", on_delivery=lambda kafkaError, message: print(kafkaError, message))
         cluster.produce(topic_str, "message 2")
         cluster.produce(topic_str, "message 3")
         cluster.flush()

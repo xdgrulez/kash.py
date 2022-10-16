@@ -1128,7 +1128,7 @@ c.flatmap("test", lambda x: [x, x, x])
 ```
 
 
-#### flatmap_from_file(path_str, topic_str, flatmap_function, key_type='str', value_type='str', key_schema=None, value_schema=None, partition=-1, key_value_separator=None, message_separator='\\n', n=-1, bufsize=4096)
+#### flatmap_from_file(path_str, topic_str, flatmap_function, key_type='str', value_type='str', key_schema=None, value_schema=None, partition=-1, on_delivery=None, key_value_separator=None, message_separator='\\n', n=-1, bufsize=4096)
 Read messages from a local file and produce them to a topic, while transforming the messages in a flatmap-like manner.
 
 Read messages from a local file with path path_str and produce them to topic topic_str, while transforming the messages in a flatmap-like manner.
@@ -1159,6 +1159,9 @@ Read messages from a local file with path path_str and produce them to topic top
 
 
     * **partition** (`int`, optional) – The partition to produce to. Defaults to RD_KAFKA_PARTITION_UA = -1, i.e., the partition is selected by configured built-in partitioner.
+
+
+    * **on_delivery** (`function`, optional) – Delivery report callback to call (from poll() or flush()) on successful or failed delivery. Passed on to confluent_kafka.Producer.produce(). Takes confluent_kafka.kafkaError and confluent_kafka.Message objects and returns nothing.
 
 
     * **key_value_separator** (`str`, optional) – The separator between the keys and the values in the local file to read from, e.g. “:”. If set to None, only read the values, not the keys. Defaults to None.
@@ -1950,7 +1953,7 @@ c.partitions(["test*", "bla*"])
 ```
 
 
-#### produce(topic_str, value, key=None, key_type='str', value_type='str', key_schema=None, value_schema=None, partition=-1, timestamp=0, headers=None)
+#### produce(topic_str, value, key=None, key_type='str', value_type='str', key_schema=None, value_schema=None, partition=-1, timestamp=0, headers=None, on_delivery=None)
 Produce a message to a topic.
 
 Produce a message to a topic. The key and the value of the message can be either bytes, a string, a dictionary, or a schema-based format supported by the Confluent Schema Registry (currently Avro, Protobuf or JSONSchema).
@@ -1986,7 +1989,10 @@ Produce a message to a topic. The key and the value of the message can be either
     * **timestamp** (`int`, optional) – Message timestamp (CreateTime) in milliseconds since epoch UTC. Defaults to CURRENT_TIME = 0.
 
 
-    * **headers** (`dict` | `list`) – Message headers to set on the message. The header key must be a string while the value must be binary, unicode or None. Accepts a list of (key,value) or a dict.
+    * **headers** (`dict` | `list`, optional) – Message headers to set on the message. The header key must be a string while the value must be binary, unicode or None. Accepts a list of (key,value) or a dict. Defaults to None.
+
+
+    * **on_delivery** (`function`, optional) – Delivery report callback to call (from poll() or flush()) on successful or failed delivery. Passed on to confluent_kafka.Producer.produce(). Takes confluent_kafka.kafkaError and confluent_kafka.Message objects and returns nothing.
 
 
 
@@ -2546,7 +2552,7 @@ Unsubscribe from a topic.
 
 
 
-#### upload(path_str, topic_str, flatmap_function=<function Cluster.<lambda>>, key_type='str', value_type='str', key_schema=None, value_schema=None, key_value_separator=None, message_separator='\\n', n=-1, bufsize=4096)
+#### upload(path_str, topic_str, flatmap_function=<function Cluster.<lambda>>, key_type='str', value_type='str', key_schema=None, value_schema=None, partition=-1, on_delivery=None, key_value_separator=None, message_separator='\\n', n=-1, bufsize=4096)
 Upload messages from a local file to a topic, while optionally transforming the messages in a flatmap-like manner.
 
 Read messages from a local file with path path_str and produce them to topic topic_str, while optionally transforming the messages in a flatmap-like manner.
@@ -2577,6 +2583,9 @@ Read messages from a local file with path path_str and produce them to topic top
 
 
     * **partition** (`int`, optional) – The partition to produce to. Defaults to RD_KAFKA_PARTITION_UA = -1, i.e., the partition is selected by configured built-in partitioner.
+
+
+    * **on_delivery** (`function`, optional) – Delivery report callback to call (from poll() or flush()) on successful or failed delivery. Passed on to confluent_kafka.Producer.produce(). Takes confluent_kafka.kafkaError and confluent_kafka.Message objects and returns nothing.
 
 
     * **key_value_separator** (`str`, optional) – The separator between the keys and the values in the local file to read from, e.g. “:”. If set to None, only read the values, not the keys. Defaults to None.
@@ -2808,7 +2817,7 @@ c.zip_foldl("topic1", "topic2", lambda acc, message_dict1, message_dict2: acc + 
 ```
 
 
-### kashpy.kash.cp(source_cluster, source_topic_str, target_cluster, target_topic_str, flatmap_function=<function <lambda>>, group=None, offsets=None, config={}, source_key_type='bytes', source_value_type='bytes', target_key_type=None, target_value_type=None, target_key_schema=None, target_value_schema=None, keep_timestamps=True, n=-1, batch_size=1)
+### kashpy.kash.cp(source_cluster, source_topic_str, target_cluster, target_topic_str, flatmap_function=<function <lambda>>, group=None, offsets=None, config={}, source_key_type='bytes', source_value_type='bytes', target_key_type=None, target_value_type=None, target_key_schema=None, target_value_schema=None, on_delivery=None, keep_timestamps=True, n=-1, batch_size=1)
 Replicate a topic and optionally transform the messages in a flatmap-like manner.
 
 Replicate (parts of) a topic (source_topic_str) on one cluster (source_cluster) to another topic (target_topic_str) on another (or the same) cluster (target_cluster). Each replicated message can be transformed into a list of other messages in a flatmap-like manner. The source and target topics can have different message key and value types; e.g. the source topic can have value type Avro whereas the target topic will be written with value type Protobuf. Stops either if the consume timeout is exceeded on the source cluster (`consume.timeout` in the kash.py cluster configuration) or the number of messages specified in `n` has been consumed.
@@ -2857,6 +2866,9 @@ Replicate (parts of) a topic (source_topic_str) on one cluster (source_cluster) 
 
 
     * **target_value_schema** (`str`, optional) – Target value message type schema (for “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to None.
+
+
+    * **on_delivery** (`function`, optional) – Delivery report callback to call (from poll() or flush()) on successful or failed delivery. Passed on to confluent_kafka.Producer.produce(). Takes confluent_kafka.kafkaError and confluent_kafka.Message objects and returns nothing.
 
 
     * **keep_timestamps** (`bool`, optional) – Replicate the timestamps of the source messages in the target messages. Defaults to True.
@@ -3054,7 +3066,7 @@ diff_fun(cluster1, "topic1", cluster2, "topic2", lambda message_dict1, message_d
 ```
 
 
-### kashpy.kash.flatmap(source_cluster, source_topic_str, target_cluster, target_topic_str, flatmap_function, group=None, offsets=None, config={}, source_key_type='bytes', source_value_type='bytes', target_key_type=None, target_value_type=None, target_key_schema=None, target_value_schema=None, keep_timestamps=True, n=-1, batch_size=1)
+### kashpy.kash.flatmap(source_cluster, source_topic_str, target_cluster, target_topic_str, flatmap_function, group=None, offsets=None, config={}, source_key_type='bytes', source_value_type='bytes', target_key_type=None, target_value_type=None, target_key_schema=None, target_value_schema=None, on_delivery=None, keep_timestamps=True, n=-1, batch_size=1)
 Replicate a topic and transform the messages in a flatmap-like manner.
 
 Replicate (parts of) a topic (source_topic_str) on one cluster (source_cluster) to another topic (target_topic_str) on another (or the same) cluster (target_cluster). Each replicated message is transformed into a list of other messages in a flatmap-like manner. The source and target topics can have different message key and value types; e.g. the source topic can have value type Avro whereas the target topic will be written with value type Protobuf.
@@ -3105,6 +3117,9 @@ Replicate (parts of) a topic (source_topic_str) on one cluster (source_cluster) 
     * **target_value_schema** (`str`, optional) – Target value message type schema (for “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to None.
 
 
+    * **on_delivery** (`function`, optional) – Delivery report callback to call (from poll() or flush()) on successful or failed delivery. Passed on to confluent_kafka.Producer.produce(). Takes confluent_kafka.kafkaError and confluent_kafka.Message objects and returns nothing.
+
+
     * **keep_timestamps** (`bool`, optional) – Replicate the timestamps of the source messages in the target messages. Defaults to True.
 
 
@@ -3153,7 +3168,7 @@ flatmap(cluster1, "topic1", cluster2, "topic2", lambda message_dict: [message_di
 ```
 
 
-### kashpy.kash.map(source_cluster, source_topic_str, target_cluster, target_topic_str, map_function, group=None, offsets=None, config={}, source_key_type='bytes', source_value_type='bytes', target_key_type=None, target_value_type=None, target_key_schema=None, target_value_schema=None, keep_timestamps=True, n=-1, batch_size=1)
+### kashpy.kash.map(source_cluster, source_topic_str, target_cluster, target_topic_str, map_function, group=None, offsets=None, config={}, source_key_type='bytes', source_value_type='bytes', target_key_type=None, target_value_type=None, target_key_schema=None, target_value_schema=None, on_delivery=None, keep_timestamps=True, n=-1, batch_size=1)
 Replicate a topic and optionally transform the messages in a map-like manner.
 
 Replicate (parts of) a topic (source_topic_str) on one cluster (source_cluster) to another topic (target_topic_str) on another (or the same) cluster (target_cluster). Each replicated message can be transformed into another messages in a map-like manner. The source and target topics can have different message key and value types; e.g. the source topic can have value type Avro whereas the target topic will be written with value type Protobuf. Stops either if the consume timeout is exceeded on the source cluster (`consume.timeout` in the kash.py cluster configuration) or the number of messages specified in `n` has been consumed.
@@ -3202,6 +3217,9 @@ Replicate (parts of) a topic (source_topic_str) on one cluster (source_cluster) 
 
 
     * **target_value_schema** (`str`, optional) – Target value message type schema (for “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to None.
+
+
+    * **on_delivery** (`function`, optional) – Delivery report callback to call (from poll() or flush()) on successful or failed delivery. Passed on to confluent_kafka.Producer.produce(). Takes confluent_kafka.kafkaError and confluent_kafka.Message objects and returns nothing.
 
 
     * **keep_timestamps** (`bool`, optional) – Replicate the timestamps of the source messages in the target messages. Defaults to True.

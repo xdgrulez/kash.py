@@ -349,7 +349,7 @@ def groupMember_to_dict(groupMember):
 
 # Cross-cluster
 
-def flatmap(source_cluster, source_topic_str, target_cluster, target_topic_str, flatmap_function, group=None, offsets=None, config={}, source_key_type="bytes", source_value_type="bytes", target_key_type=None, target_value_type=None, target_key_schema=None, target_value_schema=None, keep_timestamps=True, n=ALL_MESSAGES, batch_size=1):
+def flatmap(source_cluster, source_topic_str, target_cluster, target_topic_str, flatmap_function, group=None, offsets=None, config={}, source_key_type="bytes", source_value_type="bytes", target_key_type=None, target_value_type=None, target_key_schema=None, target_value_schema=None, on_delivery=None, keep_timestamps=True, n=ALL_MESSAGES, batch_size=1):
     """Replicate a topic and transform the messages in a flatmap-like manner.
 
     Replicate (parts of) a topic (source_topic_str) on one cluster (source_cluster) to another topic (target_topic_str) on another (or the same) cluster (target_cluster). Each replicated message is transformed into a list of other messages in a flatmap-like manner. The source and target topics can have different message key and value types; e.g. the source topic can have value type Avro whereas the target topic will be written with value type Protobuf.
@@ -369,6 +369,7 @@ def flatmap(source_cluster, source_topic_str, target_cluster, target_topic_str, 
         target_value_type (:obj:`str`, optional): Target topic message value type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). If set to None, target_value_type = source_value_type. Defaults to None.
         target_key_schema (:obj:`str`, optional): Target key message type schema (for "avro", "protobuf"/"pb" or "jsonschema"). Defaults to None.
         target_value_schema (:obj:`str`, optional): Target value message type schema (for "avro", "protobuf"/"pb" or "jsonschema"). Defaults to None.
+        on_delivery (:obj:`function`, optional): Delivery report callback to call (from poll() or flush()) on successful or failed delivery. Passed on to confluent_kafka.Producer.produce(). Takes confluent_kafka.kafkaError and confluent_kafka.Message objects and returns nothing.
         keep_timestamps (:obj:`bool`, optional): Replicate the timestamps of the source messages in the target messages. Defaults to True.
         n (:obj:`int`, optional): Number of messages to consume from the source topic. Defaults to ALL_MESSAGES = -1.
         batch_size (:obj:`int`, optional): Maximum number of messages to consume from the source topic at a time. Defaults to 1.
@@ -401,10 +402,11 @@ def flatmap(source_cluster, source_topic_str, target_cluster, target_topic_str, 
     target_value_schema_str = target_value_schema
     keep_timestamps_bool = keep_timestamps
     #
+    source_num_partitions_int = source_cluster.partitions(source_topic_str)[source_topic_str]
     if not target_cluster.exists(target_topic_str):
-        source_num_partitions_int = source_cluster.partitions(source_topic_str)[source_topic_str]
         source_config_dict = source_cluster.config(source_topic_str)[source_topic_str]
         target_cluster.create(target_topic_str, partitions=source_num_partitions_int, config=source_config_dict)
+    target_num_partitions_int = target_cluster.partitions(target_topic_str)[target_topic_str]
     #
     target_cluster.produced_messages_counter_int = 0
     #
@@ -426,8 +428,9 @@ def flatmap(source_cluster, source_topic_str, target_cluster, target_topic_str, 
             value_type_str = target_value_type_str if target_value_type_str else source_value_type_str
             key_schema_str = target_key_schema_str if target_key_schema_str else source_cluster.last_consumed_message_key_schema_str
             value_schema_str = target_value_schema_str if target_value_schema_str else source_cluster.last_consumed_message_value_schema_str
+            partition_int = message_dict["partition"] if source_num_partitions_int == target_num_partitions_int else RD_KAFKA_PARTITION_UA
             #
-            target_cluster.produce(target_topic_str, message_dict["value"], message_dict["key"], key_type=key_type_str, value_type=value_type_str, key_schema=key_schema_str, value_schema=value_schema_str, partition=message_dict["partition"], timestamp=timestamp_int, headers=message_dict["headers"])
+            target_cluster.produce(target_topic_str, message_dict["value"], message_dict["key"], key_type=key_type_str, value_type=value_type_str, key_schema=key_schema_str, value_schema=value_schema_str, partition=partition_int, timestamp=timestamp_int, headers=message_dict["headers"], on_delivery=on_delivery)
             #
             if target_cluster.verbose_int > 0 and target_cluster.produced_messages_counter_int % target_cluster.kash_dict["progress.num.messages"] == 0:
                 print(f"Produced: {target_cluster.produced_messages_counter_int}")
@@ -442,7 +445,7 @@ def flatmap(source_cluster, source_topic_str, target_cluster, target_topic_str, 
     return (num_messages_int, target_cluster.produced_messages_counter_int)
 
 
-def map(source_cluster, source_topic_str, target_cluster, target_topic_str, map_function, group=None, offsets=None, config={}, source_key_type="bytes", source_value_type="bytes", target_key_type=None, target_value_type=None, target_key_schema=None, target_value_schema=None, keep_timestamps=True, n=ALL_MESSAGES, batch_size=1):
+def map(source_cluster, source_topic_str, target_cluster, target_topic_str, map_function, group=None, offsets=None, config={}, source_key_type="bytes", source_value_type="bytes", target_key_type=None, target_value_type=None, target_key_schema=None, target_value_schema=None, on_delivery=None, keep_timestamps=True, n=ALL_MESSAGES, batch_size=1):
     """Replicate a topic and optionally transform the messages in a map-like manner.
 
     Replicate (parts of) a topic (source_topic_str) on one cluster (source_cluster) to another topic (target_topic_str) on another (or the same) cluster (target_cluster). Each replicated message can be transformed into another messages in a map-like manner. The source and target topics can have different message key and value types; e.g. the source topic can have value type Avro whereas the target topic will be written with value type Protobuf. Stops either if the consume timeout is exceeded on the source cluster (``consume.timeout`` in the kash.py cluster configuration) or the number of messages specified in ``n`` has been consumed.
@@ -462,6 +465,7 @@ def map(source_cluster, source_topic_str, target_cluster, target_topic_str, map_
         target_value_type (:obj:`str`, optional): Target topic message value type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). If set to None, target_value_type = source_value_type. Defaults to None.
         target_key_schema (:obj:`str`, optional): Target key message type schema (for "avro", "protobuf"/"pb" or "jsonschema"). Defaults to None.
         target_value_schema (:obj:`str`, optional): Target value message type schema (for "avro", "protobuf"/"pb" or "jsonschema"). Defaults to None.
+        on_delivery (:obj:`function`, optional): Delivery report callback to call (from poll() or flush()) on successful or failed delivery. Passed on to confluent_kafka.Producer.produce(). Takes confluent_kafka.kafkaError and confluent_kafka.Message objects and returns nothing.
         keep_timestamps (:obj:`bool`, optional): Replicate the timestamps of the source messages in the target messages. Defaults to True.
         n (:obj:`int`, optional): Number of messages to consume from the source topic. Defaults to ALL_MESSAGES = -1.
         batch_size (:obj:`int`, optional): Maximum number of messages to consume from the source topic at a time. Defaults to 1.
@@ -477,10 +481,10 @@ def map(source_cluster, source_topic_str, target_cluster, target_topic_str, map_
     def flatmap_function(message_dict):
         return [map_function(message_dict)]
     #
-    return flatmap(source_cluster, source_topic_str, target_cluster, target_topic_str, flatmap_function, group=group, offsets=offsets, config=config, source_key_type=source_key_type, source_value_type=source_value_type, target_key_type=target_key_type, target_value_type=target_value_type, target_key_schema=target_key_schema, target_value_schema=target_value_schema, keep_timestamps=keep_timestamps, n=n, batch_size=batch_size)
+    return flatmap(source_cluster, source_topic_str, target_cluster, target_topic_str, flatmap_function, group=group, offsets=offsets, config=config, source_key_type=source_key_type, source_value_type=source_value_type, target_key_type=target_key_type, target_value_type=target_value_type, target_key_schema=target_key_schema, target_value_schema=target_value_schema, on_delivery=on_delivery, keep_timestamps=keep_timestamps, n=n, batch_size=batch_size)
 
 
-def cp(source_cluster, source_topic_str, target_cluster, target_topic_str, flatmap_function=lambda x: [x], group=None, offsets=None, config={}, source_key_type="bytes", source_value_type="bytes", target_key_type=None, target_value_type=None, target_key_schema=None, target_value_schema=None, keep_timestamps=True, n=ALL_MESSAGES, batch_size=1):
+def cp(source_cluster, source_topic_str, target_cluster, target_topic_str, flatmap_function=lambda x: [x], group=None, offsets=None, config={}, source_key_type="bytes", source_value_type="bytes", target_key_type=None, target_value_type=None, target_key_schema=None, target_value_schema=None, on_delivery=None, keep_timestamps=True, n=ALL_MESSAGES, batch_size=1):
     """Replicate a topic and optionally transform the messages in a flatmap-like manner.
 
     Replicate (parts of) a topic (source_topic_str) on one cluster (source_cluster) to another topic (target_topic_str) on another (or the same) cluster (target_cluster). Each replicated message can be transformed into a list of other messages in a flatmap-like manner. The source and target topics can have different message key and value types; e.g. the source topic can have value type Avro whereas the target topic will be written with value type Protobuf. Stops either if the consume timeout is exceeded on the source cluster (``consume.timeout`` in the kash.py cluster configuration) or the number of messages specified in ``n`` has been consumed.
@@ -500,6 +504,7 @@ def cp(source_cluster, source_topic_str, target_cluster, target_topic_str, flatm
         target_value_type (:obj:`str`, optional): Target topic message value type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). If set to None, target_value_type = source_value_type. Defaults to None.
         target_key_schema (:obj:`str`, optional): Target key message type schema (for "avro", "protobuf"/"pb" or "jsonschema"). Defaults to None.
         target_value_schema (:obj:`str`, optional): Target value message type schema (for "avro", "protobuf"/"pb" or "jsonschema"). Defaults to None.
+        on_delivery (:obj:`function`, optional): Delivery report callback to call (from poll() or flush()) on successful or failed delivery. Passed on to confluent_kafka.Producer.produce(). Takes confluent_kafka.kafkaError and confluent_kafka.Message objects and returns nothing.
         keep_timestamps (:obj:`bool`, optional): Replicate the timestamps of the source messages in the target messages. Defaults to True.
         n (:obj:`int`, optional): Number of messages to consume from the source topic. Defaults to ALL_MESSAGES = -1.
         batch_size (:obj:`int`, optional): Maximum number of messages to consume from the source topic at a time. Defaults to 1.
@@ -524,7 +529,7 @@ def cp(source_cluster, source_topic_str, target_cluster, target_topic_str, flatm
 
             cp(cluster1, "topic1", cluster2, "topic2", offsets={0:100}, keep_timestamps=False, n=500)
     """
-    return flatmap(source_cluster, source_topic_str, target_cluster, target_topic_str, flatmap_function, group=group, offsets=offsets, config=config, source_key_type=source_key_type, source_value_type=source_value_type, target_key_type=target_key_type, target_value_type=target_value_type, target_key_schema=target_key_schema, target_value_schema=target_value_schema, keep_timestamps=keep_timestamps, n=n, batch_size=batch_size)
+    return flatmap(source_cluster, source_topic_str, target_cluster, target_topic_str, flatmap_function, group=group, offsets=offsets, config=config, source_key_type=source_key_type, source_value_type=source_value_type, target_key_type=target_key_type, target_value_type=target_value_type, target_key_schema=target_key_schema, target_value_schema=target_value_schema, on_delivery=on_delivery, keep_timestamps=keep_timestamps, n=n, batch_size=batch_size)
 
 
 def zip_foldl(cluster1, topic_str1, cluster2, topic_str2, zip_foldl_function, initial_acc, group1=None, group2=None, offsets1=None, offsets2=None, config1={}, config2={}, key_type1="bytes", value_type1="bytes", key_type2="bytes", value_type2="bytes", n=ALL_MESSAGES, batch_size=1):
@@ -2021,7 +2026,7 @@ class Cluster:
 
     # Producer
 
-    def produce(self, topic_str, value, key=None, key_type="str", value_type="str", key_schema=None, value_schema=None, partition=RD_KAFKA_PARTITION_UA, timestamp=CURRENT_TIME, headers=None):
+    def produce(self, topic_str, value, key=None, key_type="str", value_type="str", key_schema=None, value_schema=None, partition=RD_KAFKA_PARTITION_UA, timestamp=CURRENT_TIME, headers=None, on_delivery=None):
         """Produce a message to a topic.
 
         Produce a message to a topic. The key and the value of the message can be either bytes, a string, a dictionary, or a schema-based format supported by the Confluent Schema Registry (currently Avro, Protobuf or JSONSchema).
@@ -2036,7 +2041,8 @@ class Cluster:
             value_schema (:obj:`str`, optional): The schema of the value of the message to be produced (if key_type is either "avro", "protobuf" or "pb", or "jsonschema"). Defaults to None.
             partition (:obj:`int`, optional): The partition to produce to. Defaults to RD_KAFKA_PARTITION_UA = -1, i.e., the partition is selected by configured built-in partitioner.
             timestamp (:obj:`int`, optional): Message timestamp (CreateTime) in milliseconds since epoch UTC. Defaults to CURRENT_TIME = 0.
-            headers (:obj:`dict` | :obj:`list`): Message headers to set on the message. The header key must be a string while the value must be binary, unicode or None. Accepts a list of (key,value) or a dict.
+            headers (:obj:`dict` | :obj:`list`, optional): Message headers to set on the message. The header key must be a string while the value must be binary, unicode or None. Accepts a list of (key,value) or a dict. Defaults to None.
+            on_delivery (:obj:`function`, optional): Delivery report callback to call (from poll() or flush()) on successful or failed delivery. Passed on to confluent_kafka.Producer.produce(). Takes confluent_kafka.kafkaError and confluent_kafka.Message objects and returns nothing.
 
         Returns:
             :obj:`tuple(bytes | str, bytes | str)`: Pair of bytes or string and bytes or string (=the key and the value of the produced message).
@@ -2128,13 +2134,13 @@ class Cluster:
         key_str_or_bytes = serialize(key_bool=True)
         value_str_or_bytes = serialize(key_bool=False)
         #
-        self.producer.produce(topic_str, value_str_or_bytes, key_str_or_bytes, partition=partition_int, timestamp=timestamp_int, headers=headers_dict_or_list)
+        self.producer.produce(topic_str, value_str_or_bytes, key_str_or_bytes, partition=partition_int, timestamp=timestamp_int, headers=headers_dict_or_list, on_delivery=on_delivery)
         #
         self.produced_messages_counter_int += 1
         #
         return key_str_or_bytes, value_str_or_bytes
 
-    def flatmap_from_file(self, path_str, topic_str, flatmap_function, key_type="str", value_type="str", key_schema=None, value_schema=None, partition=RD_KAFKA_PARTITION_UA, key_value_separator=None, message_separator="\n", n=ALL_MESSAGES, bufsize=4096):
+    def flatmap_from_file(self, path_str, topic_str, flatmap_function, key_type="str", value_type="str", key_schema=None, value_schema=None, partition=RD_KAFKA_PARTITION_UA, on_delivery=None, key_value_separator=None, message_separator="\n", n=ALL_MESSAGES, bufsize=4096):
         """Read messages from a local file and produce them to a topic, while transforming the messages in a flatmap-like manner.
 
         Read messages from a local file with path path_str and produce them to topic topic_str, while transforming the messages in a flatmap-like manner.
@@ -2148,6 +2154,7 @@ class Cluster:
             key_schema (:obj:`str`, optional): The schema of the key of the message to be produced (if key_type is either "avro", "protobuf" or "pb", or "jsonschema"). Defaults to None.
             value_schema (:obj:`str`, optional): The schema of the value of the message to be produced (if key_type is either "avro", "protobuf" or "pb", or "jsonschema"). Defaults to None.
             partition (:obj:`int`, optional): The partition to produce to. Defaults to RD_KAFKA_PARTITION_UA = -1, i.e., the partition is selected by configured built-in partitioner.
+            on_delivery (:obj:`function`, optional): Delivery report callback to call (from poll() or flush()) on successful or failed delivery. Passed on to confluent_kafka.Producer.produce(). Takes confluent_kafka.kafkaError and confluent_kafka.Message objects and returns nothing.
             key_value_separator (:obj:`str`, optional): The separator between the keys and the values in the local file to read from, e.g. ":". If set to None, only read the values, not the keys. Defaults to None.
             message_separator (:obj:`str`, optional): The separator between individual messages in the local file to read from. Defaults to the newline character.
             n (:obj:`int`, optional): The number of messages to read from the local file. Defaults to ALL_MESSAGES = -1.
@@ -2193,7 +2200,7 @@ class Cluster:
                 key_str_value_str_tuple_list = flatmap_function((key_str, value_str))
                 #
                 for (key_str, value_str) in key_str_value_str_tuple_list:
-                    self.produce(topic_str, value_str, key=key_str, key_type=key_type, value_type=value_type, key_schema=key_schema, value_schema=value_schema, partition=partition)
+                    self.produce(topic_str, value_str, key=key_str, key_type=key_type, value_type=value_type, key_schema=key_schema, value_schema=value_schema, partition=partition, on_delivery=on_delivery)
                     #
                     if self.produced_messages_counter_int % self.kash_dict["flush.num.messages"] == 0:
                         self.flush()
@@ -2209,7 +2216,7 @@ class Cluster:
         #
         return (lines_counter_int, self.produced_messages_counter_int)
 
-    def upload(self, path_str, topic_str, flatmap_function=lambda x: [x], key_type="str", value_type="str", key_schema=None, value_schema=None, key_value_separator=None, message_separator="\n", n=ALL_MESSAGES, bufsize=4096):
+    def upload(self, path_str, topic_str, flatmap_function=lambda x: [x], key_type="str", value_type="str", key_schema=None, value_schema=None, partition=RD_KAFKA_PARTITION_UA, on_delivery=None, key_value_separator=None, message_separator="\n", n=ALL_MESSAGES, bufsize=4096):
         """Upload messages from a local file to a topic, while optionally transforming the messages in a flatmap-like manner.
 
         Read messages from a local file with path path_str and produce them to topic topic_str, while optionally transforming the messages in a flatmap-like manner.
@@ -2223,6 +2230,7 @@ class Cluster:
             key_schema (:obj:`str`, optional): The schema of the key of the message to be produced (if key_type is either "avro", "protobuf" or "pb", or "jsonschema"). Defaults to None.
             value_schema (:obj:`str`, optional): The schema of the value of the message to be produced (if key_type is either "avro", "protobuf" or "pb", or "jsonschema"). Defaults to None.
             partition (:obj:`int`, optional): The partition to produce to. Defaults to RD_KAFKA_PARTITION_UA = -1, i.e., the partition is selected by configured built-in partitioner.
+            on_delivery (:obj:`function`, optional): Delivery report callback to call (from poll() or flush()) on successful or failed delivery. Passed on to confluent_kafka.Producer.produce(). Takes confluent_kafka.kafkaError and confluent_kafka.Message objects and returns nothing.
             key_value_separator (:obj:`str`, optional): The separator between the keys and the values in the local file to read from, e.g. ":". If set to None, only read the values, not the keys. Defaults to None.
             message_separator (:obj:`str`, optional): The separator between individual messages in the local file to read from. Defaults to the newline character.
             n (:obj:`int`, optional): The number of messages to read from the local file. Defaults to ALL_MESSAGES = -1.
@@ -2244,7 +2252,7 @@ class Cluster:
 
                 c.upload("./snacks_value.txt", "test", value_type="protobuf", value_schema='message Snack { required string name = 1; required float calories = 2; optional string colour = 3; }')
         """
-        return self.flatmap_from_file(path_str, topic_str, flatmap_function, key_type=key_type, value_type=value_type, key_schema=key_schema, value_schema=value_schema, key_value_separator=key_value_separator, message_separator=message_separator, n=n, bufsize=bufsize)
+        return self.flatmap_from_file(path_str, topic_str, flatmap_function, key_type=key_type, value_type=value_type, key_schema=key_schema, value_schema=value_schema, partition=partition, on_delivery=on_delivery, key_value_separator=key_value_separator, message_separator=message_separator, n=n, bufsize=bufsize)
 
     def flush(self):
         """Wait for all messages in the Producer queue to be delivered.
