@@ -385,7 +385,7 @@ def flatmap(source_cluster, source_topic_str, target_cluster, target_topic_str, 
         source_topic_str (:obj:`str`): Source topic
         target_cluster (:obj:`Cluster`): Target cluster
         target_topic_str (:obj:`str`): Target topic
-        flatmap_function (:obj:`function`): Flatmap function (takes a message dictionary and returns a list of message dictionaries)
+        flatmap_function (:obj:`function`): Flatmap function (takes a message dictionary and returns a list of message dictionaries).
         group (:obj:`str`, optional): Consumer group name used for subscribing to the source topic. If set to None, creates a new unique consumer group name. Defaults to None.
         offsets (:obj:`dict(int, int)`, optional): Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for subscribing to the source topic. If set to None, subscribe to the topic using the offsets from the consumer group for the topic. Defaults to None.
         config (:obj:`dict(str, str)`, optional): Dictionary of strings (keys) and strings (values) to augment the consumer configuration for the source topic. Defaults to {}.
@@ -469,6 +469,45 @@ def flatmap(source_cluster, source_topic_str, target_cluster, target_topic_str, 
     target_cluster.flush()
     #
     return (num_messages_int, target_cluster.produced_messages_counter_int)
+
+
+def filter(source_cluster, source_topic_str, target_cluster, target_topic_str, filter_function, group=None, offsets=None, config={}, source_key_type="bytes", source_value_type="bytes", target_key_type=None, target_value_type=None, target_key_schema=None, target_value_schema=None, on_delivery=None, keep_timestamps=True, n=ALL_MESSAGES, batch_size=1):
+    """Replicate a topic and only keep those messages which fulfil a filter condition.
+
+    Replicate (parts of) a topic (source_topic_str) on one cluster (source_cluster) to another topic (target_topic_str) on another (or the same) cluster (target_cluster) and only keep those messages fulfilling a filter condition. Each replicated message is transformed into a list of other messages in a flatmap-like manner. The source and target topics can have different message key and value types; e.g. the source topic can have value type Avro whereas the target topic will be written with value type Protobuf.
+
+    Args:
+        source_cluster (:obj:`Cluster`): Source cluster
+        source_topic_str (:obj:`str`): Source topic
+        target_cluster (:obj:`Cluster`): Target cluster
+        target_topic_str (:obj:`str`): Target topic
+        filter_function (:obj:`function`): Filter function (takes a message dictionary and returns True to keep the message and False to drop it).
+        group (:obj:`str`, optional): Consumer group name used for subscribing to the source topic. If set to None, creates a new unique consumer group name. Defaults to None.
+        offsets (:obj:`dict(int, int)`, optional): Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for subscribing to the source topic. If set to None, subscribe to the topic using the offsets from the consumer group for the topic. Defaults to None.
+        config (:obj:`dict(str, str)`, optional): Dictionary of strings (keys) and strings (values) to augment the consumer configuration for the source topic. Defaults to {}.
+        source_key_type (:obj:`str`, optional): Source topic message key type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "bytes".
+        source_value_type (:obj:`str`, optional): Source topic message value type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "bytes".
+        target_key_type (:obj:`str`, optional): Target topic message key type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). If set to None, target_key_type = source_key_type. Defaults to None.
+        target_value_type (:obj:`str`, optional): Target topic message value type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). If set to None, target_value_type = source_value_type. Defaults to None.
+        target_key_schema (:obj:`str`, optional): Target key message type schema (for "avro", "protobuf"/"pb" or "jsonschema"). Defaults to None.
+        target_value_schema (:obj:`str`, optional): Target value message type schema (for "avro", "protobuf"/"pb" or "jsonschema"). Defaults to None.
+        on_delivery (:obj:`function`, optional): Delivery report callback to call (from poll() or flush()) on successful or failed delivery. Passed on to confluent_kafka.Producer.produce(). Takes confluent_kafka.kafkaError and confluent_kafka.Message objects and returns nothing.
+        keep_timestamps (:obj:`bool`, optional): Replicate the timestamps of the source messages in the target messages. Defaults to True.
+        n (:obj:`int`, optional): Number of messages to consume from the source topic. Defaults to ALL_MESSAGES = -1.
+        batch_size (:obj:`int`, optional): Maximum number of messages to consume from the source topic at a time. Defaults to 1.
+
+    Returns:
+        :obj:`tuple(int, int)`: Pair of the number of messages consumed from the source topic and the number of messages produced to the target topic.
+
+    Examples:
+        Replicate "topic1" on cluster1 to "topic2" on cluster2 while only keeping those messages whose values contain the string "cake"::
+
+            filter(cluster1, "topic1", cluster2, "topic2", lambda message_dict: "cake" in message_dict["value"])
+    """
+    def flatmap_function(message_dict):
+        return [message_dict] if filter_function(message_dict) else []
+    #
+    return flatmap(source_cluster, source_topic_str, target_cluster, target_topic_str, flatmap_function, group=group, offsets=offsets, config=config, source_key_type=source_key_type, source_value_type=source_value_type, target_key_type=target_key_type, target_value_type=target_value_type, target_key_schema=target_key_schema, target_value_schema=target_value_schema, on_delivery=on_delivery, keep_timestamps=keep_timestamps, n=n, batch_size=batch_size)
 
 
 def map(source_cluster, source_topic_str, target_cluster, target_topic_str, map_function, group=None, offsets=None, config={}, source_key_type="bytes", source_value_type="bytes", target_key_type=None, target_value_type=None, target_key_schema=None, target_value_schema=None, on_delivery=None, keep_timestamps=True, n=ALL_MESSAGES, batch_size=1):

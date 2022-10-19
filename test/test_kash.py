@@ -755,7 +755,12 @@ class Test(unittest.TestCase):
         message_dict_list, _ = cluster.filter(topic_str, filter_function, value_type="json")
         self.assertEqual(len(message_dict_list), 1)
         #
+        (num_messages_int, produced_messages_counter_int) = filter(cluster, topic_str, cluster, f"{topic_str}_1", filter_function, source_value_type="json")
+        self.assertEqual(num_messages_int, 3)
+        self.assertEqual(produced_messages_counter_int, 1)
+        #
         cluster.delete(topic_str)
+        cluster.delete(f"{topic_str}_1")
 
     def test_map_filter_to_from_file(self):
         cluster = Cluster(cluster_str)

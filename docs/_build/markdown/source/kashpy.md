@@ -220,6 +220,72 @@ c.acls(restype="topic")
 ```
 
 
+#### auto_offset_reset(new_value_str=None)
+Get/set the auto.offset.reset kash setting.
+
+
+* **Parameters**
+
+    **new_value_str** (`str`, optional) – New value. Defaults to None (=just get, do not set).
+
+
+
+* **Returns**
+
+    The auto.offset.reset kash setting.
+
+
+
+* **Return type**
+
+    `str`
+
+
+
+#### block_interval(new_value_float=None)
+Get/set the block.interval kash setting.
+
+
+* **Parameters**
+
+    **new_value_float** (`float`, optional) – New value. Defaults to None (=just get, do not set).
+
+
+
+* **Returns**
+
+    The block.interval kash setting.
+
+
+
+* **Return type**
+
+    `float`
+
+
+
+#### block_num_retries(new_value_int=None)
+Get/set the block.num.retries kash setting.
+
+
+* **Parameters**
+
+    **new_value_int** (`int`, optional) – New value. Defaults to None (=just get, do not set).
+
+
+
+* **Returns**
+
+    The block.num.retries kash setting.
+
+
+
+* **Return type**
+
+    `int`
+
+
+
 #### broker_config(pattern_int_or_str_or_int_or_str_list)
 List the configurations of brokers of the cluster.
 
@@ -445,6 +511,28 @@ Consume the next 100 messages from the topic subscribed to before:
 ```default
 c.consume(n=100)
 ```
+
+
+#### consume_timeout(new_value_float=None)
+Get/set the consume.timeout kash setting.
+
+
+* **Parameters**
+
+    **new_value_float** (`float`, optional) – New value. Defaults to None (=just get, do not set).
+
+
+
+* **Returns**
+
+    The consume.timeout kash setting.
+
+
+
+* **Return type**
+
+    `float`
+
 
 
 #### cp(source_str, target_str, group=None, offsets=None, config={}, flatmap_function=<function Cluster.<lambda>>, source_key_type='str', source_value_type='str', target_key_type='str', target_value_type='str', target_key_schema=None, target_value_schema=None, key_value_separator=None, message_separator='\\n', overwrite=True, keep_timestamps=True, n=-1, batch_size=1, bufsize=4096)
@@ -913,7 +1001,7 @@ Create a diff of (parts of) a topic (topic_str1) and another topic (topic_str2) 
     * **topic_str2** (`str`) – Topic 2
 
 
-    * **diff_function** (`function`) – Diff function (takes a message dictionary from topic 1 and a message dictionary from topic 2 and returns the updated accumulator)
+    * **diff_function** (`function`) – Diff function (takes a message dictionary from topic 1 and a message dictionary from topic 2 and returns True if the message dictionaries are different, False if they are not different).
 
 
     * **group1** (`str`, optional) – Consumer group name used for consuming from topic 1. If set to None, creates a new unique consumer group name. Defaults to None.
@@ -1033,6 +1121,28 @@ c.download("test", "./test.txt")
 ```
 
 
+#### enable_auto_commit(new_value_bool=None)
+Get/set the enable.auto.commit kash setting.
+
+
+* **Parameters**
+
+    **new_value_bool** (`bool`, optional) – New value. Defaults to None (=just get, do not set).
+
+
+
+* **Returns**
+
+    The enable.auto.commit kash setting.
+
+
+
+* **Return type**
+
+    `bool`
+
+
+
 #### exists(topic_str)
 Test whether a topic exists on the cluster.
 
@@ -1065,10 +1175,10 @@ c.exists("test")
 ```
 
 
-#### flatmap(topic_str, flatmap_function, group=None, offsets=None, config={}, key_type='str', value_type='str', n=-1, batch_size=1)
-Subscribe to and consume messages from a topic and transform them in a flatmap-like manner.
+#### filter(topic_str, filter_function, group=None, offsets=None, config={}, key_type='str', value_type='str', n=-1, batch_size=1)
+Subscribe to and consume messages from a topic and return only those messages fulfilling a filter condition.
 
-Subscribe to and consume messages from a topic and transform them in a flatmap-like manner, optionally explicitly set the consumer group, initial offsets, and augment the consumer configuration. Stops either if the consume timeout is exceeded (`consume.timeout` in the kash.py cluster configuration) or the number of messages specified in `n` has been consumed.
+Subscribe to and consume messages from a topic and return only those messages fulfilling a filter condition, optionally explicitly set the consumer group, initial offsets, and augment the consumer configuration. Stops either if the consume timeout is exceeded (`consume.timeout` in the kash.py cluster configuration) or the number of messages specified in `n` has been consumed.
 
 
 * **Parameters**
@@ -1077,7 +1187,7 @@ Subscribe to and consume messages from a topic and transform them in a flatmap-l
     * **topic_str** (`str`) – The topic to subscribe to and consume from.
 
 
-    * **flatmap_function** (`function`) – Flatmap function (takes a message dictionary and returns a list of message dictionaries).
+    * **filter_function** (`function`) – Filter function (takes a message dictionary and returns a boolean; if True, keep the message, if False, drop it).
 
 
     * **group** (`str`, optional) – Consumer group name used for subscribing to the topic. If set to None, creates a new unique consumer group name. Defaults to None.
@@ -1118,6 +1228,198 @@ Subscribe to and consume messages from a topic and transform them in a flatmap-l
 Consume topic “test” and return a list of all its messages as message dictionaries:
 
 ```default
+c.filter("test", lambda x: True)
+```
+
+Consume topic “test” and return only those messages whose value is non-empty:
+
+```default
+c.filter("test", lambda x: x["value"] is not None)
+```
+
+
+#### filter_from_file(path_str, topic_str, filter_function, key_type='str', value_type='str', key_schema=None, value_schema=None, partition=-1, on_delivery=None, key_value_separator=None, message_separator='\\n', n=-1, bufsize=4096)
+Read messages from a local file and produce them to a topic, while only keeping those messages which fulfil a filter condition.
+
+Read messages from a local file with path path_str and produce them to topic topic_str, while only keeping those messages which fulfil a filter condition.
+
+
+* **Parameters**
+
+    
+    * **path_str** (`str`) – The path to the local file to read from.
+
+
+    * **topic_str** (`str`) – The topic to produce to.
+
+
+    * **filter_function** (`function`) – Filter function (takes a pair of a key (string) and a value (string) and returns a boolean; if True keeps the message, if False drops it).
+
+
+    * **key_type** (`str`, optional) – The key type (“bytes”, “str”, “json”, “avro”, “protobuf” or “pb”, or “jsonschema”). Defaults to “str”.
+
+
+    * **value_type** (`str`, optional) – The value type (“bytes”, “str”, “json”, “avro”, “protobuf” or “pb”, or “jsonschema”). Defaults to “str”.
+
+
+    * **key_schema** (`str`, optional) – The schema of the key of the message to be produced (if key_type is either “avro”, “protobuf” or “pb”, or “jsonschema”). Defaults to None.
+
+
+    * **value_schema** (`str`, optional) – The schema of the value of the message to be produced (if key_type is either “avro”, “protobuf” or “pb”, or “jsonschema”). Defaults to None.
+
+
+    * **partition** (`int`, optional) – The partition to produce to. Defaults to RD_KAFKA_PARTITION_UA = -1, i.e., the partition is selected by configured built-in partitioner.
+
+
+    * **on_delivery** (`function`, optional) – Delivery report callback to call (from poll() or flush()) on successful or failed delivery. Passed on to confluent_kafka.Producer.produce(). Takes confluent_kafka.kafkaError and confluent_kafka.Message objects and returns nothing.
+
+
+    * **key_value_separator** (`str`, optional) – The separator between the keys and the values in the local file to read from, e.g. “:”. If set to None, only read the values, not the keys. Defaults to None.
+
+
+    * **message_separator** (`str`, optional) – The separator between individual messages in the local file to read from. Defaults to the newline character.
+
+
+    * **n** (`int`, optional) – The number of messages to read from the local file. Defaults to ALL_MESSAGES = -1.
+
+
+    * **bufsize** (`int`, optional) – The buffer size for reading from the local file. Defaults to 4096.
+
+
+
+* **Returns**
+
+    `tuple(int, int)` Pair of the number of messages read from the local file (integer) and the number of messages produced to the topic (integer).
+
+
+### Examples
+
+Read all messages from the local file “./snacks_value.txt” and produce them to the topic “test”, but only those whose value is non-empty:
+
+```default
+c.filter_from_file("./snacks_value.txt", "test", filter_function=lambda x: x["value"] is not None)
+```
+
+
+#### filter_to_file(topic_str, path_str, filter_function, group=None, offsets=None, config={}, key_type='str', value_type='str', key_value_separator=None, message_separator='\\n', overwrite=True, n=-1, batch_size=1)
+Subscribe to and consume messages from a topic and write only those messages to a local file which fulfil a filter condition.
+
+Subscribe to and consume messages from a topic and write only those messages to a file which fulfil a filter condition, optionally explicitly set the consumer group, initial offsets, and augment the consumer configuration. Stops either if the consume timeout is exceeded (`consume.timeout` in the kash.py cluster configuration) or the number of messages specified in `n` has been consumed.
+
+
+* **Parameters**
+
+    
+    * **topic_str** (`str`) – The topic to subscribe to and consume from.
+
+
+    * **filter_function** (`function`) – Filter function (takes a message dictionary and returns a boolean; if True, keep the message, if False, drop it).
+
+
+    * **group** (`str`, optional) – Consumer group name used for subscribing to the topic. If set to None, creates a new unique consumer group name. Defaults to None.
+
+
+    * **offsets** (`dict(int, int)`, optional) – Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for subscribing to the topic. If set to None, subscribe to the topic using the offsets from the consumer group. Defaults to None.
+
+
+    * **config** (`dict(str, str)`, optional) – Dictionary of strings (keys) and strings (values) to augment the consumer configuration for the topic. Defaults to {}.
+
+
+    * **key_type** (`str`, optional) – Message key type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to “str”.
+
+
+    * **value_type** (`str`, optional) – Message value type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to “str”.
+
+
+    * **key_value_separator** (`str`, optional) – The separator between the keys and the values in the local file to write to, e.g. “:”. If set to None, only write the values, not the keys. Defaults to None.
+
+
+    * **message_separator** (`str`, optional) – The separator between individual messages in the local file to write to. Defaults to the newline character.
+
+
+    * **overwrite** (`bool`, optional) – Overwrite the local file if set to True, append to it otherwise. Defaults to True.
+
+
+    * **n** (`int`, optional) – Number of messages to consume from the topic. Defaults to ALL_MESSAGES = -1.
+
+
+    * **batch_size** (`int`, optional) – Maximum number of messages to consume from the topic at a time. Defaults to 1.
+
+
+
+* **Returns**
+
+    Pair of integers of the number of messages consumed from the topic, and the number of lines/messages written to the local file.
+
+
+
+* **Return type**
+
+    `tuple(int, int)`
+
+
+### Examples
+
+Consume all the messages from topic “test” and write only those to the local file “./test.txt” whose value is not None:
+
+```default
+c.filter_to_file("test", "./test.txt", lambda x: x["value"] is not None)
+```
+
+
+#### flatmap(topic_str, flatmap_function, group=None, offsets=None, config={}, key_type='str', value_type='str', n=-1, batch_size=1)
+Subscribe to and consume messages from a topic and transform them in a flatmap-like manner.
+
+Subscribe to and consume messages from a topic and transform them in a flatmap-like manner, optionally explicitly set the consumer group, initial offsets, and augment the consumer configuration. Stops either if the consume timeout is exceeded (`consume.timeout` in the kash.py cluster configuration) or the number of messages specified in `n` has been consumed.
+
+
+* **Parameters**
+
+    
+    * **topic_str** (`str`) – The topic to subscribe to and consume from.
+
+
+    * **flatmap_function** (`function`) – Flatmap function (takes a message dictionary and returns a list of anything).
+
+
+    * **group** (`str`, optional) – Consumer group name used for subscribing to the topic. If set to None, creates a new unique consumer group name. Defaults to None.
+
+
+    * **offsets** (`dict(int, int)`, optional) – Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for subscribing to the topic. If set to None, subscribe to the topic using the offsets from the consumer group. Defaults to None.
+
+
+    * **config** (`dict(str, str)`, optional) – Dictionary of strings (keys) and strings (values) to augment the consumer configuration for the topic. Defaults to {}.
+
+
+    * **key_type** (`str`, optional) – Message key type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to “str”.
+
+
+    * **value_type** (`str`, optional) – Message value type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to “str”.
+
+
+    * **n** (`int`, optional) – Number of messages to consume from the topic. Defaults to ALL_MESSAGES = -1.
+
+
+    * **batch_size** (`int`, optional) – Maximum number of messages to consume from the topic at a time. Defaults to 1.
+
+
+
+* **Returns**
+
+    Pair of the list of anything and the number of messages consumed from the topic (integer).
+
+
+
+* **Return type**
+
+    `tuple(list(any), int)`
+
+
+### Examples
+
+Consume topic “test” and return a list of all its messages as message dictionaries:
+
+```default
 c.flatmap("test", lambda x: [x])
 ```
 
@@ -1143,7 +1445,7 @@ Read messages from a local file with path path_str and produce them to topic top
     * **topic_str** (`str`) – The topic to produce to.
 
 
-    * **flatmap_function** (`function`) – Flatmap function (takes a message and returns a list of messages)
+    * **flatmap_function** (`function`) – Flatmap function (takes a pair of a key (string) and a value (string) and returns a list of pairs of keys (string) and values (string)).
 
 
     * **key_type** (`str`, optional) – The key type (“bytes”, “str”, “json”, “avro”, “protobuf” or “pb”, or “jsonschema”). Defaults to “str”.
@@ -1187,13 +1489,13 @@ Read messages from a local file with path path_str and produce them to topic top
 Read all messages from the local file “./snacks_value.txt” and produce them to the topic “test”:
 
 ```default
-c.flatmap("./snacks_value.txt", "test", flatmap_function=lambda x: [x])
+c.flatmap_from_file("./snacks_value.txt", "test", flatmap_function=lambda x: [x])
 ```
 
 Read all messages from the local file “./snacks_value.txt” and duplicate each of them in the topic “test”:
 
 ```default
-c.flatmap("./snacks_value.txt", "test", flatmap_function=lambda x: [x, x])
+c.flatmap_from_file("./snacks_value.txt", "test", flatmap_function=lambda x: [x, x])
 ```
 
 Read all messages from the local file “./snacks_value.txt” and produce them to the topic “test” in Protobuf using schema ‘message Snack { required string name = 1; required float calories = 2; optional string colour = 3; }’:
@@ -1279,6 +1581,50 @@ c.flatmap_to_file("test", "./test3.txt", lambda x: [x, x, x])
 Wait for all messages in the Producer queue to be delivered.
 
 Wait for all messages in the Producer queue to be delivered. Uses the “flush.timeout” setting from the cluster configuration file (“kash”-section).
+
+
+#### flush_num_messages(new_value_int=None)
+Get/set the flush.num.messages kash setting.
+
+
+* **Parameters**
+
+    **new_value_int** (`int`, optional) – New value. Defaults to None (=just get, do not set).
+
+
+
+* **Returns**
+
+    The flush.num.messages kash setting.
+
+
+
+* **Return type**
+
+    `int`
+
+
+
+#### flush_timeout(new_value_float=None)
+Get/set the flush.timeout kash setting.
+
+
+* **Parameters**
+
+    **new_value_float** (`float`, optional) – New value. Defaults to None (=just get, do not set).
+
+
+
+* **Returns**
+
+    The flush.timeout kash setting.
+
+
+
+* **Return type**
+
+    `float`
+
 
 
 #### foldl(topic_str, foldl_function, initial_acc, group=None, offsets=None, config={}, key_type='str', value_type='str', n=-1, batch_size=1)
@@ -1781,7 +2127,7 @@ Subscribe to and consume messages from a topic and transform them in a map-like 
     * **topic_str** (`str`) – The topic to subscribe to and consume from.
 
 
-    * **map_function** (`function`) – Map function (takes a message dictionary and returns a message dictionary).
+    * **map_function** (`function`) – Map function (takes a message dictionary and returns anything).
 
 
     * **group** (`str`, optional) – Consumer group name used for subscribing to the topic. If set to None, creates a new unique consumer group name. Defaults to None.
@@ -1808,13 +2154,13 @@ Subscribe to and consume messages from a topic and transform them in a map-like 
 
 * **Returns**
 
-    Pair of the list of message dictionaries and the number of messages consumed from the topic (integer).
+    Pair of the list of anything and the number of messages consumed from the topic (integer).
 
 
 
 * **Return type**
 
-    `tuple(list(message_dict), int)`
+    `tuple(list(any), int)`
 
 
 ### Examples
@@ -1829,6 +2175,135 @@ Consume topic “test” and return a list of all its messages where the “colo
 
 ```default
 c.map("test", lambda x: x["value"].update({"colour": "yellow"}) or x, value_type="json")
+```
+
+
+#### map_from_file(path_str, topic_str, map_function, key_type='str', value_type='str', key_schema=None, value_schema=None, partition=-1, on_delivery=None, key_value_separator=None, message_separator='\\n', n=-1, bufsize=4096)
+Read messages from a local file and produce them to a topic, while transforming the messages in a map-like manner.
+
+Read messages from a local file with path path_str and produce them to topic topic_str, while transforming the messages in a map-like manner.
+
+
+* **Parameters**
+
+    
+    * **path_str** (`str`) – The path to the local file to read from.
+
+
+    * **topic_str** (`str`) – The topic to produce to.
+
+
+    * **map_function** (`function`) – Map function (takes a pair of a key (string) and a value (string) and returns a transformed pair of key (string) and value (string)).
+
+
+    * **key_type** (`str`, optional) – The key type (“bytes”, “str”, “json”, “avro”, “protobuf” or “pb”, or “jsonschema”). Defaults to “str”.
+
+
+    * **value_type** (`str`, optional) – The value type (“bytes”, “str”, “json”, “avro”, “protobuf” or “pb”, or “jsonschema”). Defaults to “str”.
+
+
+    * **key_schema** (`str`, optional) – The schema of the key of the message to be produced (if key_type is either “avro”, “protobuf” or “pb”, or “jsonschema”). Defaults to None.
+
+
+    * **value_schema** (`str`, optional) – The schema of the value of the message to be produced (if key_type is either “avro”, “protobuf” or “pb”, or “jsonschema”). Defaults to None.
+
+
+    * **partition** (`int`, optional) – The partition to produce to. Defaults to RD_KAFKA_PARTITION_UA = -1, i.e., the partition is selected by configured built-in partitioner.
+
+
+    * **on_delivery** (`function`, optional) – Delivery report callback to call (from poll() or flush()) on successful or failed delivery. Passed on to confluent_kafka.Producer.produce(). Takes confluent_kafka.kafkaError and confluent_kafka.Message objects and returns nothing.
+
+
+    * **key_value_separator** (`str`, optional) – The separator between the keys and the values in the local file to read from, e.g. “:”. If set to None, only read the values, not the keys. Defaults to None.
+
+
+    * **message_separator** (`str`, optional) – The separator between individual messages in the local file to read from. Defaults to the newline character.
+
+
+    * **n** (`int`, optional) – The number of messages to read from the local file. Defaults to ALL_MESSAGES = -1.
+
+
+    * **bufsize** (`int`, optional) – The buffer size for reading from the local file. Defaults to 4096.
+
+
+
+* **Returns**
+
+    `tuple(int, int)` Pair of the number of messages read from the local file (integer) and the number of messages produced to the topic (integer).
+
+
+### Examples
+
+Read all messages from the local file “./snacks_value.txt” and produce them to the topic “test”:
+
+```default
+c.map_from_file("./snacks_value.txt", "test", map_function=lambda x: x)
+```
+
+
+#### map_to_file(topic_str, path_str, map_function, group=None, offsets=None, config={}, key_type='str', value_type='str', key_value_separator=None, message_separator='\\n', overwrite=True, n=-1, batch_size=1)
+Subscribe to and consume messages from a topic, transform them in a map-like manner and write the resulting messages to a local file.
+
+Subscribe to and consume messages from a topic, transform them in a map-like manner and write the resulting messages to a local file, optionally explicitly set the consumer group, initial offsets, and augment the consumer configuration. Stops either if the consume timeout is exceeded (`consume.timeout` in the kash.py cluster configuration) or the number of messages specified in `n` has been consumed.
+
+
+* **Parameters**
+
+    
+    * **topic_str** (`str`) – The topic to subscribe to and consume from.
+
+
+    * **map_function** (`function`) – Map function (takes a message dictionary and returns a message dictionary).
+
+
+    * **group** (`str`, optional) – Consumer group name used for subscribing to the topic. If set to None, creates a new unique consumer group name. Defaults to None.
+
+
+    * **offsets** (`dict(int, int)`, optional) – Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for subscribing to the topic. If set to None, subscribe to the topic using the offsets from the consumer group. Defaults to None.
+
+
+    * **config** (`dict(str, str)`, optional) – Dictionary of strings (keys) and strings (values) to augment the consumer configuration for the topic. Defaults to {}.
+
+
+    * **key_type** (`str`, optional) – Message key type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to “str”.
+
+
+    * **value_type** (`str`, optional) – Message value type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to “str”.
+
+
+    * **key_value_separator** (`str`, optional) – The separator between the keys and the values in the local file to write to, e.g. “:”. If set to None, only write the values, not the keys. Defaults to None.
+
+
+    * **message_separator** (`str`, optional) – The separator between individual messages in the local file to write to. Defaults to the newline character.
+
+
+    * **overwrite** (`bool`, optional) – Overwrite the local file if set to True, append to it otherwise. Defaults to True.
+
+
+    * **n** (`int`, optional) – Number of messages to consume from the topic. Defaults to ALL_MESSAGES = -1.
+
+
+    * **batch_size** (`int`, optional) – Maximum number of messages to consume from the topic at a time. Defaults to 1.
+
+
+
+* **Returns**
+
+    Pair of integers of the number of messages consumed from the topic, and the number of lines/messages written to the local file.
+
+
+
+* **Return type**
+
+    `tuple(int, int)`
+
+
+### Examples
+
+Consume all the messages from topic “test” and write them to the local file “./test.txt”:
+
+```default
+c.map_to_file("test", "./test.txt", lambda x: x)
 ```
 
 
@@ -2064,6 +2539,28 @@ c.produce("test", {'name': 'cookie', 'calories': 500.0, 'colour': 'brown'}, valu
 ```
 
 
+#### progress_num_messages(new_value_int=None)
+Get/set the progress.num.messages kash setting.
+
+
+* **Parameters**
+
+    **new_value_int** (`int`, optional) – New value. Defaults to None (=just get, do not set).
+
+
+
+* **Returns**
+
+    The progress.num.messages kash setting.
+
+
+
+* **Return type**
+
+    `int`
+
+
+
 #### recreate(topic_str)
 Recreate a topic.
 
@@ -2094,6 +2591,28 @@ Recreate the topic “test”:
 ```default
 c.recreate("test")
 ```
+
+
+#### retention_ms(new_value_int=None)
+Get/set the retention.ms kash setting.
+
+
+* **Parameters**
+
+    **new_value_int** (`int`, optional) – New value. Defaults to None (=just get, do not set).
+
+
+
+* **Returns**
+
+    The retention.ms kash setting.
+
+
+
+* **Return type**
+
+    `int`
+
 
 
 #### rm(pattern_str_or_str_list, block=True)
@@ -2142,6 +2661,28 @@ Delete all topics starting with “test” or “bla”:
 ```default
 c.rm(["test*", "bla*"])
 ```
+
+
+#### session_timeout_ms(new_value_int=None)
+Get/set the session.timeout.ms kash setting.
+
+
+* **Parameters**
+
+    **new_value_int** (`int`, optional) – New value. Defaults to None (=just get, do not set).
+
+
+
+* **Returns**
+
+    The session.timeout.ms kash setting.
+
+
+
+* **Return type**
+
+    `int`
+
 
 
 #### set_broker_config(pattern_int_or_str_or_int_or_str_list, key_str, value_str, test=False)
@@ -2291,16 +2832,6 @@ Set the numbers of partitions of all topics whose names start with “test” or
 ```default
 c.set_partitions(["test*", "bla*"], 4)
 ```
-
-
-#### set_verbose(verbose_int)
-Set verbosity level.
-
-
-* **Parameters**
-
-    **verbose_int** (*int*) – Verbosity level.
-
 
 
 #### size(pattern_str_or_str_list, timeout=-1.0)
@@ -2567,7 +3098,7 @@ Read messages from a local file with path path_str and produce them to topic top
     * **topic_str** (`str`) – The topic to produce to.
 
 
-    * **flatmap_function** (`function`, optional) – Flatmap function (takes a message and returns a list of messages). Defaults to lambda x: [x] (=the identify function for flatmap, leading to a one-to-one copy from the messages in the file to the messages in the topic).
+    * **flatmap_function** (`function`, optional) – Flatmap function (takes a pair of key (string) and value (string) and returns a list of pairs of keys and values). Defaults to lambda x: [x] (=the identify function for flatmap, leading to a one-to-one copy from the messages in the file to the messages in the topic).
 
 
     * **key_type** (`str`, optional) – The key type (“bytes”, “str”, “json”, “avro”, “protobuf” or “pb”, or “jsonschema”). Defaults to “str”.
@@ -2627,13 +3158,19 @@ c.upload("./snacks_value.txt", "test", value_type="protobuf", value_schema='mess
 ```
 
 
-#### verbose()
-Get verbosity level.
+#### verbose(new_value_int=None)
+Get/set the verbosity level.
+
+
+* **Parameters**
+
+    **new_value_int** (`int`, optional) – New value. Defaults to None.
+
 
 
 * **Returns**
 
-    Verbosity level.
+    The verbosity level.
 
 
 
@@ -3012,7 +3549,7 @@ Create a diff of (parts of) a topic (topic_str1) on one cluster (cluster1) and a
     * **topic_str2** (`str`) – Topic 2
 
 
-    * **diff_function** (`function`) – Diff function (takes a message dictionary from topic 1 and a message dictionary from topic 2 and returns the updated accumulator)
+    * **diff_function** (`function`) – Diff function (takes a message dictionary from topic 1 and a message dictionary from topic 2 and returns True if the message dictionaries are different, False if they are not different).
 
 
     * **group1** (`str`, optional) – Consumer group name used for consuming from topic 1. If set to None, creates a new unique consumer group name. Defaults to None.
@@ -3066,6 +3603,90 @@ diff_fun(cluster1, "topic1", cluster2, "topic2", lambda message_dict1, message_d
 ```
 
 
+### kashpy.kash.filter(source_cluster, source_topic_str, target_cluster, target_topic_str, filter_function, group=None, offsets=None, config={}, source_key_type='bytes', source_value_type='bytes', target_key_type=None, target_value_type=None, target_key_schema=None, target_value_schema=None, on_delivery=None, keep_timestamps=True, n=-1, batch_size=1)
+Replicate a topic and only keep those messages which fulfil a filter condition.
+
+Replicate (parts of) a topic (source_topic_str) on one cluster (source_cluster) to another topic (target_topic_str) on another (or the same) cluster (target_cluster) and only keep those messages fulfilling a filter condition. Each replicated message is transformed into a list of other messages in a flatmap-like manner. The source and target topics can have different message key and value types; e.g. the source topic can have value type Avro whereas the target topic will be written with value type Protobuf.
+
+
+* **Parameters**
+
+    
+    * **source_cluster** (`Cluster`) – Source cluster
+
+
+    * **source_topic_str** (`str`) – Source topic
+
+
+    * **target_cluster** (`Cluster`) – Target cluster
+
+
+    * **target_topic_str** (`str`) – Target topic
+
+
+    * **filter_function** (`function`) – Filter function (takes a message dictionary and returns True to keep the message and False to drop it).
+
+
+    * **group** (`str`, optional) – Consumer group name used for subscribing to the source topic. If set to None, creates a new unique consumer group name. Defaults to None.
+
+
+    * **offsets** (`dict(int, int)`, optional) – Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for subscribing to the source topic. If set to None, subscribe to the topic using the offsets from the consumer group for the topic. Defaults to None.
+
+
+    * **config** (`dict(str, str)`, optional) – Dictionary of strings (keys) and strings (values) to augment the consumer configuration for the source topic. Defaults to {}.
+
+
+    * **source_key_type** (`str`, optional) – Source topic message key type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to “bytes”.
+
+
+    * **source_value_type** (`str`, optional) – Source topic message value type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to “bytes”.
+
+
+    * **target_key_type** (`str`, optional) – Target topic message key type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). If set to None, target_key_type = source_key_type. Defaults to None.
+
+
+    * **target_value_type** (`str`, optional) – Target topic message value type (“bytes”, “str”, “json”, “avro”, “protobuf”/”pb” or “jsonschema”). If set to None, target_value_type = source_value_type. Defaults to None.
+
+
+    * **target_key_schema** (`str`, optional) – Target key message type schema (for “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to None.
+
+
+    * **target_value_schema** (`str`, optional) – Target value message type schema (for “avro”, “protobuf”/”pb” or “jsonschema”). Defaults to None.
+
+
+    * **on_delivery** (`function`, optional) – Delivery report callback to call (from poll() or flush()) on successful or failed delivery. Passed on to confluent_kafka.Producer.produce(). Takes confluent_kafka.kafkaError and confluent_kafka.Message objects and returns nothing.
+
+
+    * **keep_timestamps** (`bool`, optional) – Replicate the timestamps of the source messages in the target messages. Defaults to True.
+
+
+    * **n** (`int`, optional) – Number of messages to consume from the source topic. Defaults to ALL_MESSAGES = -1.
+
+
+    * **batch_size** (`int`, optional) – Maximum number of messages to consume from the source topic at a time. Defaults to 1.
+
+
+
+* **Returns**
+
+    Pair of the number of messages consumed from the source topic and the number of messages produced to the target topic.
+
+
+
+* **Return type**
+
+    `tuple(int, int)`
+
+
+### Examples
+
+Replicate “topic1” on cluster1 to “topic2” on cluster2 while only keeping those messages whose values contain the string “cake”:
+
+```default
+filter(cluster1, "topic1", cluster2, "topic2", lambda message_dict: "cake" in message_dict["value"])
+```
+
+
 ### kashpy.kash.flatmap(source_cluster, source_topic_str, target_cluster, target_topic_str, flatmap_function, group=None, offsets=None, config={}, source_key_type='bytes', source_value_type='bytes', target_key_type=None, target_value_type=None, target_key_schema=None, target_value_schema=None, on_delivery=None, keep_timestamps=True, n=-1, batch_size=1)
 Replicate a topic and transform the messages in a flatmap-like manner.
 
@@ -3087,7 +3708,7 @@ Replicate (parts of) a topic (source_topic_str) on one cluster (source_cluster) 
     * **target_topic_str** (`str`) – Target topic
 
 
-    * **flatmap_function** (`function`) – Flatmap function (takes a message dictionary and returns a list of message dictionaries)
+    * **flatmap_function** (`function`) – Flatmap function (takes a message dictionary and returns a list of message dictionaries).
 
 
     * **group** (`str`, optional) – Consumer group name used for subscribing to the source topic. If set to None, creates a new unique consumer group name. Defaults to None.
@@ -3165,6 +3786,66 @@ Replicate the messages 100-600 from “topic1” on cluster1 to “topic2” on 
 
 ```default
 flatmap(cluster1, "topic1", cluster2, "topic2", lambda message_dict: [message_dict], offsets={0:100}, keep_timestamps=False, n=500)
+```
+
+
+### kashpy.kash.foldl_from_file(path_str, foldl_function, initial_acc, delimiter='\\n', n=-1, bufsize=4096, verbose=0, progress_num_lines=1000)
+Read lines from a file and transform them in a foldl-like manner.
+
+Read lines/messages from a file and transform them in a foldl-like manner. Stops either if the file is read until the end or the number of lines/messages specified in `n` has been consumed.
+
+
+* **Parameters**
+
+    
+    * **path_str** (`str`) – The path to the local file to read from.
+
+
+    * **foldl_function** (`function`) – Foldl function (takes an accumulator (any type) and a line/message (string) and returns the updated accumulator).
+
+
+    * **initial_acc** – Initial value of the accumulator (any type).
+
+
+    * **delimiter** (`str`, optional) – The separator between individual lines/messages in the local file to read from. Defaults to the newline character.
+
+
+    * **n** (`int`, optional) – The number of lines/messages to read from the local file. Defaults to ALL_MESSAGES = -1.
+
+
+    * **bufsize** (`int`, optional) – The buffer size for reading from the local file. Defaults to 4096.
+
+
+    * **verbose** (`int`, optional) – Verbosity level. Defaults to 0.
+
+
+    * **progress_num_lines** (`int`, optional) – Number of lines/messages after which the progress in reading the file is displayed (if `verbose` > 0).
+
+
+
+* **Returns**
+
+    Pair of the accumulator (any type) and the number of lines/messages read from the file (integer).
+
+
+
+* **Return type**
+
+    `tuple(acc, int)`
+
+
+### Examples
+
+Read the file “./snacks_value.txt” and return a list of all its lines/messages as strings:
+
+```default
+foldl_from_file("./snacks_value.txt", lambda acc, line_str: acc + [line_str], [])
+```
+
+Read the file “./snacks_value.txt” and sum up the “calories” value of the individual messages:
+
+```default
+foldl_from_file("./snacks_value.txt", lambda acc, x: acc + json.loads(x)["calories"], 0)
 ```
 
 

@@ -462,11 +462,54 @@ There is also a function `foldl_from_file`. Here is an example where we use it t
 
 ### Cross-Cluster
 
-* flatmap
+#### Kafka Topic to Kafka Topic
 
-    * map, filter*, cp
+*kash.py* also offers functional functions to use across clusters, based on `flatmap`. In the example below, we use `flatmap` to copy the topic  `snacks1` on cluster `c1` to a topic  `snacks2_duplicate` on cluster `c2`, while duplicating each message using a *flatmap* operation:
+```
+>>> flatmap(c1, "snacks1", c2, "snacks2_duplicate", lambda x: [x, x])
+(3, 6)
+>>>
+```
 
+`map` is based on `flatmap`. In the following example, we use a cross-cluster `map` to add the suffix `ish` to all the colours and produce the resulting messages to topic `snacks2_ish` on cluster `c2`:
+```
+>>> def map_function(x):
+...   x["value"]["colour"] += "ish"
+...   return x
+... 
+>>> map(c1, "snacks1", c2, "snacks2_ish", map_function, source_value_type="json")
+(3, 3)
+>>>
+```
 
-* zip_foldl
+The function `filter` is also based on `flatmap` and, in the example below, is used to only keep those messages where the ``colour`` is ``brown``:
+```
+>>> c.filter("snacks", lambda x: x["value"]["colour"] == "brown", value_type="json")
+([{'headers': None, 'partition': 0, 'offset': 0, 'timestamp': (1, 1666090118747), 'key': None, 'value': {'name': 'cookie', 'calories': 500.0, 'colour': 'brown'}}], 3)
+>>>
+```
+Here is an overview of the relations between those cross-cluster functions of *kash.py* which consume messages from a topic on one cluster and produce them in another (or equally named) topic on another (or the same) cluster:
 
-    * diff/diff_fun
+* `flatmap`
+
+    * `map`, `filter`, `cp`
+
+#### Consuming Two Topics At the Same Time
+
+The `diff` and `diff_fun` functions are based on the functional abstraction `zip_foldl`. As an example, 
+we show the *zip* of topic `snacks1` on cluster `c1` and topic `snacks2_ish` on cluster `c2` followed by a *foldl* accumulating pairs of those messages from both topics where the colour of the message from topic `snacks2_ish` ends with `eish`:
+
+```
+>>> def zip_foldl_function(acc, x1, x2):
+...   return acc + [(x1, x2)] if x2["value"]["colour"].endswith("eish") else acc
+... 
+>>> zip_foldl(c1, "snacks1", c2, "snacks2_ish", zip_foldl_function, [], value_type2="json")
+([({'headers': None, 'partition': 0, 'offset': 1, 'timestamp': (1, 1664989815680), 'key': None, 'value': b'{"name": "cake", "calories": 260.0, "colour": "white"}'}, {'headers': None, 'partition': 0, 'offset': 1, 'timestamp': (1, 1664989815680), 'key': None, 'value': {'name': 'cake', 'calories': 260.0, 'colour': 'whiteish'}}), ({'headers': None, 'partition': 0, 'offset': 2, 'timestamp': (1, 1664989815680), 'key': None, 'value': b'{"name": "timtam", "calories": 80.0, "colour": "chocolate"}'}, {'headers': None, 'partition': 0, 'offset': 2, 'timestamp': (1, 1664989815680), 'key': None, 'value': {'name': 'timtam', 'calories': 80.0, 'colour': 'chocolateish'}})], 3, 3)
+>>>
+```
+
+Here is the overview of the relations between those functions of *kash.py* which consume messages from two topics (on the same cluster or on different clusters):
+
+* `zip_foldl`
+
+    * `diff/diff_fun`
