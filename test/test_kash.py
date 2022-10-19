@@ -791,4 +791,5 @@ class Test(unittest.TestCase):
         self.assertEqual(line_counter_int, 2)
         #
         os.remove("./snacks_value1.txt")
+        os.remove("./snacks_value2.txt")
         cluster.delete(topic_str)
