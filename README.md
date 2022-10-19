@@ -75,7 +75,7 @@ Or, if you'd like to replicate the topic `test` holding 1000 messages from a Kaf
 
 In the following, we go a bit deeper in two short tutorials; the first demonstrating how *kash.py* helps you to fulfill tasks on a single cluster, and the second how to make use of your newly obtained Kafka superpowers across clusters.
 
-## Tutorial 1 (single-cluster)
+## Tutorial 1 (single cluster)
 
 This is the first tutorial, showcasing the single cluster capabilities of *kash.py* in interactive mode.
 
@@ -143,6 +143,13 @@ Find those messages whose values matches the regular expression `.*cake.*`:
 >>> c.grep("snacks", ".*cake.*")
 Found matching message on partition 0, offset 1.
 ([{'headers': None, 'partition': 0, 'offset': 1, 'timestamp': (1, 1664989815680), 'key': None, 'value': '{"name": "cake", "calories": 260.0, "colour": "white"}'}], 1, 3)
+>>>
+```
+
+Filter the messages to only keep those where the ``colour`` is ``brown``:
+```
+>>> c.filter("snacks", lambda x: x["value"]["colour"] == "brown", value_type="json")
+([{'headers': None, 'partition': 0, 'offset': 0, 'timestamp': (1, 1666090118747), 'key': None, 'value': {'name': 'cookie', 'calories': 500.0, 'colour': 'brown'}}], 3)
 >>>
 ```
 
@@ -320,3 +327,146 @@ Now for the most advanced operation of the tutorials: A *zip* of topic `snacks1`
 ([({'headers': None, 'partition': 0, 'offset': 1, 'timestamp': (1, 1664989815680), 'key': None, 'value': b'{"name": "cake", "calories": 260.0, "colour": "white"}'}, {'headers': None, 'partition': 0, 'offset': 1, 'timestamp': (1, 1664989815680), 'key': None, 'value': {'name': 'cake', 'calories': 260.0, 'colour': 'whiteish'}}), ({'headers': None, 'partition': 0, 'offset': 2, 'timestamp': (1, 1664989815680), 'key': None, 'value': b'{"name": "timtam", "calories": 80.0, "colour": "chocolate"}'}, {'headers': None, 'partition': 0, 'offset': 2, 'timestamp': (1, 1664989815680), 'key': None, 'value': {'name': 'timtam', 'calories': 80.0, 'colour': 'chocolateish'}})], 3, 3)
 >>>
 ```
+
+## kash.py and Functional Programming
+
+As already hinted at in the tutorials above, the more advanced functionality of *kash.py* rests on a *Functional Programming* (*FP*) backbone. If you intend to use *kash.py* to ease your everyday tasks, you don't have to be aware of that - the bash-like abstractions on top of the functional backbone should already help you out a lot. However, if you are familiar with FP or you would like to become familiar with it, this functional backbone of *kash.py* can actually let you wield even stronger *Kafka superpowers*.
+
+### Single Cluster
+
+#### Kafka Topic to Python Datatype
+
+We start with functional backbone of those functions which consume a Kafka topic and return a Python datatype. Those functions are based on the `foldl` ("fold left") function. `foldl` consumes messages from a topic and then, for each message, calls a function that takes this message and an accumulator of any type, and returns the updated accumulator. `foldl` can be used e.g. to aggregate information from topics, such as the sum of calories of the messages of the topic `snacks` in the following example:
+```
+>>> c.foldl("snacks", lambda acc, x: acc + x["value"]["calories"], 0, value_type="json")
+(840.0, 3)
+>>>
+```
+
+`foldl` is the basis for `flatmap` which also consumes messages from a topic, but then calls a simpler function that takes just this message and returns a list of anything (including the empty list). `flatmap` can be used e.g. to duplicate the messages of a topic, as in the following example:
+```
+>>> c.flatmap("snacks", lambda x: [x, x])
+([{'headers': None, 'partition': 0, 'offset': 0, 'timestamp': (1, 1664989815680), 'key': None, 'value': '{"name": "cookie", "calories": 500.0, "colour": "brown"}'}, {'headers': None, 'partition': 0, 'offset': 0, 'timestamp': (1, 1664989815680), 'key': None, 'value': '{"name": "cookie", "calories": 500.0, "colour": "brown"}'}, {'headers': None, 'partition': 0, 'offset': 1, 'timestamp': (1, 1664989815680), 'key': None, 'value': '{"name": "cake", "calories": 260.0, "colour": "white"}'}, {'headers': None, 'partition': 0, 'offset': 1, 'timestamp': (1, 1664989815680), 'key': None, 'value': '{"name": "cake", "calories": 260.0, "colour": "white"}'}, {'headers': None, 'partition': 0, 'offset': 2, 'timestamp': (1, 1664989815680), 'key': None, 'value': '{"name": "timtam", "calories": 80.0, "colour": "chocolate"}'}, {'headers': None, 'partition': 0, 'offset': 2, 'timestamp': (1, 1664989815680), 'key': None, 'value': '{"name": "timtam", "calories": 80.0, "colour": "chocolate"}'}], 3)
+>>>
+```
+
+`flatmap`, in turn, is the basis for `map` which again consumes messages from a topic, but then calls a function that takes just this message and returns anything. `map` can be used e.g. to modify the messages of a topic, as in the following example:
+```
+>>> def map_function(x):
+...   x["value"]["colour"] += "ish"
+...   return x
+... 
+>>> c.map("snacks", map_function, value_type="json")
+([{'headers': None, 'partition': 0, 'offset': 0, 'timestamp': (1, 1664989815680), 'key': None, 'value': {'name': 'cookie', 'calories': 500.0, 'colour': 'brownish'}}, {'headers': None, 'partition': 0, 'offset': 1, 'timestamp': (1, 1664989815680), 'key': None, 'value': {'name': 'cake', 'calories': 260.0, 'colour': 'whiteish'}}, {'headers': None, 'partition': 0, 'offset': 2, 'timestamp': (1, 1664989815680), 'key': None, 'value': {'name': 'timtam', 'calories': 80.0, 'colour': 'chocolateish'}}], 3)
+>>>
+```
+
+Filter the messages to only keep those where the ``colour`` is ``brown``:
+```
+>>> c.filter("snacks", lambda x: x["value"]["colour"] == "brown", value_type="json")
+([{'headers': None, 'partition': 0, 'offset': 0, 'timestamp': (1, 1666090118747), 'key': None, 'value': {'name': 'cookie', 'calories': 500.0, 'colour': 'brown'}}], 3)
+>>>
+```
+
+Here is an overview of the relations between those functions of *kash.py* which consume messages from Kafka topics and return a Python datatype (or nothing):
+
+* `foldl`
+
+    * `flatmap`, `cat`, `foreach`, `wc`
+
+        * `map`, `filter`, `grep`, `grep_fun`
+
+As explained above, `foldl` is the basis of it all, `flatmap` is based on `foldl`and `map` is based on `flatmap`. In addition, `cat`, `foreach` and `wc` are also based on `foldl`, and `filter` and `grep` and `grep_fun` are based on `flatmap`.
+
+#### Kafka Topic to Local File
+
+We turn to those functions consuming messages from a Kafka topic and writing them to a local file, transforming or even removing messages. Here, the basis function is `flatmap_to_file`. Here is an example where the flatmap function is the identity function. Hence, the messages from the topic `snacks` are written to the local file `./snacks.txt`:
+
+```
+>>> c.flatmap_to_file("snacks", "./snacks.txt", lambda x: [x])
+(3, 3)
+>>> 
+```
+
+`map_to_file` is based on `flatmap_to_file` and can be used to transform each message before it is written to the local file:
+```
+>>> def map_function(x):
+...   x["value"]["colour"] += "ish"
+...   return x
+... 
+>>> c.map_to_file("snacks", "./snacks.txt", map_function)
+(3, 3)
+>>> 
+```
+
+`filter_to_file` is also based on `flatmap_to_file` and writes only those messages to the local file which fulfil a condition, for example:
+```
+>>> def filter_function(message_dict):
+...   return "cake" in message_dict["value"]
+... 
+>>> c.filter_to_file("snacks", "./snacks.txt", filter_function)
+(3, 1)
+
+```
+
+Here is an overview of the relations between those functions of *kash.py* which consume messages from Kafka topics and write them to a local file:
+
+* `flatmap_to_file`
+
+    * `map_to_file`, `filter_to_file`, `cp/download`
+
+Again, as explained above, `map_to_file` and `filter_to_file` are based on `flatmap_to_file`, as well as `cp` (with the first not being a file and the second argument being a file marked by it containing a slash `/`) and `download`.
+
+#### Local File to Kafka Topic
+
+The last set of functional functions are those reading lines/messages from a local file and producing them to a Kafka topic. Here, the basis function is `flatmap_from_file`. Here is an example where the flatmap function is the identity function. Hence, the messages from the local file `./snacks.txt` are produced into the topic `snacks`:
+
+```
+>>> c.flatmap_from_file("./snacks.txt", "snacks", lambda x: [x])
+(3, 3)
+>>> 
+```
+
+`map_from_file` is based on `flatmap_from_file` and can be used to transform each line/message before it is written to the local file:
+```
+>>> c.map_to_file("snacks", "./snacks.txt", lambda x: x)
+(3, 3)
+>>> 
+```
+
+`filter_from_file` is also based on `flatmap_from_file` and produces only those messages to the Kafka topic which fulfil a condition. In the example below we produce only those messages which have the string `cake` in their value:
+```
+>>> def filter_function(xy):
+...   x, y = xy
+...   return "cake" in y
+... 
+>>> c.filter_from_file("./snacks.txt", "snacks", filter_function)
+(3, 1)
+>>> 
+```
+
+Here is an overview of the relations between those functions of *kash.py* which read lines/messages from a file and produce them to a Kafka topic:
+
+* `flatmap_from_file`
+
+    * `map_from_file`, `filter_from_file`, `cp/download`
+
+Again, as explained above, `map_from_file` and `filter_from_file` are based on `flatmap_from_file`, as well as `cp` (with the first argument being a file marked by it containing a slash `/` and the second not a file) and `upload`.
+
+There is also a function `foldl_from_file`. Here is an example where we use it to sum up the calories of the lines/messages from the file `./snacks.txt`:
+```
+>> foldl_from_file("./snacks.txt", lambda acc, x: acc + json.loads(x)["calories"], 0)
+(840.0, 3)
+>>> 
+```
+
+### Cross-Cluster
+
+* flatmap
+
+    * map, filter*, cp
+
+
+* zip_foldl
+
+    * diff/diff_fun

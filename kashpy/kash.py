@@ -49,7 +49,33 @@ def create_unique_group_id():
     return str(get_millis())
 
 
-def foldl_file(path_str, foldl_function, initial_acc, delimiter='\n', n=ALL_MESSAGES, bufsize=4096, verbose=0, progress_num_lines=1000):
+def foldl_from_file(path_str, foldl_function, initial_acc, delimiter='\n', n=ALL_MESSAGES, bufsize=4096, verbose=0, progress_num_lines=1000):
+    """Read lines from a file and transform them in a foldl-like manner.
+
+    Read lines/messages from a file and transform them in a foldl-like manner. Stops either if the file is read until the end or the number of lines/messages specified in ``n`` has been consumed.
+
+    Args:
+        path_str (:obj:`str`): The path to the local file to read from.
+        foldl_function (:obj:`function`): Foldl function (takes an accumulator (any type) and a line/message (string) and returns the updated accumulator).
+        initial_acc: Initial value of the accumulator (any type).
+        delimiter (:obj:`str`, optional): The separator between individual lines/messages in the local file to read from. Defaults to the newline character.
+        n (:obj:`int`, optional): The number of lines/messages to read from the local file. Defaults to ALL_MESSAGES = -1.
+        bufsize (:obj:`int`, optional): The buffer size for reading from the local file. Defaults to 4096.
+        verbose (:obj:`int`, optional): Verbosity level. Defaults to 0.
+        progress_num_lines (:obj:`int`, optional): Number of lines/messages after which the progress in reading the file is displayed (if ``verbose`` > 0).
+
+    Returns:
+        :obj:`tuple(acc, int)`: Pair of the accumulator (any type) and the number of lines/messages read from the file (integer).
+
+    Examples:
+        Read the file "./snacks_value.txt" and return a list of all its lines/messages as strings::
+
+            foldl_from_file("./snacks_value.txt", lambda acc, line_str: acc + [line_str], [])
+
+        Read the file "./snacks_value.txt" and sum up the "calories" value of the individual messages::
+
+            foldl_from_file("./snacks_value.txt", lambda acc, x: acc + json.loads(x)["calories"], 0)
+    """
     delimiter_str = delimiter
     bufsize_int = bufsize
     num_lines_int = n
@@ -628,7 +654,7 @@ def diff_fun(cluster1, topic_str1, cluster2, topic_str2, diff_function, group1=N
         topic_str1 (:obj:`str`): Topic 1
         cluster2 (:obj:`Cluster`): Cluster 2
         topic_str2 (:obj:`str`): Topic 2
-        diff_function (:obj:`function`): Diff function (takes a message dictionary from topic 1 and a message dictionary from topic 2 and returns the updated accumulator)
+        diff_function (:obj:`function`): Diff function (takes a message dictionary from topic 1 and a message dictionary from topic 2 and returns True if the message dictionaries are different, False if they are not different).
         group1 (:obj:`str`, optional): Consumer group name used for consuming from topic 1. If set to None, creates a new unique consumer group name. Defaults to None.
         group2 (:obj:`str`, optional): Consumer group name used for consuming from topic 2. If set to None, creates a new unique consumer group name. Defaults to None.
         offsets1 (:obj:`dict(int, int)`, optional): Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for consuming from topic 1. If set to None, consume topic 1 using the offsets from the consumer group for topic 1. Defaults to None.
@@ -856,67 +882,196 @@ class Cluster:
         #
         # Admin Client
         if "retention.ms" not in self.kash_dict:
-            self.kash_dict["retention.ms"] = 604800000
+            self.retention_ms(604800000)
         else:
-            self.kash_dict["retention.ms"] = int(self.kash_dict["retention.ms"])
+            self.retention_ms(int(self.kash_dict["retention.ms"]))
         # Producer
         if "flush.num.messages" not in self.kash_dict:
-            self.kash_dict["flush.num.messages"] = 10000
+            self.flush_num_messages(10000)
         else:
-            self.kash_dict["flush.num.messages"] = int(self.kash_dict["flush.num.messages"])
+            self.flush_num_messages(int(self.kash_dict["flush.num.messages"]))
         if "flush.timeout" not in self.kash_dict:
-            self.kash_dict["flush.timeout"] = -1.0
+            self.flush_timeout(-1.0)
         else:
-            self.kash_dict["flush.timeout"] = float(self.kash_dict["flush.timeout"])
+            self.flush_timeout(float(self.kash_dict["flush.timeout"]))
         # Consumer
         if "consume.timeout" not in self.kash_dict:
-            self.kash_dict["consume.timeout"] = 3.0
+            self.consume_timeout(3.0)
         else:
-            self.kash_dict["consume.timeout"] = float(self.kash_dict["consume.timeout"])
+            self.consume_timeout(float(self.kash_dict["consume.timeout"]))
         #
         if "auto.offset.reset" not in self.kash_dict:
-            self.kash_dict["auto.offset.reset"] = "earliest"
+            self.auto_offset_reset("earliest")
         else:
-            self.kash_dict["auto.offset.reset"] = str(self.kash_dict["auto.offset.reset"])
+            self.auto_offset_reset(str(self.kash_dict["auto.offset.reset"]))
         if "enable.auto.commit" not in self.kash_dict:
-            self.kash_dict["enable.auto.commit"] = True
+            self.enable_auto_commit(True)
         else:
-            self.kash_dict["enable.auto.commit"] = str_to_bool(self.kash_dict["enable.auto.commit"])
+            self.enable_auto_commit(str_to_bool(self.kash_dict["enable.auto.commit"]))
         if "session.timeout.ms" not in self.kash_dict:
-            self.kash_dict["session.timeout.ms"] = 45000
+            self.session_timeout_ms(45000)
         else:
-            self.kash_dict["session.timeout.ms"] = int(self.kash_dict["session.timeout.ms"])        
+            self.session_timeout_ms(int(self.kash_dict["session.timeout.ms"]))
         # Standard output
         if "progress.num.messages" not in self.kash_dict:
-            self.kash_dict["progress.num.messages"] = 1000
+            self.progress_num_messages(1000)
         else:
-            self.kash_dict["progress.num.messages"] = int(self.kash_dict["progress.num.messages"])
+            self.progress_num_messages(int(self.kash_dict["progress.num.messages"]))
         # Block
         if "block.num.retries" not in self.kash_dict:
-            self.kash_dict["block.num.retries"] = 50
+            self.block_num_retries(50)
         else:
-            self.kash_dict["block.num.retries"] = int(self.kash_dict["block.num.retries"])
+            self.block_num_retries(int(self.kash_dict["block.num.retries"]))
         if "block.interval" not in self.kash_dict:
-            self.kash_dict["block.interval"] = 0.1
+            self.block_interval(0.1)
         else:
-            self.kash_dict["block.interval"] = float(self.kash_dict["block.interval"])
+            self.block_interval(float(self.kash_dict["block.interval"]))
 
     #
 
-    def set_verbose(self, verbose_int):
-        """Set verbosity level.
+    def retention_ms(self, new_value_int=None):
+        """Get/set the retention.ms kash setting.
 
-        Args:
-            verbose_int (int): Verbosity level.
+            Args:
+                new_value_int (:obj:`int`, optional): New value. Defaults to None (=just get, do not set).
+
+            Returns:
+                :obj:`int`: The retention.ms kash setting.
         """
-        self.verbose_int = verbose_int
+        if new_value_int is not None:
+            self.kash_dict["retention.ms"] = new_value_int
+        return self.kash_dict["retention.ms"]
 
-    def verbose(self):
-        """Get verbosity level.
+    def flush_num_messages(self, new_value_int=None):
+        """Get/set the flush.num.messages kash setting.
 
-        Returns:
-            :obj:`int`: Verbosity level.
+            Args:
+                new_value_int (:obj:`int`, optional): New value. Defaults to None (=just get, do not set).
+
+            Returns:
+                :obj:`int`: The flush.num.messages kash setting.
         """
+        if new_value_int is not None:
+            self.kash_dict["flush.num.messages"] = new_value_int
+        return self.kash_dict["flush.num.messages"]
+
+    def flush_timeout(self, new_value_float=None):
+        """Get/set the flush.timeout kash setting.
+
+            Args:
+                new_value_float (:obj:`float`, optional): New value. Defaults to None (=just get, do not set).
+
+            Returns:
+                :obj:`float`: The flush.timeout kash setting.
+        """
+        if new_value_float is not None:
+            self.kash_dict["flush.timeout"] = new_value_float
+        return self.kash_dict["flush.timeout"]
+
+    def consume_timeout(self, new_value_float=None):
+        """Get/set the consume.timeout kash setting.
+
+            Args:
+                new_value_float (:obj:`float`, optional): New value. Defaults to None (=just get, do not set).
+
+            Returns:
+                :obj:`float`: The consume.timeout kash setting.
+        """
+        if new_value_float is not None:
+            self.kash_dict["consume.timeout"] = new_value_float
+        return self.kash_dict["consume.timeout"]
+
+    def auto_offset_reset(self, new_value_str=None):
+        """Get/set the auto.offset.reset kash setting.
+
+            Args:
+                new_value_str (:obj:`str`, optional): New value. Defaults to None (=just get, do not set).
+
+            Returns:
+                :obj:`str`: The auto.offset.reset kash setting.
+        """
+        if new_value_str is not None:
+            self.kash_dict["auto.offset.reset"] = new_value_str
+        return self.kash_dict["auto.offset.reset"]
+
+    def enable_auto_commit(self, new_value_bool=None):
+        """Get/set the enable.auto.commit kash setting.
+
+            Args:
+                new_value_bool (:obj:`bool`, optional): New value. Defaults to None (=just get, do not set).
+
+            Returns:
+                :obj:`bool`: The enable.auto.commit kash setting.
+        """
+        if new_value_bool is not None:
+            self.kash_dict["enable.auto.commit"] = new_value_bool
+        return self.kash_dict["enable.auto.commit"]
+
+    def session_timeout_ms(self, new_value_int=None):
+        """Get/set the session.timeout.ms kash setting.
+
+            Args:
+                new_value_int (:obj:`int`, optional): New value. Defaults to None (=just get, do not set).
+
+            Returns:
+                :obj:`int`: The session.timeout.ms kash setting.
+        """
+        if new_value_int is not None:
+            self.kash_dict["session.timeout.ms"] = new_value_int
+        return self.kash_dict["session.timeout.ms"]
+
+    def progress_num_messages(self, new_value_int=None):
+        """Get/set the progress.num.messages kash setting.
+
+            Args:
+                new_value_int (:obj:`int`, optional): New value. Defaults to None (=just get, do not set).
+
+            Returns:
+                :obj:`int`: The progress.num.messages kash setting.
+        """
+        if new_value_int is not None:
+            self.kash_dict["progress.num.messages"] = new_value_int
+        return self.kash_dict["progress.num.messages"]
+
+    def block_num_retries(self, new_value_int=None):
+        """Get/set the block.num.retries kash setting.
+
+            Args:
+                new_value_int (:obj:`int`, optional): New value. Defaults to None (=just get, do not set).
+
+            Returns:
+                :obj:`int`: The block.num.retries kash setting.
+        """
+        if new_value_int is not None:
+            self.kash_dict["block.num.retries"] = new_value_int
+        return self.kash_dict["block.num.retries"]
+
+    def block_interval(self, new_value_float=None):
+        """Get/set the block.interval kash setting.
+
+            Args:
+                new_value_float (:obj:`float`, optional): New value. Defaults to None (=just get, do not set).
+
+            Returns:
+                :obj:`float`: The block.interval kash setting.
+        """
+        if new_value_float is not None:
+            self.kash_dict["block.interval"] = new_value_float
+        return self.kash_dict["block.interval"]
+
+    #
+
+    def verbose(self, new_value_int=None):
+        """Get/set the verbosity level.
+
+            Args:
+                new_value_int (:obj:`int`, optional): New value. Defaults to None.
+
+            Returns:
+                :obj:`int`: The verbosity level.
+        """
+        if new_value_int is not None:
+            self.verbose_int = new_value_int
         return self.verbose_int
 
     # Schema Registry helper methods (inside the Cluster class to do caching etc.)
@@ -2148,7 +2303,7 @@ class Cluster:
         Args:
             path_str (:obj:`str`): The path to the local file to read from.
             topic_str (:obj:`str`): The topic to produce to.
-            flatmap_function (:obj:`function`): Flatmap function (takes a message and returns a list of messages)
+            flatmap_function (:obj:`function`): Flatmap function (takes a pair of a key (string) and a value (string) and returns a list of pairs of keys (string) and values (string)).
             key_type (:obj:`str`, optional): The key type ("bytes", "str", "json", "avro", "protobuf" or "pb", or "jsonschema"). Defaults to "str".
             value_type (:obj:`str`, optional): The value type ("bytes", "str", "json", "avro", "protobuf" or "pb", or "jsonschema"). Defaults to "str".
             key_schema (:obj:`str`, optional): The schema of the key of the message to be produced (if key_type is either "avro", "protobuf" or "pb", or "jsonschema"). Defaults to None.
@@ -2166,11 +2321,11 @@ class Cluster:
         Examples:
             Read all messages from the local file "./snacks_value.txt" and produce them to the topic "test"::
 
-                c.flatmap("./snacks_value.txt", "test", flatmap_function=lambda x: [x])
+                c.flatmap_from_file("./snacks_value.txt", "test", flatmap_function=lambda x: [x])
 
             Read all messages from the local file "./snacks_value.txt" and duplicate each of them in the topic "test"::
 
-                c.flatmap("./snacks_value.txt", "test", flatmap_function=lambda x: [x, x])
+                c.flatmap_from_file("./snacks_value.txt", "test", flatmap_function=lambda x: [x, x])
 
             Read all messages from the local file "./snacks_value.txt" and produce them to the topic "test" in Protobuf using schema 'message Snack { required string name = 1; required float calories = 2; optional string colour = 3; }'::
 
@@ -2211,10 +2366,78 @@ class Cluster:
         self.produced_messages_counter_int = 0
         #
         progress_num_messages_int = self.kash_dict["progress.num.messages"]
-        (_, lines_counter_int) = foldl_file(path_str, foldl_function, None, delimiter=message_separator_str, n=num_messages_int, bufsize=bufsize_int, verbose=self.verbose_int, progress_num_lines=progress_num_messages_int)
+        (_, lines_counter_int) = foldl_from_file(path_str, foldl_function, None, delimiter=message_separator_str, n=num_messages_int, bufsize=bufsize_int, verbose=self.verbose_int, progress_num_lines=progress_num_messages_int)
         self.flush()
         #
         return (lines_counter_int, self.produced_messages_counter_int)
+
+    def map_from_file(self, path_str, topic_str, map_function, key_type="str", value_type="str", key_schema=None, value_schema=None, partition=RD_KAFKA_PARTITION_UA, on_delivery=None, key_value_separator=None, message_separator="\n", n=ALL_MESSAGES, bufsize=4096):
+        """Read messages from a local file and produce them to a topic, while transforming the messages in a map-like manner.
+
+        Read messages from a local file with path path_str and produce them to topic topic_str, while transforming the messages in a map-like manner.
+
+        Args:
+            path_str (:obj:`str`): The path to the local file to read from.
+            topic_str (:obj:`str`): The topic to produce to.
+            map_function (:obj:`function`): Map function (takes a pair of a key (string) and a value (string) and returns a transformed pair of key (string) and value (string)).
+            key_type (:obj:`str`, optional): The key type ("bytes", "str", "json", "avro", "protobuf" or "pb", or "jsonschema"). Defaults to "str".
+            value_type (:obj:`str`, optional): The value type ("bytes", "str", "json", "avro", "protobuf" or "pb", or "jsonschema"). Defaults to "str".
+            key_schema (:obj:`str`, optional): The schema of the key of the message to be produced (if key_type is either "avro", "protobuf" or "pb", or "jsonschema"). Defaults to None.
+            value_schema (:obj:`str`, optional): The schema of the value of the message to be produced (if key_type is either "avro", "protobuf" or "pb", or "jsonschema"). Defaults to None.
+            partition (:obj:`int`, optional): The partition to produce to. Defaults to RD_KAFKA_PARTITION_UA = -1, i.e., the partition is selected by configured built-in partitioner.
+            on_delivery (:obj:`function`, optional): Delivery report callback to call (from poll() or flush()) on successful or failed delivery. Passed on to confluent_kafka.Producer.produce(). Takes confluent_kafka.kafkaError and confluent_kafka.Message objects and returns nothing.
+            key_value_separator (:obj:`str`, optional): The separator between the keys and the values in the local file to read from, e.g. ":". If set to None, only read the values, not the keys. Defaults to None.
+            message_separator (:obj:`str`, optional): The separator between individual messages in the local file to read from. Defaults to the newline character.
+            n (:obj:`int`, optional): The number of messages to read from the local file. Defaults to ALL_MESSAGES = -1.
+            bufsize (:obj:`int`, optional): The buffer size for reading from the local file. Defaults to 4096.
+
+        Returns:
+            :obj:`tuple(int, int)` Pair of the number of messages read from the local file (integer) and the number of messages produced to the topic (integer).
+
+        Examples:
+            Read all messages from the local file "./snacks_value.txt" and produce them to the topic "test"::
+
+                c.map_from_file("./snacks_value.txt", "test", map_function=lambda x: x)
+        """
+        def flatmap_function(key_str_value_str_tuple):
+            key_str, value_str = key_str_value_str_tuple
+            return [map_function((key_str, value_str))]
+        #
+        return self.flatmap_from_file(path_str, topic_str, flatmap_function, key_type=key_type, value_type=value_type, key_schema=key_schema, value_schema=value_schema, partition=partition, on_delivery=on_delivery, key_value_separator=key_value_separator, message_separator=message_separator, n=n, bufsize=bufsize)
+
+    def filter_from_file(self, path_str, topic_str, filter_function, key_type="str", value_type="str", key_schema=None, value_schema=None, partition=RD_KAFKA_PARTITION_UA, on_delivery=None, key_value_separator=None, message_separator="\n", n=ALL_MESSAGES, bufsize=4096):
+        """Read messages from a local file and produce them to a topic, while only keeping those messages which fulfil a filter condition.
+
+        Read messages from a local file with path path_str and produce them to topic topic_str, while only keeping those messages which fulfil a filter condition.
+
+        Args:
+            path_str (:obj:`str`): The path to the local file to read from.
+            topic_str (:obj:`str`): The topic to produce to.
+            filter_function (:obj:`function`): Filter function (takes a pair of a key (string) and a value (string) and returns a boolean; if True keeps the message, if False drops it).
+            key_type (:obj:`str`, optional): The key type ("bytes", "str", "json", "avro", "protobuf" or "pb", or "jsonschema"). Defaults to "str".
+            value_type (:obj:`str`, optional): The value type ("bytes", "str", "json", "avro", "protobuf" or "pb", or "jsonschema"). Defaults to "str".
+            key_schema (:obj:`str`, optional): The schema of the key of the message to be produced (if key_type is either "avro", "protobuf" or "pb", or "jsonschema"). Defaults to None.
+            value_schema (:obj:`str`, optional): The schema of the value of the message to be produced (if key_type is either "avro", "protobuf" or "pb", or "jsonschema"). Defaults to None.
+            partition (:obj:`int`, optional): The partition to produce to. Defaults to RD_KAFKA_PARTITION_UA = -1, i.e., the partition is selected by configured built-in partitioner.
+            on_delivery (:obj:`function`, optional): Delivery report callback to call (from poll() or flush()) on successful or failed delivery. Passed on to confluent_kafka.Producer.produce(). Takes confluent_kafka.kafkaError and confluent_kafka.Message objects and returns nothing.
+            key_value_separator (:obj:`str`, optional): The separator between the keys and the values in the local file to read from, e.g. ":". If set to None, only read the values, not the keys. Defaults to None.
+            message_separator (:obj:`str`, optional): The separator between individual messages in the local file to read from. Defaults to the newline character.
+            n (:obj:`int`, optional): The number of messages to read from the local file. Defaults to ALL_MESSAGES = -1.
+            bufsize (:obj:`int`, optional): The buffer size for reading from the local file. Defaults to 4096.
+
+        Returns:
+            :obj:`tuple(int, int)` Pair of the number of messages read from the local file (integer) and the number of messages produced to the topic (integer).
+
+        Examples:
+            Read all messages from the local file "./snacks_value.txt" and produce them to the topic "test", but only those whose value is non-empty::
+
+                c.filter_from_file("./snacks_value.txt", "test", filter_function=lambda x: x["value"] is not None)
+        """
+        def flatmap_function(key_str_value_str_tuple):
+            key_str, value_str = key_str_value_str_tuple
+            return [(key_str, value_str)] if filter_function(key_str_value_str_tuple) else []
+        #
+        return self.flatmap_from_file(path_str, topic_str, flatmap_function, key_type=key_type, value_type=value_type, key_schema=key_schema, value_schema=value_schema, partition=partition, on_delivery=on_delivery, key_value_separator=key_value_separator, message_separator=message_separator, n=n, bufsize=bufsize)
 
     def upload(self, path_str, topic_str, flatmap_function=lambda x: [x], key_type="str", value_type="str", key_schema=None, value_schema=None, partition=RD_KAFKA_PARTITION_UA, on_delivery=None, key_value_separator=None, message_separator="\n", n=ALL_MESSAGES, bufsize=4096):
         """Upload messages from a local file to a topic, while optionally transforming the messages in a flatmap-like manner.
@@ -2224,7 +2447,7 @@ class Cluster:
         Args:
             path_str (:obj:`str`): The path to the local file to read from.
             topic_str (:obj:`str`): The topic to produce to.
-            flatmap_function (:obj:`function`, optional): Flatmap function (takes a message and returns a list of messages). Defaults to lambda x: [x] (=the identify function for flatmap, leading to a one-to-one copy from the messages in the file to the messages in the topic).
+            flatmap_function (:obj:`function`, optional): Flatmap function (takes a pair of key (string) and value (string) and returns a list of pairs of keys and values). Defaults to lambda x: [x] (=the identify function for flatmap, leading to a one-to-one copy from the messages in the file to the messages in the topic).
             key_type (:obj:`str`, optional): The key type ("bytes", "str", "json", "avro", "protobuf" or "pb", or "jsonschema"). Defaults to "str".
             value_type (:obj:`str`, optional): The value type ("bytes", "str", "json", "avro", "protobuf" or "pb", or "jsonschema"). Defaults to "str".
             key_schema (:obj:`str`, optional): The schema of the key of the message to be produced (if key_type is either "avro", "protobuf" or "pb", or "jsonschema"). Defaults to None.
@@ -2493,7 +2716,7 @@ class Cluster:
 
         Args:
             topic_str (:obj:`str`): The topic to subscribe to and consume from.
-            flatmap_function (:obj:`function`): Flatmap function (takes a message dictionary and returns a list of message dictionaries).
+            flatmap_function (:obj:`function`): Flatmap function (takes a message dictionary and returns a list of anything).
             group (:obj:`str`, optional): Consumer group name used for subscribing to the topic. If set to None, creates a new unique consumer group name. Defaults to None.
             offsets (:obj:`dict(int, int)`, optional): Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for subscribing to the topic. If set to None, subscribe to the topic using the offsets from the consumer group. Defaults to None.
             config (:obj:`dict(str, str)`, optional): Dictionary of strings (keys) and strings (values) to augment the consumer configuration for the topic. Defaults to {}.
@@ -2503,7 +2726,7 @@ class Cluster:
             batch_size (:obj:`int`, optional): Maximum number of messages to consume from the topic at a time. Defaults to 1.
 
         Returns:
-            :obj:`tuple(list(message_dict), int)`: Pair of the list of message dictionaries and the number of messages consumed from the topic (integer).
+            :obj:`tuple(list(any), int)`: Pair of the list of anything and the number of messages consumed from the topic (integer).
 
         Examples:
             Consume topic "test" and return a list of all its messages as message dictionaries::
@@ -2522,14 +2745,14 @@ class Cluster:
 
     #
 
-    def map(self, topic_str, map_function, group=None, offsets=None, config={}, key_type="str", value_type="str", n=ALL_MESSAGES, batch_size=1):
-        """Subscribe to and consume messages from a topic and transform them in a map-like manner.
+    def filter(self, topic_str, filter_function, group=None, offsets=None, config={}, key_type="str", value_type="str", n=ALL_MESSAGES, batch_size=1):
+        """Subscribe to and consume messages from a topic and return only those messages fulfilling a filter condition.
 
-        Subscribe to and consume messages from a topic and transform them in a map-like manner, optionally explicitly set the consumer group, initial offsets, and augment the consumer configuration. Stops either if the consume timeout is exceeded (``consume.timeout`` in the kash.py cluster configuration) or the number of messages specified in ``n`` has been consumed.
+        Subscribe to and consume messages from a topic and return only those messages fulfilling a filter condition, optionally explicitly set the consumer group, initial offsets, and augment the consumer configuration. Stops either if the consume timeout is exceeded (``consume.timeout`` in the kash.py cluster configuration) or the number of messages specified in ``n`` has been consumed.
 
         Args:
             topic_str (:obj:`str`): The topic to subscribe to and consume from.
-            map_function (:obj:`function`): Map function (takes a message dictionary and returns a message dictionary).
+            filter_function (:obj:`function`): Filter function (takes a message dictionary and returns a boolean; if True, keep the message, if False, drop it).
             group (:obj:`str`, optional): Consumer group name used for subscribing to the topic. If set to None, creates a new unique consumer group name. Defaults to None.
             offsets (:obj:`dict(int, int)`, optional): Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for subscribing to the topic. If set to None, subscribe to the topic using the offsets from the consumer group. Defaults to None.
             config (:obj:`dict(str, str)`, optional): Dictionary of strings (keys) and strings (values) to augment the consumer configuration for the topic. Defaults to {}.
@@ -2540,6 +2763,42 @@ class Cluster:
 
         Returns:
             :obj:`tuple(list(message_dict), int)`: Pair of the list of message dictionaries and the number of messages consumed from the topic (integer).
+
+        Examples:
+            Consume topic "test" and return a list of all its messages as message dictionaries::
+
+                c.filter("test", lambda x: True)
+
+            Consume topic "test" and return only those messages whose value is non-empty::
+
+                c.filter("test", lambda x: x["value"] is not None)
+        """
+        def flatmap_function(message_dict):
+            return [message_dict] if filter_function(message_dict) else []
+        #
+        return self.flatmap(topic_str, flatmap_function, group=group, offsets=offsets, config=config, 
+        key_type=key_type, value_type=value_type, n=n, batch_size=batch_size)
+
+    #
+
+    def map(self, topic_str, map_function, group=None, offsets=None, config={}, key_type="str", value_type="str", n=ALL_MESSAGES, batch_size=1):
+        """Subscribe to and consume messages from a topic and transform them in a map-like manner.
+
+        Subscribe to and consume messages from a topic and transform them in a map-like manner, optionally explicitly set the consumer group, initial offsets, and augment the consumer configuration. Stops either if the consume timeout is exceeded (``consume.timeout`` in the kash.py cluster configuration) or the number of messages specified in ``n`` has been consumed.
+
+        Args:
+            topic_str (:obj:`str`): The topic to subscribe to and consume from.
+            map_function (:obj:`function`): Map function (takes a message dictionary and returns anything).
+            group (:obj:`str`, optional): Consumer group name used for subscribing to the topic. If set to None, creates a new unique consumer group name. Defaults to None.
+            offsets (:obj:`dict(int, int)`, optional): Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for subscribing to the topic. If set to None, subscribe to the topic using the offsets from the consumer group. Defaults to None.
+            config (:obj:`dict(str, str)`, optional): Dictionary of strings (keys) and strings (values) to augment the consumer configuration for the topic. Defaults to {}.
+            key_type (:obj:`str`, optional): Message key type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "str".
+            value_type (:obj:`str`, optional): Message value type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "str".
+            n (:obj:`int`, optional): Number of messages to consume from the topic. Defaults to ALL_MESSAGES = -1.
+            batch_size (:obj:`int`, optional): Maximum number of messages to consume from the topic at a time. Defaults to 1.
+
+        Returns:
+            :obj:`tuple(list(any), int)`: Pair of the list of anything and the number of messages consumed from the topic (integer).
 
         Examples:
             Consume topic "test" and return a list of all its messages as message dictionaries::
@@ -2817,6 +3076,70 @@ class Cluster:
         #
         return message_counter_int, line_counter_int
 
+    def map_to_file(self, topic_str, path_str, map_function, group=None, offsets=None, config={}, key_type="str", value_type="str", key_value_separator=None, message_separator="\n", overwrite=True, n=ALL_MESSAGES, batch_size=1):
+        """Subscribe to and consume messages from a topic, transform them in a map-like manner and write the resulting messages to a local file.
+
+        Subscribe to and consume messages from a topic, transform them in a map-like manner and write the resulting messages to a local file, optionally explicitly set the consumer group, initial offsets, and augment the consumer configuration. Stops either if the consume timeout is exceeded (``consume.timeout`` in the kash.py cluster configuration) or the number of messages specified in ``n`` has been consumed.
+
+        Args:
+            topic_str (:obj:`str`): The topic to subscribe to and consume from.
+            map_function (:obj:`function`): Map function (takes a message dictionary and returns a message dictionary).
+            group (:obj:`str`, optional): Consumer group name used for subscribing to the topic. If set to None, creates a new unique consumer group name. Defaults to None.
+            offsets (:obj:`dict(int, int)`, optional): Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for subscribing to the topic. If set to None, subscribe to the topic using the offsets from the consumer group. Defaults to None.
+            config (:obj:`dict(str, str)`, optional): Dictionary of strings (keys) and strings (values) to augment the consumer configuration for the topic. Defaults to {}.
+            key_type (:obj:`str`, optional): Message key type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "str".
+            value_type (:obj:`str`, optional): Message value type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "str".
+            key_value_separator (:obj:`str`, optional): The separator between the keys and the values in the local file to write to, e.g. ":". If set to None, only write the values, not the keys. Defaults to None.
+            message_separator (:obj:`str`, optional): The separator between individual messages in the local file to write to. Defaults to the newline character.
+            overwrite (:obj:`bool`, optional): Overwrite the local file if set to True, append to it otherwise. Defaults to True.
+            n (:obj:`int`, optional): Number of messages to consume from the topic. Defaults to ALL_MESSAGES = -1.
+            batch_size (:obj:`int`, optional): Maximum number of messages to consume from the topic at a time. Defaults to 1.
+
+        Returns:
+            :obj:`tuple(int, int)`: Pair of integers of the number of messages consumed from the topic, and the number of lines/messages written to the local file.
+
+        Examples:
+            Consume all the messages from topic "test" and write them to the local file "./test.txt"::
+
+                c.map_to_file("test", "./test.txt", lambda x: x)
+        """
+        def flatmap_function(message_dict):
+            return [map_function(message_dict)]
+        #
+        return self.flatmap_to_file(topic_str, path_str, flatmap_function, group=group, offsets=offsets, config=config, key_type=key_type, value_type=value_type, key_value_separator=key_value_separator, message_separator=message_separator, overwrite=overwrite, n=n, batch_size=batch_size)
+
+    def filter_to_file(self, topic_str, path_str, filter_function, group=None, offsets=None, config={}, key_type="str", value_type="str", key_value_separator=None, message_separator="\n", overwrite=True, n=ALL_MESSAGES, batch_size=1):
+        """Subscribe to and consume messages from a topic and write only those messages to a local file which fulfil a filter condition.
+
+        Subscribe to and consume messages from a topic and write only those messages to a file which fulfil a filter condition, optionally explicitly set the consumer group, initial offsets, and augment the consumer configuration. Stops either if the consume timeout is exceeded (``consume.timeout`` in the kash.py cluster configuration) or the number of messages specified in ``n`` has been consumed.
+
+        Args:
+            topic_str (:obj:`str`): The topic to subscribe to and consume from.
+            filter_function (:obj:`function`): Filter function (takes a message dictionary and returns a boolean; if True, keep the message, if False, drop it).
+            group (:obj:`str`, optional): Consumer group name used for subscribing to the topic. If set to None, creates a new unique consumer group name. Defaults to None.
+            offsets (:obj:`dict(int, int)`, optional): Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for subscribing to the topic. If set to None, subscribe to the topic using the offsets from the consumer group. Defaults to None.
+            config (:obj:`dict(str, str)`, optional): Dictionary of strings (keys) and strings (values) to augment the consumer configuration for the topic. Defaults to {}.
+            key_type (:obj:`str`, optional): Message key type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "str".
+            value_type (:obj:`str`, optional): Message value type ("bytes", "str", "json", "avro", "protobuf"/"pb" or "jsonschema"). Defaults to "str".
+            key_value_separator (:obj:`str`, optional): The separator between the keys and the values in the local file to write to, e.g. ":". If set to None, only write the values, not the keys. Defaults to None.
+            message_separator (:obj:`str`, optional): The separator between individual messages in the local file to write to. Defaults to the newline character.
+            overwrite (:obj:`bool`, optional): Overwrite the local file if set to True, append to it otherwise. Defaults to True.
+            n (:obj:`int`, optional): Number of messages to consume from the topic. Defaults to ALL_MESSAGES = -1.
+            batch_size (:obj:`int`, optional): Maximum number of messages to consume from the topic at a time. Defaults to 1.
+
+        Returns:
+            :obj:`tuple(int, int)`: Pair of integers of the number of messages consumed from the topic, and the number of lines/messages written to the local file.
+
+        Examples:
+            Consume all the messages from topic "test" and write only those to the local file "./test.txt" whose value is not None::
+
+                c.filter_to_file("test", "./test.txt", lambda x: x["value"] is not None)
+        """
+        def flatmap_function(message_dict):
+            return [message_dict] if filter_function(message_dict) else []
+        #
+        return self.flatmap_to_file(topic_str, path_str, flatmap_function, group=group, offsets=offsets, config=config, key_type=key_type, value_type=value_type, key_value_separator=key_value_separator, message_separator=message_separator, overwrite=overwrite, n=n, batch_size=batch_size)
+
     def download(self, topic_str, path_str, flatmap_function=lambda x: [x], group=None, offsets=None, config={}, key_type="str", value_type="str", key_value_separator=None, message_separator="\n", overwrite=True, n=ALL_MESSAGES, batch_size=1):
         """Download messages from a topic to a local file while optionally transforming them in a flatmap-like manner.
 
@@ -2965,7 +3288,7 @@ class Cluster:
         Args:
             topic_str1 (:obj:`str`): Topic 1
             topic_str2 (:obj:`str`): Topic 2
-            diff_function (:obj:`function`): Diff function (takes a message dictionary from topic 1 and a message dictionary from topic 2 and returns the updated accumulator)
+            diff_function (:obj:`function`): Diff function (takes a message dictionary from topic 1 and a message dictionary from topic 2 and returns True if the message dictionaries are different, False if they are not different).
             group1 (:obj:`str`, optional): Consumer group name used for consuming from topic 1. If set to None, creates a new unique consumer group name. Defaults to None.
             group2 (:obj:`str`, optional): Consumer group name used for consuming from topic 2. If set to None, creates a new unique consumer group name. Defaults to None.
             offsets1 (:obj:`dict(int, int)`, optional): Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for consuming from topic 1. If set to None, consume topic 1 using the offsets from the consumer group for topic 1. Defaults to None.

@@ -363,7 +363,7 @@ class Test(unittest.TestCase):
     
     def test_cluster_settings(self):
         cluster = Cluster(cluster_str)
-        cluster.set_verbose(0)
+        cluster.verbose(0)
         self.assertEqual(cluster.verbose(), 0)
 
     def test_transforms_string(self):
@@ -512,7 +512,7 @@ class Test(unittest.TestCase):
         schema_str = '{ "type": "record", "name": "myrecord", "fields": [{"name": "name",  "type": "string" }, {"name": "calories", "type": "float" }, {"name": "colour", "type": "string" }] }'
         #
         cluster = Cluster(cluster_str)
-        cluster.set_verbose(1)
+        cluster.verbose(1)
         topic_str = create_test_topic_name()
         cluster.create(topic_str)
         cluster.cp("./snacks_value.txt", topic_str, target_value_type="avro", target_value_schema=schema_str)
@@ -532,7 +532,7 @@ class Test(unittest.TestCase):
 
     def test_offsets_for_times(self):
         cluster = Cluster(cluster_str)
-        cluster.set_verbose(1)
+        cluster.verbose(1)
         topic_str = create_test_topic_name()
         cluster.create(topic_str)
         cluster.produce(topic_str, "message 1")
@@ -634,7 +634,7 @@ class Test(unittest.TestCase):
         self.assertEqual(cluster.size(f"{topic_str}_2")[f"{topic_str}_2"][1][0], 3)
         #
         cluster2 = Cluster(cluster_str)
-        cluster.set_verbose(1)
+        cluster.verbose(1)
         differing_message_dict_tuple_list, num_messages_int1, num_messages_int2 = diff(cluster, topic_str, cluster2, f"{topic_str}_1")
         self.assertEqual(differing_message_dict_tuple_list, [])
         self.assertEqual(num_messages_int1, 3)
@@ -645,6 +645,19 @@ class Test(unittest.TestCase):
         self.assertEqual(num_messages_int1, 3)
         self.assertEqual(num_messages_int2, 3)
         self.assertEqual(differing_message_dict_tuple_list1[0][0]["value"]["name"], "cookie")
+        #
+        differing_message_dict_tuple_list1, num_messages_int1, num_messages_int2 = cluster.diff_fun(topic_str, f"{topic_str}_2", lambda x, y: x["value"] != y["value"], value_type1="json", value_type2="json")
+        self.assertEqual(len(differing_message_dict_tuple_list1), 1)
+        self.assertEqual(num_messages_int1, 3)
+        self.assertEqual(num_messages_int2, 3)
+        self.assertEqual(differing_message_dict_tuple_list1[0][0]["value"]["name"], "cookie")
+        #
+        acc, num_messages_int1, num_messages_int2 = cluster.zip_foldl(topic_str, f"{topic_str}_2", lambda acc, x, y: acc + [(x["value"], y["value"])], [], value_type1="json", value_type2="json")
+        self.assertEqual(len(acc), 3)
+        self.assertEqual(num_messages_int1, 3)
+        self.assertEqual(num_messages_int2, 3)
+        print(acc)
+        self.assertEqual(acc[0][0]["name"], "cookie")
         #
         cluster.delete(topic_str)
         cluster.delete(f"{topic_str}_1")
@@ -726,4 +739,51 @@ class Test(unittest.TestCase):
         message_dict_list = cluster.map(topic_str, map_function)
         self.assertEqual(json.loads(message_dict_list[0][0]["value"])["colour"], "brownish")
         #
+        cluster.delete(topic_str)
+
+    def test_filter(self):
+        cluster = Cluster(cluster_str)
+        topic_str = create_test_topic_name()
+        cluster.create(topic_str)
+        #
+        cluster.cp("./snacks_value.txt", topic_str, target_value_type="str")
+        self.assertEqual(cluster.size(topic_str)[topic_str][0], 3)
+        #
+        def filter_function(message_dict):
+            return message_dict["value"]["colour"] == "brown"
+        #
+        message_dict_list, _ = cluster.filter(topic_str, filter_function, value_type="json")
+        self.assertEqual(len(message_dict_list), 1)
+        #
+        cluster.delete(topic_str)
+
+    def test_map_filter_to_from_file(self):
+        cluster = Cluster(cluster_str)
+        topic_str = create_test_topic_name()
+        cluster.create(topic_str)
+        #
+        cluster.map_from_file("./snacks_value.txt", topic_str, lambda x: x)
+        self.assertEqual(cluster.size(topic_str)[topic_str][0], 3)
+        #
+        def map_function(message_dict):
+            message_dict["value"]["colour"] = "brown"
+            return message_dict
+        (message_counter_int, line_counter_int) = cluster.map_to_file(topic_str, "./snacks_value1.txt", map_function=map_function, value_type="json")
+        self.assertEqual(message_counter_int, 3)
+        self.assertEqual(line_counter_int, 3)
+        #
+        def filter_function(key_str_value_str_tuple):
+            _, value_str = key_str_value_str_tuple
+            return json.loads(value_str)["name"] == "timtam"
+        (lines_counter_int, produced_messages_counter_int) = cluster.filter_from_file("./snacks_value1.txt", topic_str, filter_function)
+        self.assertEqual(lines_counter_int, 3)
+        self.assertEqual(produced_messages_counter_int, 1)
+        #
+        def filter_function(message_dict):
+            return message_dict["value"]["name"] == "timtam"
+        (message_counter_int, line_counter_int) = cluster.filter_to_file(topic_str, "./snacks_value2.txt", filter_function, value_type="json")
+        self.assertEqual(message_counter_int, 4)
+        self.assertEqual(line_counter_int, 2)
+        #
+        os.remove("./snacks_value1.txt")
         cluster.delete(topic_str)
