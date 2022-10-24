@@ -1908,6 +1908,63 @@ c.groups(["test*", "bla*"])
 ```
 
 
+#### head(pattern_str, n=10, group=None, offsets=None, config={}, key_type='str', value_type='str')
+Consume the first n messages of a topic/list of topics matching a bash-like pattern.
+
+Subscribe to a topic/list of topics matching a bash-like pattern, optionally explicitly set the consumer group, initial offsets, and augment the consumer configuration. Then consume the first n messages of this topic/these topics.
+
+
+* **Parameters**
+
+    
+    * **pattern_str** (`str`) – The topic/list of topics matching a bash-like pattern consume from.
+
+
+    * **n** (`int`, optional) – The number of messages to consume from the topic/list of topics matching the bash-like pattern. Defaults to 10.
+
+
+    * **group** (`str`, optional) – The consumer group name. If set to None, automatically create a new unique consumer group name. Defaults to None.
+
+
+    * **offsets** (`dict(int, int)`, optional) – Dictionary of integers (partitions) and integers (initial offsets for the individual partitions of the topic). If set to None, does not set any initial offsets. Defaults to None.
+
+
+    * **config** (`dict(str, str)`, optional) – Dictionary of strings (keys) and strings (values) to augment the consumer configuration. Defaults to {}.
+
+
+    * **key_type** (`str`, optional) – The key type (“bytes”, “str”, “json”, “avro”, “protobuf” or “pb”, or “jsonschema”). Defaults to “str”.
+
+
+    * **value_type** (`str`, optional) – The value type (“bytes”, “str”, “json”, “avro”, “protobuf” or “pb”, or “jsonschema”). Defaults to “str”.
+
+
+
+* **Returns**
+
+    Dictionary of strings (topic names) and lists of message dictionaries.
+
+
+
+* **Return type**
+
+    `dict(str, list(message_dict))`
+
+
+### Examples
+
+Consume the first ten messages of the topic “test”:
+
+```default
+c.head("test")
+```
+
+Consume the first two messages of the topic “test”:
+
+```default
+c.head("test", n=2)
+```
+
+
 #### l(pattern=None, size=True, partitions=False)
 List topics on the cluster (shortcut for topics(size=True), a la the “l” alias in bash).
 
@@ -2939,6 +2996,63 @@ Subscribe to the topic “test” using an automatically created new unique cons
 
 ```default
 c.subscribe("test", key_type="avro", value_type="avro")
+```
+
+
+#### tail(topic_str, n=10, group=None, offsets=None, config={}, key_type='str', value_type='str')
+Consume the last n messages of a topic/list of topics matching a bash-like pattern.
+
+Subscribe to a topic/list of topics matching a bash-like pattern, optionally explicitly set the consumer group, initial offsets, and augment the consumer configuration. Then consume the last n messages of this topic/these topics.
+
+
+* **Parameters**
+
+    
+    * **pattern_str** (`str`) – The topic/list of topics matching a bash-like pattern consume from.
+
+
+    * **n** (`int`, optional) – The number of messages to consume from the topic/list of topics matching the bash-like pattern. Defaults to 10.
+
+
+    * **group** (`str`, optional) – The consumer group name. If set to None, automatically create a new unique consumer group name. Defaults to None.
+
+
+    * **offsets** (`dict(int, int)`, optional) – Dictionary of integers (partitions) and integers (initial offsets for the individual partitions of the topic). If set to None, does not set any initial offsets. Defaults to None.
+
+
+    * **config** (`dict(str, str)`, optional) – Dictionary of strings (keys) and strings (values) to augment the consumer configuration. Defaults to {}.
+
+
+    * **key_type** (`str`, optional) – The key type (“bytes”, “str”, “json”, “avro”, “protobuf” or “pb”, or “jsonschema”). Defaults to “str”.
+
+
+    * **value_type** (`str`, optional) – The value type (“bytes”, “str”, “json”, “avro”, “protobuf” or “pb”, or “jsonschema”). Defaults to “str”.
+
+
+
+* **Returns**
+
+    Dictionary of strings (topic names) and lists of message dictionaries.
+
+
+
+* **Return type**
+
+    `dict(str, list(message_dict))`
+
+
+### Examples
+
+Consume the last ten messages of the topic “test”:
+
+```default
+c.tail("test")
+```
+
+Consume the last two messages of the topic “test”:
+
+```default
+c.tail("test", n=2)
 ```
 
 

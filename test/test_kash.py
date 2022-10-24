@@ -793,3 +793,23 @@ class Test(unittest.TestCase):
         os.remove("./snacks_value1.txt")
         os.remove("./snacks_value2.txt")
         cluster.delete(topic_str)
+
+    def test_head_tail(self):
+        cluster = Cluster(cluster_str)
+        topic_str = create_test_topic_name()
+        cluster.create(topic_str)
+        #
+        cluster.cp("./snacks_value.txt", topic_str, flatmap_function=lambda x: [x, x, x, x], target_value_type="str")
+        self.assertEqual(cluster.size(topic_str)[topic_str][0], 12)
+        #
+        topic_str_message_dict_list_dict = cluster.head(topic_str)
+        self.assertEqual(len(topic_str_message_dict_list_dict[topic_str]), 10)
+        self.assertEqual(topic_str_message_dict_list_dict[topic_str][0]["offset"], 0)
+        self.assertEqual(topic_str_message_dict_list_dict[topic_str][9]["offset"], 9)
+        #
+        topic_str_message_dict_list_dict = cluster.tail(topic_str)
+        self.assertEqual(len(topic_str_message_dict_list_dict[topic_str]), 10)
+        self.assertEqual(topic_str_message_dict_list_dict[topic_str][0]["offset"], 2)
+        self.assertEqual(topic_str_message_dict_list_dict[topic_str][9]["offset"], 11)
+        #
+        cluster.delete(topic_str)

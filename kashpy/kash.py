@@ -1,3 +1,6 @@
+# tail
+# head
+
 from confluent_kafka import Consumer, OFFSET_BEGINNING, OFFSET_END, OFFSET_INVALID, OFFSET_STORED, Producer, TIMESTAMP_CREATE_TIME, TopicPartition
 from confluent_kafka.admin import AclBinding, AclBindingFilter, AclOperation, AclPermissionType, AdminClient, ConfigResource, NewPartitions, NewTopic, ResourceType, ResourcePatternType
 from confluent_kafka.schema_registry import SchemaRegistryClient
@@ -1378,12 +1381,12 @@ class Cluster:
         consumer = get_consumer(config_dict)
         #
         topic_str_list = self.topics(pattern_str_or_str_list)
-        topic_str_partition_int_tuple_dict_dict = {}
+        topic_str_partition_int_offsets_tuple_dict_dict = {}
         for topic_str in topic_str_list:
             partitions_int = self.partitions(topic_str)[topic_str]
-            partition_int_tuple_dict = {partition_int: consumer.get_watermark_offsets(TopicPartition(topic_str, partition=partition_int), timeout_float) for partition_int in range(partitions_int)}
-            topic_str_partition_int_tuple_dict_dict[topic_str] = partition_int_tuple_dict
-        return topic_str_partition_int_tuple_dict_dict
+            partition_int_offsets_tuple_dict = {partition_int: consumer.get_watermark_offsets(TopicPartition(topic_str, partition=partition_int), timeout_float) for partition_int in range(partitions_int)}
+            topic_str_partition_int_offsets_tuple_dict_dict[topic_str] = partition_int_offsets_tuple_dict
+        return topic_str_partition_int_offsets_tuple_dict_dict
 
     def topics(self, pattern=None, size=False, partitions=False):
         """List topics on the cluster.
@@ -2693,6 +2696,90 @@ class Cluster:
 
     #
 
+    def head(self, pattern_str, n=10, group=None, offsets=None, config={}, key_type="str", value_type="str"):
+        """Consume the first n messages of a topic/list of topics matching a bash-like pattern.
+
+        Subscribe to a topic/list of topics matching a bash-like pattern, optionally explicitly set the consumer group, initial offsets, and augment the consumer configuration. Then consume the first n messages of this topic/these topics.
+
+        Args:
+            pattern_str (:obj:`str`): The topic/list of topics matching a bash-like pattern consume from.
+            n (:obj:`int`, optional): The number of messages to consume from the topic/list of topics matching the bash-like pattern. Defaults to 10.
+            group (:obj:`str`, optional): The consumer group name. If set to None, automatically create a new unique consumer group name. Defaults to None.
+            offsets (:obj:`dict(int, int)`, optional): Dictionary of integers (partitions) and integers (initial offsets for the individual partitions of the topic). If set to None, does not set any initial offsets. Defaults to None.
+            config (:obj:`dict(str, str)`, optional): Dictionary of strings (keys) and strings (values) to augment the consumer configuration. Defaults to {}.
+            key_type (:obj:`str`, optional): The key type ("bytes", "str", "json", "avro", "protobuf" or "pb", or "jsonschema"). Defaults to "str".
+            value_type (:obj:`str`, optional): The value type ("bytes", "str", "json", "avro", "protobuf" or "pb", or "jsonschema"). Defaults to "str".
+
+        Returns:
+            :obj:`dict(str, list(message_dict))`: Dictionary of strings (topic names) and lists of message dictionaries.
+
+        Examples:
+            Consume the first ten messages of the topic "test"::
+
+                c.head("test")
+
+            Consume the first two messages of the topic "test"::
+
+                c.head("test", n=2)
+        """
+        topic_str_list = self.topics(pattern_str)
+        #
+        topic_str_message_dict_list_dict = {}
+        for topic_str in topic_str_list:
+            self.subscribe(topic_str, group=group, offsets=offsets, config=config, key_type=key_type, value_type=value_type)
+            #
+            message_dict_list = self.consume(n=n)
+            topic_str_message_dict_list_dict[topic_str] = message_dict_list
+        #
+        return topic_str_message_dict_list_dict
+
+    def tail(self, topic_str, n=10, group=None, offsets=None, config={}, key_type="str", value_type="str"):
+        """Consume the last n messages of a topic/list of topics matching a bash-like pattern.
+
+        Subscribe to a topic/list of topics matching a bash-like pattern, optionally explicitly set the consumer group, initial offsets, and augment the consumer configuration. Then consume the last n messages of this topic/these topics.
+
+        Args:
+            pattern_str (:obj:`str`): The topic/list of topics matching a bash-like pattern consume from.
+            n (:obj:`int`, optional): The number of messages to consume from the topic/list of topics matching the bash-like pattern. Defaults to 10.
+            group (:obj:`str`, optional): The consumer group name. If set to None, automatically create a new unique consumer group name. Defaults to None.
+            offsets (:obj:`dict(int, int)`, optional): Dictionary of integers (partitions) and integers (initial offsets for the individual partitions of the topic). If set to None, does not set any initial offsets. Defaults to None.
+            config (:obj:`dict(str, str)`, optional): Dictionary of strings (keys) and strings (values) to augment the consumer configuration. Defaults to {}.
+            key_type (:obj:`str`, optional): The key type ("bytes", "str", "json", "avro", "protobuf" or "pb", or "jsonschema"). Defaults to "str".
+            value_type (:obj:`str`, optional): The value type ("bytes", "str", "json", "avro", "protobuf" or "pb", or "jsonschema"). Defaults to "str".
+
+        Returns:
+            :obj:`dict(str, list(message_dict))`: Dictionary of strings (topic names) and lists of message dictionaries.
+
+        Examples:
+            Consume the last ten messages of the topic "test"::
+
+                c.tail("test")
+
+            Consume the last two messages of the topic "test"::
+
+                c.tail("test", n=2)
+        """
+        n_int = n
+        offsets_dict = offsets
+        #
+        topic_str_partition_int_offsets_tuple_dict_dict = self.watermarks(topic_str)
+        #
+        topic_str_message_dict_list_dict = {}
+        for topic_str, partition_int_offsets_tuple_dict in topic_str_partition_int_offsets_tuple_dict_dict.items():
+            if offsets_dict is None:
+                offsets_dict = {partition_int: offsets_tuple[1] for partition_int, offsets_tuple in partition_int_offsets_tuple_dict.items()}
+            #
+            start_offsets_dict = {partition_int: offset_int - n_int for partition_int, offset_int in offsets_dict.items()}
+            #
+            self.subscribe(topic_str, group=group, offsets=start_offsets_dict, config=config, key_type=key_type, value_type=value_type)
+            #
+            message_dict_list = self.consume(n=n)
+            topic_str_message_dict_list_dict[topic_str] = message_dict_list
+        #
+        return topic_str_message_dict_list_dict
+
+    #
+
     def foldl(self, topic_str, foldl_function, initial_acc, group=None, offsets=None, config={}, key_type="str", value_type="str", n=ALL_MESSAGES, batch_size=1):
         """Subscribe to and consume messages from a topic and transform them in a foldl-like manner.
 
@@ -3377,3 +3464,7 @@ class Cluster:
                 diff(cluster1, "topic1", cluster2, "topic2")
         """
         return diff(self, topic_str1, self, topic_str2, group1=group1, group2=group2, offsets1=offsets1, offsets2=offsets2, key_type1=key_type1, value_type1=value_type1, key_type2=key_type2, value_type2=value_type2, n=n, batch_size=batch_size)
+
+#os.environ["KASHPY_HOME"] = "/home/ralph/kafka/kash.py"
+#c = Cluster("local")
+#c.tail("snacks2")

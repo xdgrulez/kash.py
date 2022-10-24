@@ -1,0 +1,3 @@
+{"name": "cookie", "calories": 500.0, "colour": "brown"}
+{"name": "cake", "calories": 260.0, "colour": "white"}
+{"name": "timtam", "calories": 80.0, "colour": "chocolate"}
