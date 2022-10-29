@@ -419,10 +419,16 @@ c.cat("test")
 ```
 
 
-#### commit()
+#### commit(asynchronous=False)
 Commit the last consumed message from the topic subscribed to.
 
 Commit the last consumed message from the topic subscribed to.
+
+
+* **Parameters**
+
+    **asynchronous** (`bool`, optional) – Passed to the confluent_kafka.Consumer.commit() method: If true, asynchronously commit, if False, the commit() call will block until the commit succeeds or fails. Defaults to False.
+
 
 
 * **Returns**

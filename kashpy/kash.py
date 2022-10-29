@@ -2653,15 +2653,18 @@ class Cluster:
         #
         return message_dict_list
 
-    def commit(self):
+    def commit(self, asynchronous=False):
         """Commit the last consumed message from the topic subscribed to.
 
         Commit the last consumed message from the topic subscribed to.
 
+        Args:
+            asynchronous (:obj:`bool`, optional): Passed to the confluent_kafka.Consumer.commit() method: If true, asynchronously commit, if False, the commit() call will block until the commit succeeds or fails. Defaults to False.
+
         Returns:
             :obj:`message_dict`: Last consumed message dictionary (converted from confluent_kafka.Message).
         """
-        self.consumer.commit(self.last_consumed_message)
+        self.consumer.commit(self.last_consumed_message, asynchronous=asynchronous)
         #
         return self.last_consumed_message
 
