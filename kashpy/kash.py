@@ -1,6 +1,3 @@
-# tail
-# head
-
 from confluent_kafka import Consumer, OFFSET_BEGINNING, OFFSET_END, OFFSET_INVALID, OFFSET_STORED, Producer, TIMESTAMP_CREATE_TIME, TopicPartition
 from confluent_kafka.admin import AclBinding, AclBindingFilter, AclOperation, AclPermissionType, AdminClient, ConfigResource, NewPartitions, NewTopic, ResourceType, ResourcePatternType
 from confluent_kafka.schema_registry import SchemaRegistryClient
@@ -28,7 +25,6 @@ CURRENT_TIME = 0
 
 # Helpers
 
-
 def str_to_bool(str):
     if str.lower() == "false":
         return False
@@ -52,7 +48,7 @@ def create_unique_group_id():
     return str(get_millis())
 
 
-def foldl_from_file(path_str, foldl_function, initial_acc, delimiter='\n', n=ALL_MESSAGES, bufsize=4096, verbose=0, progress_num_lines=1000):
+def foldl_from_file(path_str, foldl_function, initial_acc, break_function=lambda x: False, key_value_separator=None, message_separator="\n", n=ALL_MESSAGES, bufsize=4096, verbose=0, progress_num_lines=1000):
     """Read lines from a file and transform them in a foldl-like manner.
 
     Read lines/messages from a file and transform them in a foldl-like manner. Stops either if the file is read until the end or the number of lines/messages specified in ``n`` has been consumed.
@@ -79,7 +75,8 @@ def foldl_from_file(path_str, foldl_function, initial_acc, delimiter='\n', n=ALL
 
             foldl_from_file("./snacks_value.txt", lambda acc, x: acc + json.loads(x)["calories"], 0)
     """
-    delimiter_str = delimiter
+    key_value_separator_str = key_value_separator
+    message_separator_str = message_separator
     bufsize_int = bufsize
     num_lines_int = n
     verbose_int = verbose
@@ -89,8 +86,26 @@ def foldl_from_file(path_str, foldl_function, initial_acc, delimiter='\n', n=ALL
     #
     line_counter_int = 0
     #
+    def split(line_str):
+        key_str = None
+        value_str = None
+        #
+        if line_str:
+            if key_value_separator_str is not None:
+                split_str_list = line_str.split(key_value_separator_str)
+                if len(split_str_list) == 2:
+                    key_str = split_str_list[0]
+                    value_str = split_str_list[1]
+                else:
+                    value_str = line_str
+            else:
+                value_str = line_str
+        #
+        return key_str, value_str 
+    #
     acc = initial_acc
     with open(path_str) as textIOWrapper:
+        break_bool = False
         while True:
             newbuf_str = textIOWrapper.read(bufsize_int)
             if not newbuf_str:
@@ -100,20 +115,35 @@ def foldl_from_file(path_str, foldl_function, initial_acc, delimiter='\n', n=ALL
                     if verbose_int > 0 and line_counter_int % progress_num_lines_int == 0:
                         print(f"Read: {line_counter_int}")
                     #
-                    acc = foldl_function(acc, last_line_str)
+                    key_str_value_str_tuple = split(last_line_str)
+                    #
+                    if break_function(key_str_value_str_tuple):
+                        break_bool = True
+                        break
+                    #
+                    acc = foldl_function(acc, key_str_value_str_tuple)
                 break
             buf_str += newbuf_str
-            line_str_list = buf_str.split(delimiter_str)
+            line_str_list = buf_str.split(message_separator_str)
             for line_str in line_str_list[:-1]:
                 line_counter_int += 1
                 if verbose_int > 0 and line_counter_int % progress_num_lines_int == 0:
                     print(f"Read: {line_counter_int}")
                 #
-                acc = foldl_function(acc, line_str)
+                key_str_value_str_tuple = split(line_str)
+                #
+                if break_function(key_str_value_str_tuple):
+                    break_bool = True
+                    break
+                #
+                acc = foldl_function(acc, key_str_value_str_tuple)
                 #
                 if num_lines_int != ALL_MESSAGES:
                     if line_counter_int >= num_lines_int:
                         break
+            #
+            if break_bool:
+                break
             #
             buf_str = line_str_list[-1]
     #
@@ -378,7 +408,7 @@ def groupMember_to_dict(groupMember):
 
 # Cross-cluster
 
-def flatmap(source_cluster, source_topic_str, target_cluster, target_topic_str, flatmap_function, group=None, offsets=None, config={}, source_key_type="bytes", source_value_type="bytes", target_key_type=None, target_value_type=None, target_key_schema=None, target_value_schema=None, on_delivery=None, keep_timestamps=True, n=ALL_MESSAGES, batch_size=1):
+def flatmap(source_cluster, source_topic_str, target_cluster, target_topic_str, flatmap_function, break_function=lambda x: False, group=None, offsets=None, config={}, source_key_type="bytes", source_value_type="bytes", target_key_type=None, target_value_type=None, target_key_schema=None, target_value_schema=None, on_delivery=None, keep_timestamps=True, n=ALL_MESSAGES, batch_size=1):
     """Replicate a topic and transform the messages in a flatmap-like manner.
 
     Replicate (parts of) a topic (source_topic_str) on one cluster (source_cluster) to another topic (target_topic_str) on another (or the same) cluster (target_cluster). Each replicated message is transformed into a list of other messages in a flatmap-like manner. The source and target topics can have different message key and value types; e.g. the source topic can have value type Avro whereas the target topic will be written with value type Protobuf.
@@ -467,14 +497,14 @@ def flatmap(source_cluster, source_topic_str, target_cluster, target_topic_str, 
             if target_cluster.produced_messages_counter_int % target_cluster.kash_dict["flush.num.messages"] == 0:
                 target_cluster.flush()
     #
-    num_messages_int = source_cluster.foreach(source_topic_str, foreach_function, group=group, offsets=offsets, config=config, key_type=source_key_type_str, value_type=source_value_type_str, n=n, batch_size=batch_size)
+    num_messages_int = source_cluster.foreach(source_topic_str, foreach_function, break_function=break_function, group=group, offsets=offsets, config=config, key_type=source_key_type_str, value_type=source_value_type_str, n=n, batch_size=batch_size)
     #
     target_cluster.flush()
     #
     return (num_messages_int, target_cluster.produced_messages_counter_int)
 
 
-def filter(source_cluster, source_topic_str, target_cluster, target_topic_str, filter_function, group=None, offsets=None, config={}, source_key_type="bytes", source_value_type="bytes", target_key_type=None, target_value_type=None, target_key_schema=None, target_value_schema=None, on_delivery=None, keep_timestamps=True, n=ALL_MESSAGES, batch_size=1):
+def filter(source_cluster, source_topic_str, target_cluster, target_topic_str, filter_function, break_function=lambda x: False, group=None, offsets=None, config={}, source_key_type="bytes", source_value_type="bytes", target_key_type=None, target_value_type=None, target_key_schema=None, target_value_schema=None, on_delivery=None, keep_timestamps=True, n=ALL_MESSAGES, batch_size=1):
     """Replicate a topic and only keep those messages which fulfil a filter condition.
 
     Replicate (parts of) a topic (source_topic_str) on one cluster (source_cluster) to another topic (target_topic_str) on another (or the same) cluster (target_cluster) and only keep those messages fulfilling a filter condition. Each replicated message is transformed into a list of other messages in a flatmap-like manner. The source and target topics can have different message key and value types; e.g. the source topic can have value type Avro whereas the target topic will be written with value type Protobuf.
@@ -510,10 +540,10 @@ def filter(source_cluster, source_topic_str, target_cluster, target_topic_str, f
     def flatmap_function(message_dict):
         return [message_dict] if filter_function(message_dict) else []
     #
-    return flatmap(source_cluster, source_topic_str, target_cluster, target_topic_str, flatmap_function, group=group, offsets=offsets, config=config, source_key_type=source_key_type, source_value_type=source_value_type, target_key_type=target_key_type, target_value_type=target_value_type, target_key_schema=target_key_schema, target_value_schema=target_value_schema, on_delivery=on_delivery, keep_timestamps=keep_timestamps, n=n, batch_size=batch_size)
+    return flatmap(source_cluster, source_topic_str, target_cluster, target_topic_str, flatmap_function, break_function=break_function, group=group, offsets=offsets, config=config, source_key_type=source_key_type, source_value_type=source_value_type, target_key_type=target_key_type, target_value_type=target_value_type, target_key_schema=target_key_schema, target_value_schema=target_value_schema, on_delivery=on_delivery, keep_timestamps=keep_timestamps, n=n, batch_size=batch_size)
 
 
-def map(source_cluster, source_topic_str, target_cluster, target_topic_str, map_function, group=None, offsets=None, config={}, source_key_type="bytes", source_value_type="bytes", target_key_type=None, target_value_type=None, target_key_schema=None, target_value_schema=None, on_delivery=None, keep_timestamps=True, n=ALL_MESSAGES, batch_size=1):
+def map(source_cluster, source_topic_str, target_cluster, target_topic_str, map_function, break_function=lambda x: False, group=None, offsets=None, config={}, source_key_type="bytes", source_value_type="bytes", target_key_type=None, target_value_type=None, target_key_schema=None, target_value_schema=None, on_delivery=None, keep_timestamps=True, n=ALL_MESSAGES, batch_size=1):
     """Replicate a topic and optionally transform the messages in a map-like manner.
 
     Replicate (parts of) a topic (source_topic_str) on one cluster (source_cluster) to another topic (target_topic_str) on another (or the same) cluster (target_cluster). Each replicated message can be transformed into another messages in a map-like manner. The source and target topics can have different message key and value types; e.g. the source topic can have value type Avro whereas the target topic will be written with value type Protobuf. Stops either if the consume timeout is exceeded on the source cluster (``consume.timeout`` in the kash.py cluster configuration) or the number of messages specified in ``n`` has been consumed.
@@ -523,7 +553,7 @@ def map(source_cluster, source_topic_str, target_cluster, target_topic_str, map_
         source_topic_str (:obj:`str`): Source topic
         target_cluster (:obj:`Cluster`): Target cluster
         target_topic_str (:obj:`str`): Target topic
-        map_function (:obj:`function`, optional): Map function (takes a message dictionary and returns a message dictionary). Defaults to lambda x: [x].
+        map_function (:obj:`function`): Map function (takes a message dictionary and returns a message dictionary).
         group (:obj:`str`, optional): Consumer group name used for subscribing to the source topic. If set to None, creates a new unique consumer group name. Defaults to None.
         offsets (:obj:`dict(int, int)`, optional): Dictionary of offsets (keys: partitions (int), values: offsets for the partitions (int)) for subscribing to the source topic. If set to None, subscribe to the topic using the offsets from the consumer group for the topic. Defaults to None.
         config (:obj:`dict(str, str)`, optional): Dictionary of strings (keys) and strings (values) to augment the consumer configuration for the source topic. Defaults to {}.
@@ -549,10 +579,10 @@ def map(source_cluster, source_topic_str, target_cluster, target_topic_str, map_
     def flatmap_function(message_dict):
         return [map_function(message_dict)]
     #
-    return flatmap(source_cluster, source_topic_str, target_cluster, target_topic_str, flatmap_function, group=group, offsets=offsets, config=config, source_key_type=source_key_type, source_value_type=source_value_type, target_key_type=target_key_type, target_value_type=target_value_type, target_key_schema=target_key_schema, target_value_schema=target_value_schema, on_delivery=on_delivery, keep_timestamps=keep_timestamps, n=n, batch_size=batch_size)
+    return flatmap(source_cluster, source_topic_str, target_cluster, target_topic_str, flatmap_function, break_function=break_function, group=group, offsets=offsets, config=config, source_key_type=source_key_type, source_value_type=source_value_type, target_key_type=target_key_type, target_value_type=target_value_type, target_key_schema=target_key_schema, target_value_schema=target_value_schema, on_delivery=on_delivery, keep_timestamps=keep_timestamps, n=n, batch_size=batch_size)
 
 
-def cp(source_cluster, source_topic_str, target_cluster, target_topic_str, flatmap_function=lambda x: [x], group=None, offsets=None, config={}, source_key_type="bytes", source_value_type="bytes", target_key_type=None, target_value_type=None, target_key_schema=None, target_value_schema=None, on_delivery=None, keep_timestamps=True, n=ALL_MESSAGES, batch_size=1):
+def cp(source_cluster, source_topic_str, target_cluster, target_topic_str, flatmap_function=lambda x: [x], break_function=lambda x: False, group=None, offsets=None, config={}, source_key_type="bytes", source_value_type="bytes", target_key_type=None, target_value_type=None, target_key_schema=None, target_value_schema=None, on_delivery=None, keep_timestamps=True, n=ALL_MESSAGES, batch_size=1):
     """Replicate a topic and optionally transform the messages in a flatmap-like manner.
 
     Replicate (parts of) a topic (source_topic_str) on one cluster (source_cluster) to another topic (target_topic_str) on another (or the same) cluster (target_cluster). Each replicated message can be transformed into a list of other messages in a flatmap-like manner. The source and target topics can have different message key and value types; e.g. the source topic can have value type Avro whereas the target topic will be written with value type Protobuf. Stops either if the consume timeout is exceeded on the source cluster (``consume.timeout`` in the kash.py cluster configuration) or the number of messages specified in ``n`` has been consumed.
@@ -597,10 +627,10 @@ def cp(source_cluster, source_topic_str, target_cluster, target_topic_str, flatm
 
             cp(cluster1, "topic1", cluster2, "topic2", offsets={0:100}, keep_timestamps=False, n=500)
     """
-    return flatmap(source_cluster, source_topic_str, target_cluster, target_topic_str, flatmap_function, group=group, offsets=offsets, config=config, source_key_type=source_key_type, source_value_type=source_value_type, target_key_type=target_key_type, target_value_type=target_value_type, target_key_schema=target_key_schema, target_value_schema=target_value_schema, on_delivery=on_delivery, keep_timestamps=keep_timestamps, n=n, batch_size=batch_size)
+    return flatmap(source_cluster, source_topic_str, target_cluster, target_topic_str, flatmap_function, break_function=break_function, group=group, offsets=offsets, config=config, source_key_type=source_key_type, source_value_type=source_value_type, target_key_type=target_key_type, target_value_type=target_value_type, target_key_schema=target_key_schema, target_value_schema=target_value_schema, on_delivery=on_delivery, keep_timestamps=keep_timestamps, n=n, batch_size=batch_size)
 
 
-def zip_foldl(cluster1, topic_str1, cluster2, topic_str2, zip_foldl_function, initial_acc, group1=None, group2=None, offsets1=None, offsets2=None, config1={}, config2={}, key_type1="bytes", value_type1="bytes", key_type2="bytes", value_type2="bytes", n=ALL_MESSAGES, batch_size=1):
+def zip_foldl(cluster1, topic_str1, cluster2, topic_str2, zip_foldl_function, initial_acc, break_function=lambda x, y: False, group1=None, group2=None, offsets1=None, offsets2=None, config1={}, config2={}, key_type1="bytes", value_type1="bytes", key_type2="bytes", value_type2="bytes", n=ALL_MESSAGES, batch_size=1):
     """Subscribe to and consume from topic 1 on cluster 1 and topic 2 on cluster 2 and combine the messages using a foldl function.
 
     Consume (parts of) a topic (topic_str1) on one cluster (cluster1) and another topic (topic_str2) on another (or the same) cluster (cluster2) and combine them using a foldl function. Stops on either topic/cluster if either the consume timeout is exceeded (``consume.timeout`` in the kash.py cluster configuration) or the number of messages specified in ``n`` has been consumed. If cluster 1 and cluster 2 are the same, a new temporary Cluster object is created under the covers.
@@ -645,6 +675,7 @@ def zip_foldl(cluster1, topic_str1, cluster2, topic_str2, zip_foldl_function, in
     message_counter_int1 = 0
     message_counter_int2 = 0
     acc = initial_acc
+    break_bool = False
     while True:
         message_dict_list1 = []
         while True:
@@ -675,7 +706,13 @@ def zip_foldl(cluster1, topic_str1, cluster2, topic_str2, zip_foldl_function, in
             break
         #
         for message_dict1, message_dict2 in zip(message_dict_list1, message_dict_list2):
+            if break_function(message_dict1, message_dict2):
+                break_bool = True
+                break
             acc = zip_foldl_function(acc, message_dict1, message_dict2)
+        #
+        if break_bool:
+            break
         #
         if num_messages_int != ALL_MESSAGES:
             if message_counter_int1 >= num_messages_int:
@@ -686,7 +723,7 @@ def zip_foldl(cluster1, topic_str1, cluster2, topic_str2, zip_foldl_function, in
     return acc, message_counter_int1, message_counter_int2
 
 
-def diff_fun(cluster1, topic_str1, cluster2, topic_str2, diff_function, group1=None, group2=None, offsets1=None, offsets2=None, key_type1="bytes", value_type1="bytes", key_type2="bytes", value_type2="bytes", n=ALL_MESSAGES, batch_size=1):
+def diff_fun(cluster1, topic_str1, cluster2, topic_str2, diff_function, break_function=lambda x, y: False, group1=None, group2=None, offsets1=None, offsets2=None, key_type1="bytes", value_type1="bytes", key_type2="bytes", value_type2="bytes", n=ALL_MESSAGES, batch_size=1):
     """Create a diff of topic 1 on cluster 1 and topic 2 on cluster 2 using a diff function.
 
     Create a diff of (parts of) a topic (topic_str1) on one cluster (cluster1) and another topic (topic_str2) on another (or the same) cluster (cluster2) using a diff function (diff_function). Stops on either topic/cluster if either the consume timeout is exceeded (``consume.timeout`` in the kash.py cluster configuration) or the number of messages specified in ``n`` has been consumed. If cluster 1 and cluster 2 are the same, a new temporary Cluster object is created under the covers.
@@ -729,10 +766,10 @@ def diff_fun(cluster1, topic_str1, cluster2, topic_str2, diff_function, group1=N
             #
         return acc
     #
-    return zip_foldl(cluster1, topic_str1, cluster2, topic_str2, zip_foldl_function, [], group1=group1, group2=group2, offsets1=offsets1, offsets2=offsets2, key_type1=key_type1, value_type1=value_type1, key_type2=key_type2, value_type2=value_type2, n=n, batch_size=batch_size)
+    return zip_foldl(cluster1, topic_str1, cluster2, topic_str2, zip_foldl_function, [], break_function=break_function, group1=group1, group2=group2, offsets1=offsets1, offsets2=offsets2, key_type1=key_type1, value_type1=value_type1, key_type2=key_type2, value_type2=value_type2, n=n, batch_size=batch_size)
 
 
-def diff(cluster1, topic_str1, cluster2, topic_str2, group1=None, group2=None, offsets1=None, offsets2=None, key_type1="bytes", value_type1="bytes", key_type2="bytes", value_type2="bytes", n=ALL_MESSAGES, batch_size=1):
+def diff(cluster1, topic_str1, cluster2, topic_str2, break_function=lambda x, y: False, group1=None, group2=None, offsets1=None, offsets2=None, key_type1="bytes", value_type1="bytes", key_type2="bytes", value_type2="bytes", n=ALL_MESSAGES, batch_size=1):
     """Create a diff of topic 1 on cluster 1 and topic 2 on cluster 2 using a diff function.
 
     Create a diff of (parts of) a topic (topic_str1) on one cluster (cluster1) and another topic (topic_str2) on another (or the same) cluster (cluster2) with respect to their keys and values. Stops on either topic/cluster if either the consume timeout is exceeded (``consume.timeout`` in the kash.py cluster configuration) or the number of messages specified in ``n`` has been consumed. If cluster 1 and cluster 2 are the same, a new temporary Cluster object is created under the covers.
@@ -763,7 +800,7 @@ def diff(cluster1, topic_str1, cluster2, topic_str2, group1=None, group2=None, o
     """
     def diff_function(message_dict1, message_dict2):
         return message_dict1["key"] != message_dict2["key"] or message_dict1["value"] != message_dict2["value"]
-    return diff_fun(cluster1, topic_str1, cluster2, topic_str2, diff_function, group1=group1, group2=group2, offsets1=offsets1, offsets2=offsets2, key_type1=key_type1, value_type1=value_type1, key_type2=key_type2, value_type2=value_type2, n=n, batch_size=batch_size)
+    return diff_fun(cluster1, topic_str1, cluster2, topic_str2, diff_function, break_function=break_function, group1=group1, group2=group2, offsets1=offsets1, offsets2=offsets2, key_type1=key_type1, value_type1=value_type1, key_type2=key_type2, value_type2=value_type2, n=n, batch_size=batch_size)
 
 
 # Main kash.py class
@@ -2337,7 +2374,7 @@ class Cluster:
         #
         return key_str_or_bytes, value_str_or_bytes
 
-    def flatmap_from_file(self, path_str, topic_str, flatmap_function, key_type="str", value_type="str", key_schema=None, value_schema=None, partition=RD_KAFKA_PARTITION_UA, on_delivery=None, key_value_separator=None, message_separator="\n", n=ALL_MESSAGES, bufsize=4096):
+    def flatmap_from_file(self, path_str, topic_str, flatmap_function, break_function=lambda x: False, key_type="str", value_type="str", key_schema=None, value_schema=None, partition=RD_KAFKA_PARTITION_UA, on_delivery=None, key_value_separator=None, message_separator="\n", n=ALL_MESSAGES, bufsize=4096):
         """Read messages from a local file and produce them to a topic, while transforming the messages in a flatmap-like manner.
 
         Read messages from a local file with path path_str and produce them to topic topic_str, while transforming the messages in a flatmap-like manner.
@@ -2373,47 +2410,31 @@ class Cluster:
 
                 c.flatmap("./snacks_value.txt", "test", flatmap_function=lambda x: [x], value_type="protobuf", value_schema='message Snack { required string name = 1; required float calories = 2; optional string colour = 3; }')
         """
-        key_value_separator_str = key_value_separator
-        message_separator_str = message_separator
-        num_messages_int = n
-        bufsize_int = bufsize
-        #
 
-        def foldl_function(_, line_str):
-            line_str1 = line_str.strip()
-            if line_str1:
-                if key_value_separator_str is not None:
-                    split_str_list = line_str1.split(key_value_separator_str)
-                    if len(split_str_list) == 2:
-                        key_str = split_str_list[0]
-                        value_str = split_str_list[1]
-                    else:
-                        key_str = None
-                        value_str = line_str1
-                else:
-                    key_str = None
-                    value_str = line_str1
+        def foldl_function(_, key_str_value_str_tuple):
+            key_str = key_str_value_str_tuple[0]
+            value_str = key_str_value_str_tuple[1]
+            #
+            key_str_value_str_tuple_list = flatmap_function((key_str, value_str))
+            #
+            for (key_str, value_str) in key_str_value_str_tuple_list:
+                self.produce(topic_str, value_str, key=key_str, key_type=key_type, value_type=value_type, key_schema=key_schema, value_schema=value_schema, partition=partition, on_delivery=on_delivery)
                 #
-                key_str_value_str_tuple_list = flatmap_function((key_str, value_str))
+                if self.produced_messages_counter_int % self.kash_dict["flush.num.messages"] == 0:
+                    self.flush()
                 #
-                for (key_str, value_str) in key_str_value_str_tuple_list:
-                    self.produce(topic_str, value_str, key=key_str, key_type=key_type, value_type=value_type, key_schema=key_schema, value_schema=value_schema, partition=partition, on_delivery=on_delivery)
-                    #
-                    if self.produced_messages_counter_int % self.kash_dict["flush.num.messages"] == 0:
-                        self.flush()
-                    #
-                    if self.verbose_int > 0 and self.produced_messages_counter_int % self.kash_dict["progress.num.messages"] == 0:
-                        print(f"Produced: {self.produced_messages_counter_int}")
+                if self.verbose_int > 0 and self.produced_messages_counter_int % self.kash_dict["progress.num.messages"] == 0:
+                    print(f"Produced: {self.produced_messages_counter_int}")
         #
         self.produced_messages_counter_int = 0
         #
         progress_num_messages_int = self.kash_dict["progress.num.messages"]
-        (_, lines_counter_int) = foldl_from_file(path_str, foldl_function, None, delimiter=message_separator_str, n=num_messages_int, bufsize=bufsize_int, verbose=self.verbose_int, progress_num_lines=progress_num_messages_int)
+        (_, lines_counter_int) = foldl_from_file(path_str, foldl_function, None, break_function=break_function, key_value_separator=key_value_separator, message_separator=message_separator, n=n, bufsize=bufsize, verbose=self.verbose_int, progress_num_lines=progress_num_messages_int)
         self.flush()
         #
         return (lines_counter_int, self.produced_messages_counter_int)
 
-    def map_from_file(self, path_str, topic_str, map_function, key_type="str", value_type="str", key_schema=None, value_schema=None, partition=RD_KAFKA_PARTITION_UA, on_delivery=None, key_value_separator=None, message_separator="\n", n=ALL_MESSAGES, bufsize=4096):
+    def map_from_file(self, path_str, topic_str, map_function, break_function=lambda x: False, key_type="str", value_type="str", key_schema=None, value_schema=None, partition=RD_KAFKA_PARTITION_UA, on_delivery=None, key_value_separator=None, message_separator="\n", n=ALL_MESSAGES, bufsize=4096):
         """Read messages from a local file and produce them to a topic, while transforming the messages in a map-like manner.
 
         Read messages from a local file with path path_str and produce them to topic topic_str, while transforming the messages in a map-like manner.
@@ -2445,9 +2466,9 @@ class Cluster:
             key_str, value_str = key_str_value_str_tuple
             return [map_function((key_str, value_str))]
         #
-        return self.flatmap_from_file(path_str, topic_str, flatmap_function, key_type=key_type, value_type=value_type, key_schema=key_schema, value_schema=value_schema, partition=partition, on_delivery=on_delivery, key_value_separator=key_value_separator, message_separator=message_separator, n=n, bufsize=bufsize)
+        return self.flatmap_from_file(path_str, topic_str, flatmap_function, break_function=break_function, key_type=key_type, value_type=value_type, key_schema=key_schema, value_schema=value_schema, partition=partition, on_delivery=on_delivery, key_value_separator=key_value_separator, message_separator=message_separator, n=n, bufsize=bufsize)
 
-    def filter_from_file(self, path_str, topic_str, filter_function, key_type="str", value_type="str", key_schema=None, value_schema=None, partition=RD_KAFKA_PARTITION_UA, on_delivery=None, key_value_separator=None, message_separator="\n", n=ALL_MESSAGES, bufsize=4096):
+    def filter_from_file(self, path_str, topic_str, filter_function, break_function=lambda x: False, key_type="str", value_type="str", key_schema=None, value_schema=None, partition=RD_KAFKA_PARTITION_UA, on_delivery=None, key_value_separator=None, message_separator="\n", n=ALL_MESSAGES, bufsize=4096):
         """Read messages from a local file and produce them to a topic, while only keeping those messages which fulfil a filter condition.
 
         Read messages from a local file with path path_str and produce them to topic topic_str, while only keeping those messages which fulfil a filter condition.
@@ -2479,9 +2500,9 @@ class Cluster:
             key_str, value_str = key_str_value_str_tuple
             return [(key_str, value_str)] if filter_function(key_str_value_str_tuple) else []
         #
-        return self.flatmap_from_file(path_str, topic_str, flatmap_function, key_type=key_type, value_type=value_type, key_schema=key_schema, value_schema=value_schema, partition=partition, on_delivery=on_delivery, key_value_separator=key_value_separator, message_separator=message_separator, n=n, bufsize=bufsize)
+        return self.flatmap_from_file(path_str, topic_str, flatmap_function, break_function=break_function, key_type=key_type, value_type=value_type, key_schema=key_schema, value_schema=value_schema, partition=partition, on_delivery=on_delivery, key_value_separator=key_value_separator, message_separator=message_separator, n=n, bufsize=bufsize)
 
-    def upload(self, path_str, topic_str, flatmap_function=lambda x: [x], key_type="str", value_type="str", key_schema=None, value_schema=None, partition=RD_KAFKA_PARTITION_UA, on_delivery=None, key_value_separator=None, message_separator="\n", n=ALL_MESSAGES, bufsize=4096):
+    def upload(self, path_str, topic_str, flatmap_function=lambda x: [x], break_function=lambda x: False, key_type="str", value_type="str", key_schema=None, value_schema=None, partition=RD_KAFKA_PARTITION_UA, on_delivery=None, key_value_separator=None, message_separator="\n", n=ALL_MESSAGES, bufsize=4096):
         """Upload messages from a local file to a topic, while optionally transforming the messages in a flatmap-like manner.
 
         Read messages from a local file with path path_str and produce them to topic topic_str, while optionally transforming the messages in a flatmap-like manner.
@@ -2517,7 +2538,7 @@ class Cluster:
 
                 c.upload("./snacks_value.txt", "test", value_type="protobuf", value_schema='message Snack { required string name = 1; required float calories = 2; optional string colour = 3; }')
         """
-        return self.flatmap_from_file(path_str, topic_str, flatmap_function, key_type=key_type, value_type=value_type, key_schema=key_schema, value_schema=value_schema, partition=partition, on_delivery=on_delivery, key_value_separator=key_value_separator, message_separator=message_separator, n=n, bufsize=bufsize)
+        return self.flatmap_from_file(path_str, topic_str, flatmap_function, break_function=break_function, key_type=key_type, value_type=value_type, key_schema=key_schema, value_schema=value_schema, partition=partition, on_delivery=on_delivery, key_value_separator=key_value_separator, message_separator=message_separator, n=n, bufsize=bufsize)
 
     def flush(self):
         """Wait for all messages in the Producer queue to be delivered.
@@ -2783,7 +2804,7 @@ class Cluster:
 
     #
 
-    def foldl(self, topic_str, foldl_function, initial_acc, group=None, offsets=None, config={}, key_type="str", value_type="str", n=ALL_MESSAGES, batch_size=1):
+    def foldl(self, topic_str, foldl_function, initial_acc, break_function=lambda x: False, group=None, offsets=None, config={}, key_type="str", value_type="str", n=ALL_MESSAGES, batch_size=1):
         """Subscribe to and consume messages from a topic and transform them in a foldl-like manner.
 
         Subscribe to and consume messages from a topic and transform them in a foldl-like manner, optionally explicitly set the consumer group, initial offsets, and augment the consumer configuration. Stops either if the consume timeout is exceeded (``consume.timeout`` in the kash.py cluster configuration) or the number of messages specified in ``n`` has been consumed.
@@ -2819,15 +2840,23 @@ class Cluster:
         #
         acc = initial_acc
         message_counter_int = 0
+        break_bool = False
         while True:
             message_dict_list = self.consume(n=batch_size_int)
             if not message_dict_list:
                 break
             #
             for message_dict in message_dict_list:
+                if break_function(message_dict):
+                    break_bool = True
+                    break
                 acc = foldl_function(acc, message_dict)
             #
             message_counter_int += len(message_dict_list)
+            #
+            if break_bool:
+                break
+            #
             if self.verbose_int > 0 and message_counter_int % self.kash_dict["progress.num.messages"] == 0:
                 print(f"Consumed: {message_counter_int}")
             if num_messages_int != ALL_MESSAGES:
@@ -2838,7 +2867,7 @@ class Cluster:
 
     #
 
-    def flatmap(self, topic_str, flatmap_function, group=None, offsets=None, config={}, key_type="str", value_type="str", n=ALL_MESSAGES, batch_size=1):
+    def flatmap(self, topic_str, flatmap_function, break_function=lambda x: False, group=None, offsets=None, config={}, key_type="str", value_type="str", n=ALL_MESSAGES, batch_size=1):
         """Subscribe to and consume messages from a topic and transform them in a flatmap-like manner.
 
         Subscribe to and consume messages from a topic and transform them in a flatmap-like manner, optionally explicitly set the consumer group, initial offsets, and augment the consumer configuration. Stops either if the consume timeout is exceeded (``consume.timeout`` in the kash.py cluster configuration) or the number of messages specified in ``n`` has been consumed.
@@ -2870,11 +2899,11 @@ class Cluster:
             acc += flatmap_function(message_dict)
             return acc
         #
-        return self.foldl(topic_str, foldl_function, [], group=group, offsets=offsets, config=config, key_type=key_type, value_type=value_type, n=n, batch_size=batch_size)
+        return self.foldl(topic_str, foldl_function, [], break_function=break_function, group=group, offsets=offsets, config=config, key_type=key_type, value_type=value_type, n=n, batch_size=batch_size)
 
     #
 
-    def filter(self, topic_str, filter_function, group=None, offsets=None, config={}, key_type="str", value_type="str", n=ALL_MESSAGES, batch_size=1):
+    def filter(self, topic_str, filter_function, break_function=lambda x: False, group=None, offsets=None, config={}, key_type="str", value_type="str", n=ALL_MESSAGES, batch_size=1):
         """Subscribe to and consume messages from a topic and return only those messages fulfilling a filter condition.
 
         Subscribe to and consume messages from a topic and return only those messages fulfilling a filter condition, optionally explicitly set the consumer group, initial offsets, and augment the consumer configuration. Stops either if the consume timeout is exceeded (``consume.timeout`` in the kash.py cluster configuration) or the number of messages specified in ``n`` has been consumed.
@@ -2905,12 +2934,12 @@ class Cluster:
         def flatmap_function(message_dict):
             return [message_dict] if filter_function(message_dict) else []
         #
-        return self.flatmap(topic_str, flatmap_function, group=group, offsets=offsets, config=config, 
+        return self.flatmap(topic_str, flatmap_function, break_function=break_function, group=group, offsets=offsets, config=config, 
         key_type=key_type, value_type=value_type, n=n, batch_size=batch_size)
 
     #
 
-    def map(self, topic_str, map_function, group=None, offsets=None, config={}, key_type="str", value_type="str", n=ALL_MESSAGES, batch_size=1):
+    def map(self, topic_str, map_function, break_function=lambda x: False, group=None, offsets=None, config={}, key_type="str", value_type="str", n=ALL_MESSAGES, batch_size=1):
         """Subscribe to and consume messages from a topic and transform them in a map-like manner.
 
         Subscribe to and consume messages from a topic and transform them in a map-like manner, optionally explicitly set the consumer group, initial offsets, and augment the consumer configuration. Stops either if the consume timeout is exceeded (``consume.timeout`` in the kash.py cluster configuration) or the number of messages specified in ``n`` has been consumed.
@@ -2941,11 +2970,11 @@ class Cluster:
         def flatmap_function(message_dict):
             return [map_function(message_dict)]
         #
-        return self.flatmap(topic_str, flatmap_function, group=group, offsets=offsets, config=config, key_type=key_type, value_type=value_type, n=n, batch_size=batch_size)
+        return self.flatmap(topic_str, flatmap_function, break_function=break_function, group=group, offsets=offsets, config=config, key_type=key_type, value_type=value_type, n=n, batch_size=batch_size)
 
     #
 
-    def foreach(self, topic_str, foreach_function, group=None, offsets=None, config={}, key_type="str", value_type="str", n=ALL_MESSAGES, batch_size=1):
+    def foreach(self, topic_str, foreach_function, break_function=lambda x: False, group=None, offsets=None, config={}, key_type="str", value_type="str", n=ALL_MESSAGES, batch_size=1):
         """Subscribe to and consume messages from a topic and call an operation on each of them.
 
         Subscribe to and consume messages from a topic and call an operation on each of them, optionally explicitly set the consumer group, initial offsets, and augment the consumer configuration. Stops either if the consume timeout is exceeded (``consume.timeout`` in the kash.py cluster configuration) or the number of messages specified in ``n`` has been consumed.
@@ -2977,13 +3006,13 @@ class Cluster:
             foreach_function(message_dict)
             return None
         #
-        (_, message_counter_int) = self.foldl(topic_str, foldl_function, None, group=group, offsets=offsets, config=config, key_type=key_type, value_type=value_type, n=num_messages_int, batch_size=batch_size_int)
+        (_, message_counter_int) = self.foldl(topic_str, foldl_function, None, break_function=break_function, group=group, offsets=offsets, config=config, key_type=key_type, value_type=value_type, n=num_messages_int, batch_size=batch_size_int)
         #
         return message_counter_int
 
     #
 
-    def cat(self, topic_str, foreach_function=print, group=None, offsets=None, config={}, key_type="str", value_type="str", n=ALL_MESSAGES, batch_size=1):
+    def cat(self, topic_str, foreach_function=print, break_function=lambda x: False, group=None, offsets=None, config={}, key_type="str", value_type="str", n=ALL_MESSAGES, batch_size=1):
         """Subscribe to and consume messages from a topic and call an operation on each of them.
 
         Subscribe to and consume messages from a topic and call an operation on each of them, optionally explicitly set the consumer group, initial offsets, and augment the consumer configuration. Stops either if the consume timeout is exceeded (``consume.timeout`` in the kash.py cluster configuration) or the number of messages specified in ``n`` has been consumed.
@@ -3007,11 +3036,11 @@ class Cluster:
 
                 c.cat("test")
         """
-        return self.foreach(topic_str, foreach_function, group=group, offsets=offsets, config=config, key_type=key_type, value_type=value_type, n=n, batch_size=batch_size)
+        return self.foreach(topic_str, foreach_function, break_function=break_function, group=group, offsets=offsets, config=config, key_type=key_type, value_type=value_type, n=n, batch_size=batch_size)
 
     #
 
-    def grep_fun(self, topic_str, match_function, group=None, offsets=None, config={}, key_type="str", value_type="str", n=ALL_MESSAGES, batch_size=1):
+    def grep_fun(self, topic_str, match_function, break_function=lambda x: False, group=None, offsets=None, config={}, key_type="str", value_type="str", n=ALL_MESSAGES, batch_size=1):
         """Find matching messages in a topic (custom function matching).
 
         Find matching messages in a topic using a custom match function match_function. Optionally explicitly set the consumer group, initial offsets, and augment the consumer configuration. Stops either if the consume timeout is exceeded (``consume.timeout`` in the kash.py cluster configuration) or the number of messages specified in ``n`` has been consumed.
@@ -3049,11 +3078,11 @@ class Cluster:
             else:
                 return []
         #
-        (matching_message_dict_list, message_counter_int) = self.flatmap(topic_str, flatmap_function, group=group, offsets=offsets, config=config, key_type=key_type, value_type=value_type, n=num_messages_int, batch_size=batch_size_int)
+        (matching_message_dict_list, message_counter_int) = self.flatmap(topic_str, flatmap_function, break_function=break_function, group=group, offsets=offsets, config=config, key_type=key_type, value_type=value_type, n=num_messages_int, batch_size=batch_size_int)
         #
         return matching_message_dict_list, len(matching_message_dict_list), message_counter_int
 
-    def grep(self, topic_str, re_pattern_str, group=None, offsets=None, config={}, key_type="str", value_type="str", n=ALL_MESSAGES, batch_size=1):
+    def grep(self, topic_str, re_pattern_str, break_function=lambda x: False, group=None, offsets=None, config={}, key_type="str", value_type="str", n=ALL_MESSAGES, batch_size=1):
         """Find matching messages in a topic (regular expression matching).
 
         Find matching messages in a topic using regular expression matching. Optionally explicitly set the consumer group, initial offsets, and augment the consumer configuration. Stops either if the consume timeout is exceeded (``consume.timeout`` in the kash.py cluster configuration) or the number of messages specified in ``n`` has been consumed.
@@ -3083,11 +3112,11 @@ class Cluster:
             value_str = str(message_dict["value"])
             return pattern.match(key_str) is not None or pattern.match(value_str) is not None
         #
-        return self.grep_fun(topic_str, match_function, group=group, offsets=offsets, config=config, key_type=key_type, value_type=value_type, n=n, batch_size=batch_size)
+        return self.grep_fun(topic_str, match_function, break_function=break_function, group=group, offsets=offsets, config=config, key_type=key_type, value_type=value_type, n=n, batch_size=batch_size)
 
     #
 
-    def wc(self, topic_str, group=None, offsets=None, config={}, key_type="str", value_type="str", n=ALL_MESSAGES, batch_size=1):
+    def wc(self, topic_str, break_function=lambda x: False, group=None, offsets=None, config={}, key_type="str", value_type="str", n=ALL_MESSAGES, batch_size=1):
         """Count the number of messages, words, and bytes in a topic.
 
         Count the number of messages, words, and bytes in a topic. Optionally explicitly set the consumer group, initial offsets, and augment the consumer configuration. Stops either if the consume timeout is exceeded (``consume.timeout`` in the kash.py cluster configuration) or the number of messages specified in ``n`` has been consumed.
@@ -3129,12 +3158,12 @@ class Cluster:
             acc_num_bytes_int = acc[1] + num_bytes_key_int + num_bytes_value_int
             return (acc_num_words_int, acc_num_bytes_int)
     #
-        ((acc_num_words_int, acc_num_bytes_int), num_messages_int) = self.foldl(topic_str, foldl_function, (0, 0), group=group, offsets=offsets, config=config, key_type=key_type, value_type=value_type, n=n, batch_size=batch_size)
+        ((acc_num_words_int, acc_num_bytes_int), num_messages_int) = self.foldl(topic_str, foldl_function, (0, 0), break_function=break_function, group=group, offsets=offsets, config=config, key_type=key_type, value_type=value_type, n=n, batch_size=batch_size)
         return (num_messages_int, acc_num_words_int, acc_num_bytes_int)
 
     #
 
-    def flatmap_to_file(self, topic_str, path_str, flatmap_function, group=None, offsets=None, config={}, key_type="str", value_type="str", key_value_separator=None, message_separator="\n", overwrite=True, n=ALL_MESSAGES, batch_size=1):
+    def flatmap_to_file(self, topic_str, path_str, flatmap_function, break_function=lambda x: False, group=None, offsets=None, config={}, key_type="str", value_type="str", key_value_separator=None, message_separator="\n", overwrite=True, n=ALL_MESSAGES, batch_size=1):
         """Subscribe to and consume messages from a topic, transform them in a flatmap-like manner and write the resulting messages to a local file.
 
         Subscribe to and consume messages from a topic, transform them in a flatmap-like manner and write the resulting messages to a local file, optionally explicitly set the consumer group, initial offsets, and augment the consumer configuration. Stops either if the consume timeout is exceeded (``consume.timeout`` in the kash.py cluster configuration) or the number of messages specified in ``n`` has been consumed.
@@ -3200,12 +3229,12 @@ class Cluster:
             return (textIOWrapper, line_counter_int)
         #
         with open(path_str, mode_str) as textIOWrapper:
-            ((_, line_counter_int), message_counter_int) = self.foldl(topic_str, foldl_function, (textIOWrapper, 0), group=group, offsets=offsets, config=config, key_type=key_type, value_type=value_type, n=n, batch_size=batch_size)
+            ((_, line_counter_int), message_counter_int) = self.foldl(topic_str, foldl_function, (textIOWrapper, 0), break_function=break_function, group=group, offsets=offsets, config=config, key_type=key_type, value_type=value_type, n=n, batch_size=batch_size)
         self.unsubscribe()
         #
         return message_counter_int, line_counter_int
 
-    def map_to_file(self, topic_str, path_str, map_function, group=None, offsets=None, config={}, key_type="str", value_type="str", key_value_separator=None, message_separator="\n", overwrite=True, n=ALL_MESSAGES, batch_size=1):
+    def map_to_file(self, topic_str, path_str, map_function, break_function=lambda x: False, group=None, offsets=None, config={}, key_type="str", value_type="str", key_value_separator=None, message_separator="\n", overwrite=True, n=ALL_MESSAGES, batch_size=1):
         """Subscribe to and consume messages from a topic, transform them in a map-like manner and write the resulting messages to a local file.
 
         Subscribe to and consume messages from a topic, transform them in a map-like manner and write the resulting messages to a local file, optionally explicitly set the consumer group, initial offsets, and augment the consumer configuration. Stops either if the consume timeout is exceeded (``consume.timeout`` in the kash.py cluster configuration) or the number of messages specified in ``n`` has been consumed.
@@ -3235,9 +3264,9 @@ class Cluster:
         def flatmap_function(message_dict):
             return [map_function(message_dict)]
         #
-        return self.flatmap_to_file(topic_str, path_str, flatmap_function, group=group, offsets=offsets, config=config, key_type=key_type, value_type=value_type, key_value_separator=key_value_separator, message_separator=message_separator, overwrite=overwrite, n=n, batch_size=batch_size)
+        return self.flatmap_to_file(topic_str, path_str, flatmap_function, break_function=break_function, group=group, offsets=offsets, config=config, key_type=key_type, value_type=value_type, key_value_separator=key_value_separator, message_separator=message_separator, overwrite=overwrite, n=n, batch_size=batch_size)
 
-    def filter_to_file(self, topic_str, path_str, filter_function, group=None, offsets=None, config={}, key_type="str", value_type="str", key_value_separator=None, message_separator="\n", overwrite=True, n=ALL_MESSAGES, batch_size=1):
+    def filter_to_file(self, topic_str, path_str, filter_function, break_function=lambda x: False, group=None, offsets=None, config={}, key_type="str", value_type="str", key_value_separator=None, message_separator="\n", overwrite=True, n=ALL_MESSAGES, batch_size=1):
         """Subscribe to and consume messages from a topic and write only those messages to a local file which fulfil a filter condition.
 
         Subscribe to and consume messages from a topic and write only those messages to a file which fulfil a filter condition, optionally explicitly set the consumer group, initial offsets, and augment the consumer configuration. Stops either if the consume timeout is exceeded (``consume.timeout`` in the kash.py cluster configuration) or the number of messages specified in ``n`` has been consumed.
@@ -3267,9 +3296,9 @@ class Cluster:
         def flatmap_function(message_dict):
             return [message_dict] if filter_function(message_dict) else []
         #
-        return self.flatmap_to_file(topic_str, path_str, flatmap_function, group=group, offsets=offsets, config=config, key_type=key_type, value_type=value_type, key_value_separator=key_value_separator, message_separator=message_separator, overwrite=overwrite, n=n, batch_size=batch_size)
+        return self.flatmap_to_file(topic_str, path_str, flatmap_function, break_function=break_function, group=group, offsets=offsets, config=config, key_type=key_type, value_type=value_type, key_value_separator=key_value_separator, message_separator=message_separator, overwrite=overwrite, n=n, batch_size=batch_size)
 
-    def download(self, topic_str, path_str, flatmap_function=lambda x: [x], group=None, offsets=None, config={}, key_type="str", value_type="str", key_value_separator=None, message_separator="\n", overwrite=True, n=ALL_MESSAGES, batch_size=1):
+    def download(self, topic_str, path_str, flatmap_function=lambda x: [x], break_function=lambda x: False, group=None, offsets=None, config={}, key_type="str", value_type="str", key_value_separator=None, message_separator="\n", overwrite=True, n=ALL_MESSAGES, batch_size=1):
         """Download messages from a topic to a local file while optionally transforming them in a flatmap-like manner.
 
         Subscribe to and consume messages from a topic, optionally transform them in a flatmap-like manner and write the resulting messages to a local file, optionally explicitly set the consumer group, initial offsets, and augment the consumer configuration. Stops either if the consume timeout is exceeded (``consume.timeout`` in the kash.py cluster configuration) or the number of messages specified in ``n`` has been consumed.
@@ -3296,9 +3325,9 @@ class Cluster:
 
                 c.download("test", "./test.txt")
         """
-        return self.flatmap_to_file(topic_str, path_str, flatmap_function, group=group, offsets=offsets, config=config, key_type=key_type, value_type=value_type, key_value_separator=key_value_separator, message_separator=message_separator, overwrite=overwrite, n=n, batch_size=batch_size)
+        return self.flatmap_to_file(topic_str, path_str, flatmap_function, break_function=break_function, group=group, offsets=offsets, config=config, key_type=key_type, value_type=value_type, key_value_separator=key_value_separator, message_separator=message_separator, overwrite=overwrite, n=n, batch_size=batch_size)
 
-    def cp(self, source_str, target_str, group=None, offsets=None, config={}, flatmap_function=lambda x: [x], source_key_type="str", source_value_type="str", target_key_type="str", target_value_type="str", target_key_schema=None, target_value_schema=None, key_value_separator=None, message_separator="\n", overwrite=True, keep_timestamps=True, n=ALL_MESSAGES, batch_size=1, bufsize=4096):
+    def cp(self, source_str, target_str, break_function=lambda x: False, group=None, offsets=None, config={}, flatmap_function=lambda x: [x], source_key_type="str", source_value_type="str", target_key_type="str", target_value_type="str", target_key_schema=None, target_value_schema=None, key_value_separator=None, message_separator="\n", overwrite=True, keep_timestamps=True, n=ALL_MESSAGES, batch_size=1, bufsize=4096):
         """Copy local files to topics, topics to local files, or topics to topics.
 
         Copy files to topics, topics to files, or topics to topics. Uses ``Cluster.upload()`` for copying files to topics, ``Cluster.download()`` for copying topics to files, and ``cp`` for copying topics to topics. Paths to local files are distinguished from topics by having a forward slash "/" in their path.
@@ -3341,11 +3370,11 @@ class Cluster:
                 c.cp("test1", "test2")
         """
         if is_file(source_str) and not is_file(target_str):
-            return self.upload(source_str, target_str, flatmap_function=flatmap_function, key_type=target_key_type, value_type=target_value_type, key_schema=target_key_schema, value_schema=target_value_schema, key_value_separator=key_value_separator, message_separator=message_separator, n=n, bufsize=bufsize)
+            return self.upload(source_str, target_str, flatmap_function=flatmap_function, break_function=break_function, key_type=target_key_type, value_type=target_value_type, key_schema=target_key_schema, value_schema=target_value_schema, key_value_separator=key_value_separator, message_separator=message_separator, n=n, bufsize=bufsize)
         elif not is_file(source_str) and is_file(target_str):
-            return self.download(source_str, target_str, flatmap_function=flatmap_function, group=group, offsets=offsets, config=config, key_type=source_key_type, value_type=source_value_type, key_value_separator=key_value_separator, message_separator=message_separator, overwrite=overwrite, n=n, batch_size=batch_size)
+            return self.download(source_str, target_str, flatmap_function=flatmap_function, break_function=break_function,  group=group, offsets=offsets, config=config, key_type=source_key_type, value_type=source_value_type, key_value_separator=key_value_separator, message_separator=message_separator, overwrite=overwrite, n=n, batch_size=batch_size)
         elif (not is_file(source_str)) and (not is_file(target_str)):
-            return cp(self, source_str, self, target_str, flatmap_function=flatmap_function, group=group, offsets=offsets, config=config, source_key_type=source_key_type, source_value_type=source_value_type, target_key_type=target_key_type, target_value_type=target_value_type, target_key_schema=target_key_schema, target_value_schema=target_value_schema, keep_timestamps=keep_timestamps, n=n, batch_size=batch_size)
+            return cp(self, source_str, self, target_str, flatmap_function=flatmap_function, break_function=break_function, group=group, offsets=offsets, config=config, source_key_type=source_key_type, source_value_type=source_value_type, target_key_type=target_key_type, target_value_type=target_value_type, target_key_schema=target_key_schema, target_value_schema=target_value_schema, keep_timestamps=keep_timestamps, n=n, batch_size=batch_size)
         elif is_file(source_str) and is_file(target_str):
             print("Please use a shell or file manager to copy files.")
 
@@ -3376,7 +3405,7 @@ class Cluster:
         #
         return (num_consumed_messages_int1, num_produced_messages_int1), (num_consumed_messages_int2, num_produced_messages_int2)
 
-    def zip_foldl(self, topic_str1, topic_str2, zip_foldl_function, initial_acc, group1=None, group2=None, offsets1=None, offsets2=None, config1={}, config2={}, key_type1="bytes", value_type1="bytes", key_type2="bytes", value_type2="bytes", n=ALL_MESSAGES, batch_size=1):
+    def zip_foldl(self, topic_str1, topic_str2, zip_foldl_function, initial_acc, break_function=lambda x, y: False, group1=None, group2=None, offsets1=None, offsets2=None, config1={}, config2={}, key_type1="bytes", value_type1="bytes", key_type2="bytes", value_type2="bytes", n=ALL_MESSAGES, batch_size=1):
         """Subscribe to and consume from topic 1 and topic 2 and combine the messages using a foldl function.
 
         Consume (parts of) a topic (topic_str1) and another topic (topic_str2) and combine them using a foldl function. Stops on either topic/cluster if either the consume timeout is exceeded (``consume.timeout`` in the kash.py cluster configuration) or the number of messages specified in ``n`` has been consumed.
@@ -3407,9 +3436,9 @@ class Cluster:
 
                 c.zip_foldl("topic1", "topic2", lambda acc, message_dict1, message_dict2: acc + [(message_dict1, message_dict2)], [])
         """
-        return zip_foldl(self, topic_str1, self, topic_str2, zip_foldl_function, initial_acc, group1=group1, group2=group2, offsets1=offsets1, offsets2=offsets2, config1=config1, config2=config2, key_type1=key_type1, value_type1=value_type1, key_type2=key_type2, value_type2=value_type2, n=n, batch_size=batch_size)
+        return zip_foldl(self, topic_str1, self, topic_str2, zip_foldl_function, initial_acc, break_function=break_function, group1=group1, group2=group2, offsets1=offsets1, offsets2=offsets2, config1=config1, config2=config2, key_type1=key_type1, value_type1=value_type1, key_type2=key_type2, value_type2=value_type2, n=n, batch_size=batch_size)
 
-    def diff_fun(self, topic_str1, topic_str2, diff_function, group1=None, group2=None, offsets1=None, offsets2=None, key_type1="bytes", value_type1="bytes", key_type2="bytes", value_type2="bytes", n=ALL_MESSAGES, batch_size=1):
+    def diff_fun(self, topic_str1, topic_str2, diff_function, break_function=lambda x, y: False, group1=None, group2=None, offsets1=None, offsets2=None, key_type1="bytes", value_type1="bytes", key_type2="bytes", value_type2="bytes", n=ALL_MESSAGES, batch_size=1):
         """Create a diff of topic 1 and topic 2 using a diff function.
 
         Create a diff of (parts of) a topic (topic_str1) and another topic (topic_str2) using a diff function (diff_function). Stops on either topic/cluster if either the consume timeout is exceeded (``consume.timeout`` in the kash.py cluster configuration) or the number of messages specified in ``n`` has been consumed.
@@ -3437,9 +3466,9 @@ class Cluster:
 
                 c.diff_fun("topic1", "topic2", lambda message_dict1, message_dict2: message_dict1["value"] != message_dict2["value"])
         """
-        return diff_fun(self, topic_str1, self, topic_str2, diff_function, group1=group1, group2=group2, offsets1=offsets1, offsets2=offsets2, key_type1=key_type1, value_type1=value_type1, key_type2=key_type2, value_type2=value_type2, n=n, batch_size=batch_size)
+        return diff_fun(self, topic_str1, self, topic_str2, diff_function, break_function=break_function, group1=group1, group2=group2, offsets1=offsets1, offsets2=offsets2, key_type1=key_type1, value_type1=value_type1, key_type2=key_type2, value_type2=value_type2, n=n, batch_size=batch_size)
 
-    def diff(self, topic_str1, topic_str2, group1=None, group2=None, offsets1=None, offsets2=None, key_type1="bytes", value_type1="bytes", key_type2="bytes", value_type2="bytes", n=ALL_MESSAGES, batch_size=1):
+    def diff(self, topic_str1, topic_str2, break_function=lambda x, y: False, group1=None, group2=None, offsets1=None, offsets2=None, key_type1="bytes", value_type1="bytes", key_type2="bytes", value_type2="bytes", n=ALL_MESSAGES, batch_size=1):
         """Create a diff of topic 1 and topic 2 using a diff function.
 
         Create a diff of (parts of) a topic (topic_str1) and another topic (topic_str2) with respect to their keys and values. Stops on either topic/cluster if either the consume timeout is exceeded (``consume.timeout`` in the kash.py cluster configuration) or the number of messages specified in ``n`` has been consumed.
@@ -3466,8 +3495,7 @@ class Cluster:
 
                 diff(cluster1, "topic1", cluster2, "topic2")
         """
-        return diff(self, topic_str1, self, topic_str2, group1=group1, group2=group2, offsets1=offsets1, offsets2=offsets2, key_type1=key_type1, value_type1=value_type1, key_type2=key_type2, value_type2=value_type2, n=n, batch_size=batch_size)
+        return diff(self, topic_str1, self, topic_str2, break_function=break_function, group1=group1, group2=group2, offsets1=offsets1, offsets2=offsets2, key_type1=key_type1, value_type1=value_type1, key_type2=key_type2, value_type2=value_type2, n=n, batch_size=batch_size)
 
 #os.environ["KASHPY_HOME"] = "/home/ralph/kafka/kash.py"
 #c = Cluster("local")
-#c.tail("snacks2")

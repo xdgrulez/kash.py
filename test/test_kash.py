@@ -633,12 +633,19 @@ class Test(unittest.TestCase):
         map(cluster, topic_str, cluster, f"{topic_str}_2", map_function, source_value_type="json", n=3)
         self.assertEqual(cluster.size(f"{topic_str}_2")[f"{topic_str}_2"][1][0], 3)
         #
+        def break_function(message_dict1, _):
+            value_dict1 = json.loads(message_dict1["value"])
+            if value_dict1["colour"] == "white":
+                return True
+            else:
+                return False
+        #
         cluster2 = Cluster(cluster_str)
         cluster.verbose(1)
-        differing_message_dict_tuple_list, num_messages_int1, num_messages_int2 = diff(cluster, topic_str, cluster2, f"{topic_str}_1")
+        differing_message_dict_tuple_list, num_messages_int1, num_messages_int2 = diff(cluster, topic_str, cluster2, f"{topic_str}_1", break_function=break_function)
         self.assertEqual(differing_message_dict_tuple_list, [])
-        self.assertEqual(num_messages_int1, 3)
-        self.assertEqual(num_messages_int2, 3)
+        self.assertEqual(num_messages_int1, 2)
+        self.assertEqual(num_messages_int2, 2)
         #
         differing_message_dict_tuple_list1, num_messages_int1, num_messages_int2 = cluster.diff(topic_str, f"{topic_str}_2", value_type1="json", value_type2="json")
         self.assertEqual(len(differing_message_dict_tuple_list1), 1)
@@ -656,7 +663,6 @@ class Test(unittest.TestCase):
         self.assertEqual(len(acc), 3)
         self.assertEqual(num_messages_int1, 3)
         self.assertEqual(num_messages_int2, 3)
-        print(acc)
         self.assertEqual(acc[0][0]["name"], "cookie")
         #
         cluster.delete(topic_str)
@@ -670,8 +676,13 @@ class Test(unittest.TestCase):
         #
         def flatmap_function(key_str_value_str_tuple):
             return [(key_str_value_str_tuple[0], key_str_value_str_tuple[1]), (key_str_value_str_tuple[0], key_str_value_str_tuple[1])]
-        cluster.cp("./snacks_value.txt", topic_str, flatmap_function=flatmap_function, target_value_type="str")
-        self.assertEqual(cluster.size(topic_str)[topic_str][0], 6)
+        #
+        def break_function(key_str_value_str_tuple):
+            value_str = key_str_value_str_tuple[1]
+            return "white" in value_str
+        #
+        cluster.cp("./snacks_value.txt", topic_str, flatmap_function=flatmap_function, break_function=break_function, target_value_type="str")
+        self.assertEqual(cluster.size(topic_str)[topic_str][0], 2)
         #
         cluster.delete(topic_str)
 
@@ -736,8 +747,16 @@ class Test(unittest.TestCase):
             message_dict["value"] = value_str
             return message_dict
         #
-        message_dict_list = cluster.map(topic_str, map_function)
-        self.assertEqual(json.loads(message_dict_list[0][0]["value"])["colour"], "brownish")
+        def break_function(message_dict):
+            value_dict = json.loads(message_dict["value"])
+            if value_dict["colour"] == "white":
+                return True
+            else:
+                return False
+        #
+        message_dict_list, num_messages_int = cluster.map(topic_str, map_function, break_function=break_function)
+        self.assertEqual(json.loads(message_dict_list[0]["value"])["colour"], "brownish")
+        self.assertEqual(num_messages_int, 2)
         #
         cluster.delete(topic_str)
 
