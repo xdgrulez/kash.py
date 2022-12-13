@@ -24,7 +24,7 @@ pip install kashpy
 
 *kash.py* makes use of configuration files suffixed `.yaml` which are being searched for in the folder `clusters`, starting 1) from the directory in the `KASHPY_HOME` environment variable, or, if that environment variable is not set, 2) from the current directory.
 
-For the YAML-based configuration files, *kash.py* makes use of the ingenious little library [Piny](https://github.com/pilosus/piny) from Vitaly Samigullin (see also his illustrative [blog](https://blog.pilosus.org/posts/2019/06/07/application-configs-files-or-environment-variables-actually-both/) about the genesis of Piny).
+For the YAML-based configuration files sporting environment variable interpolation, *kash.py* makes use of the ingenious little library [Piny](https://github.com/pilosus/piny) from Vitaly Samigullin (see also his illustrative [blog](https://blog.pilosus.org/posts/2019/06/07/application-configs-files-or-environment-variables-actually-both/) about the genesis of Piny).
 
 A barebones configuration file looks like this (including Schema Registry):
 
@@ -53,6 +53,28 @@ kash:
 ```
 
 You can find an in-depth explanation of these settings in the [kashpy package documentation](https://github.com/xdgrulez/kash.py/blob/main/docs/_build/markdown/source/kashpy.md), including example configuration files for connecting to [Confluent Cloud](https://www.confluent.io/confluent-cloud/), [Redpanda](https://redpanda.com/) etc.
+
+### Apologies to Early adopters
+
+The new configuration file format has been introduced with *kash.py* 0.0.10 and is a breaking change. Apologies for all you early adopters who will stumble on this (because you have already created configuration files in the old `.conf` format and in another directory, either `clusters_secured` or `clusters_unsecured`). I just didn't want to keep downward compatibility with the old `.conf` files because the new way is so much more powerful and, on the other, simpler - and *kash.py* is still at the beginning.
+
+To convert the old `.conf` files to the new interpolated Piny-`.yaml` format, you just have to change sections like `[kafka]` to `kafka:`, and replace the equal characters `=` with colons `:`. 
+
+The cool thing about the new Piny-`.yaml` format is that for security-relevant information such as cluster URLs, user names or passwords, you can use environment variable interpolation like this (which also meant that having to separate directories `clusters_secured` and `clusters_unsecured` was not necessary any longer):
+
+```
+kafka:
+  bootstrap.servers: ${KASHPY_KAFKA_SERVER}
+  security.protocol: SASL_SSL
+  sasl.mechanisms: PLAIN
+  sasl.username: ${KASHPY_KAFKA_USERNAME}
+  sasl.password: ${KASHPY_KAFKA_PASSWORD}
+  
+schema_registry:
+  schema.registry.url: ${KASHPY_SCHEMA_REGISTRY_URL}
+  basic.auth.credentials.source: USER_INFO
+  basic.auth.user.info: ${KASHPY_SCHEMA_REGISTRY_USER_INFO}
+```
 
 ## Kafka Made Simple
 
