@@ -6,7 +6,7 @@ from confluent_kafka.schema_registry.json_schema import JSONDeserializer, JSONSe
 from confluent_kafka.schema_registry.protobuf import ProtobufDeserializer, ProtobufSerializer
 from confluent_kafka.serialization import MessageField, SerializationContext
 from google.protobuf.json_format import MessageToDict, ParseDict
-import configparser
+from piny import YamlLoader
 from fnmatch import fnmatch
 import importlib
 import json
@@ -24,12 +24,6 @@ RD_KAFKA_PARTITION_UA = -1
 CURRENT_TIME = 0
 
 # Helpers
-
-def str_to_bool(str):
-    if str.lower() == "false":
-        return False
-    else:
-        return True
 
 
 def is_interactive():
@@ -155,32 +149,22 @@ def foldl_from_file(path_str, foldl_function, initial_acc, break_function=lambda
 # Get cluster configurations
 
 def get_config_dict(cluster_str):
-    rawConfigParser = configparser.RawConfigParser()
     home_str = os.environ.get("KASHPY_HOME")
     if not home_str:
         home_str = "."
-    if os.path.exists(f"{home_str}/clusters_secured/{cluster_str}.conf"):
-        rawConfigParser.read(f"{home_str}/clusters_secured/{cluster_str}.conf")
-        cluster_dir_str = "clusters_secured"
-    elif os.path.exists(f"{home_str}/clusters_unsecured/{cluster_str}.conf"):
-        rawConfigParser.read(f"{home_str}/clusters_unsecured/{cluster_str}.conf")
-        cluster_dir_str = "clusters_unsecured"
+    if os.path.exists(f"{home_str}/clusters/{cluster_str}.yaml"):
+        config_dict = YamlLoader(f"{home_str}/clusters/{cluster_str}.yaml").load()
     else:
-        raise Exception(f"No cluster configuration file \"{cluster_str}.conf\" found in \"clusters_secured\" and \"clusters_unsecured\" (from: {home_str}; use KASHPY_HOME environment variable to set the kash.py home directory).")
+        raise Exception(f"No cluster configuration file \"{cluster_str}.yaml\" found in \"clusters\" directory (from: {home_str}; use KASHPY_HOME environment variable to set the kash.py home directory).")
     #
-    config_dict = dict(rawConfigParser.items("kafka"))
+    if "kafka" not in config_dict:
+        raise Exception(f"Cluster configuration file \"{cluster_str}.yaml\" does not include a \"kafka\" section.")
+    if "schema_registry" not in config_dict:
+        config_dict["schema_registry"] = {}
+    if "kash" not in config_dict:
+        config_dict["kash"] = {}
     #
-    if "schema_registry" in rawConfigParser.sections():
-        schema_registry_config_dict = dict(rawConfigParser.items("schema_registry"))
-    else:
-        schema_registry_config_dict = {}
-    #
-    if "kash" in rawConfigParser.sections():
-        kash_dict = dict(rawConfigParser.items("kash"))
-    else:
-        kash_dict = {}
-    #
-    return config_dict, schema_registry_config_dict, kash_dict, cluster_dir_str
+    return config_dict
 
 
 # Get AdminClient, Producer and Consumer objects from a configuration dictionary
@@ -819,7 +803,7 @@ class Cluster:
 
     Initialize a kash.py Cluster object based on a kash.py cluster configuration file.
 
-    kash.py cluster configuration files are searched for in the directories "cluster_secured" and "cluster_unsecured" starting 1) from the directory in the KASHPY_HOME environment variable, or, if that environment variable is not set, 2) from the current directory.
+    kash.py cluster configuration files are searched for in the directory "cluster" starting 1) from the directory in the KASHPY_HOME environment variable, or, if that environment variable is not set, 2) from the current directory.
 
     kash.py cluster configuration files have up to three sections: "kafka", "schema_registry", and "kash".
 
@@ -853,93 +837,96 @@ class Cluster:
       * ``block.interval``: Time (in seconds) between retries when blocking to wait for topics to have been created/deleted (if ``block`` is set to True). Defaults to 0.1.
 
     Args:
-        cluster_str (:obj:`str`): Name of the cluster; kash.py searches the two folders "clusters_secured" and "clusters_unsecured" for kash.py configuration files named "<cluster.str>.conf".
+        cluster_str (:obj:`str`): Name of the cluster; kash.py searches the folder "clusters" for kash.py configuration files named "<cluster_str>.yaml".
 
     Examples:
 
         Simplest kash.py configuration file example (just "bootstrap.servers" is set)::
 
-            [kafka]
-            bootstrap.servers=localhost:9092
+            kafka:
+              bootstrap.servers: localhost:9092
 
         Simple kash.py configuration file example with additional Schema Registry URL::
 
-            [kafka]
-            bootstrap.servers=localhost:9092
+            kafka:
+              bootstrap.servers: localhost:9092
 
-            [schema_registry]
-            schema.registry.url=http://localhost:8081
+            schema_registry:
+              schema.registry.url: http://localhost:8081
 
         kash.py configuration file with all bells and whistles - all that can currently be configured::
 
-            [kafka]
-            bootstrap.servers=localhost:9092
-            [schema_registry]
-            schema.registry.url=http://localhost:8081
+            kafka:
+              bootstrap.servers: localhost:9092
+            
+            schema_registry:
+              schema.registry.url: http://localhost:8081
 
-            [kash]
-            flush.num.messages=10000
-            flush.timeout=-1.0
-            retention.ms=-1
-            consume.timeout=1.0
-            auto.offset.reset=earliest
-            enable.auto.commit=true
-            session.timeout.ms=10000
-            progress.num.messages=1000
-            block.num.retries.int=50
-            block.interval=0.1
+            kash:
+              flush.num.messages: 10000
+              flush.timeout: -1.0
+              retention.ms: -1
+              consume.timeout: 1.0
+              auto.offset.reset: earliest
+              enable.auto.commit: true
+              session.timeout.ms: 10000
+              progress.num.messages: 1000
+              block.num.retries.int: 50
+              block.interval: 0.1
 
+        kash.py configuration file for a typical Confluent Cloud cluster (including Schema Registry). Note the use of (Piny-powered) environment variable interpolation to bring in security-relevant information such as the cluster name, user name and password::
 
-        kash.py configuration file for a typical Confluent Cloud cluster (including Schema Registry)::
+            kafka:
+              bootstrap.servers: ${CLUSTER}.confluent.cloud:9092
+              security.protocol: SASL_SSL
+              sasl.mechanisms: PLAIN
+              sasl.username: ${CLUSTER_USERNAME}
+              sasl.password: ${CLUSTER_PASSWORD}
 
-            [kafka]
-            bootstrap.servers=CLUSTER.confluent.cloud:9092
-            security.protocol=SASL_SSL
-            sasl.mechanisms=PLAIN
-            sasl.username=CLUSTER_USERNAME
-            sasl.password=CLUSTER_PASSWORD
+            schema_registry:
+              schema.registry.url: https://${SCHEMA_REGISTRY}.confluent.cloud
+              basic.auth.credentials.source: USER_INFO
+              basic.auth.user.info: ${SCHEMA_REGISTRY_USERNAME}:${SCHEMA_REGISTRY_PASSWORD}
 
-            [schema_registry]
-            schema.registry.url=https://SCHEMA_REGISTRY.confluent.cloud
-            basic.auth.credentials.source=USER_INFO
-            basic.auth.user.info=SCHEMA_REGISTRY_USERNAME:SCHEMA_REGISTRY_PASSWORD
-
-            [kash]
-            flush.num.messages=10000
-            flush.timeout=-1.0
-            retention.ms=-1
-            consume.timeout=10.0
-            auto.offset.reset=earliest
-            enable.auto.commit=true
-            session.timeout.ms=10000
-            progress.num.messages=1000
-            block.num.retries.int=50
-            block.interval=0.1
+            kash:
+              flush.num.messages: 10000
+              flush.timeout: -1.0
+              retention.ms: -1
+              consume.timeout: 10.0
+              auto.offset.reset: earliest
+              enable.auto.commit: true
+              session.timeout.ms: 10000
+              progress.num.messages: 1000
+              block.num.retries.int: 50
+              block.interval: 0.1
 
         kash.py configuration file for a self-hosted Redpanda cluster (without Schema Registry)::
 
-            [kafka]
-            bootstrap.servers=CLUSTER:9094
-            security.protocol=sasl_plaintext
-            sasl.mechanisms=SCRAM-SHA-256
-            sasl.username=CLUSTER_USERNAME
-            sasl.password=CLUSTER_PASSWORD
+            kafka:
+              bootstrap.servers: ${CLUSTER}:9094
+              security.protocol: sasl_plaintext
+              sasl.mechanisms: SCRAM-SHA-256
+              sasl.username: ${CLUSTER_USERNAME}
+              sasl.password: ${CLUSTER_PASSWORD}
 
-            [kash]
-            flush.num.messages=10000
-            flush.timeout=-1.0
-            retention.ms=-1
-            consume.timeout=5.0
-            auto.offset.reset=earliest
-            enable.auto.commit=true
-            session.timeout.ms=10000
-            progress.num.messages=1000
-            block.num.retries.int=50
-            block.interval=0.1
+            kash:
+              flush.num.messages: 10000
+              flush.timeout: -1.0
+              retention.ms: -1
+              consume.timeout: 5.0
+              auto.offset.reset: earliest
+              enable.auto.commit: true
+              session.timeout.ms: 10000
+              progress.num.messages: 1000
+              block.num.retries.int: 50
+              block.interval: 0.1
     """
     def __init__(self, cluster_str):
         self.cluster_str = cluster_str
-        self.config_dict, self.schema_registry_config_dict, self.kash_dict, self.cluster_dir_str = get_config_dict(cluster_str)
+        self.config_dict = get_config_dict(cluster_str)
+        self.schema_registry_config_dict = self.config_dict["schema_registry"]
+        self.kash_dict = self.config_dict["kash"]
+        self.config_dict = self.config_dict["kafka"]
         #
         self.adminClient = get_adminClient(self.config_dict)
         #
@@ -995,7 +982,7 @@ class Cluster:
         if "enable.auto.commit" not in self.kash_dict:
             self.enable_auto_commit(True)
         else:
-            self.enable_auto_commit(str_to_bool(self.kash_dict["enable.auto.commit"]))
+            self.enable_auto_commit(bool(self.kash_dict["enable.auto.commit"]))
         if "session.timeout.ms" not in self.kash_dict:
             self.session_timeout_ms(45000)
         else:
@@ -1207,7 +1194,7 @@ class Cluster:
         return jsonschema_str
 
     def schema_id_int_and_schema_str_to_generalizedProtocolMessageType(self, schema_id_int, schema_str):
-        path_str = f"/{tempfile.gettempdir()}/kash.py/{self.cluster_dir_str}/{self.cluster_str}"
+        path_str = f"/{tempfile.gettempdir()}/kash.py/clusters/{self.cluster_str}"
         os.makedirs(path_str, exist_ok=True)
         file_str = f"schema_{schema_id_int}.proto"
         file_path_str = f"{path_str}/{file_str}"

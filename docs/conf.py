@@ -22,7 +22,7 @@ copyright = '2022, Ralph M. Debusmann'
 author = 'Ralph M. Debusmann'
 
 # The full version, including alpha/beta/rc tags
-release = '0.0.9'
+release = '0.0.10'
 
 
 # -- General configuration ---------------------------------------------------

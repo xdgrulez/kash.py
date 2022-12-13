@@ -22,39 +22,41 @@ pip install kashpy
 
 ## Configuration
 
-*kash.py* makes use of configuration files suffixed `.conf` which are being searched for in one of these two folders: `clusters_unsecured` or `clusters_secured`, starting 1) from the directory in the `KASHPY_HOME` environment variable, or, if that environment variable is not set, 2) from the current directory.
+*kash.py* makes use of configuration files suffixed `.yaml` which are being searched for in the folder `clusters`, starting 1) from the directory in the `KASHPY_HOME` environment variable, or, if that environment variable is not set, 2) from the current directory.
+
+For the YAML-based configuration files, *kash.py* makes use of the ingenious little library [Piny](https://github.com/pilosus/piny) from Vitaly Samigullin (see also his illustrative [blog](https://blog.pilosus.org/posts/2019/06/07/application-configs-files-or-environment-variables-actually-both/) about the genesis of Piny).
 
 A barebones configuration file looks like this (including Schema Registry):
 
 ```
-[kafka]
-bootstrap.servers=localhost:9092
+kafka:
+  bootstrap.servers: localhost:9092
 
-[schema_registry]
-schema.registry.url=http://localhost:8081
+schema_registry:
+  schema.registry.url: http://localhost:8081
 ```
 
-You can also set some of the defaults of *kash.py* in the `[kash]` section like this:
+You can also set some of the defaults of *kash.py* in the `kash` section like this:
 
 ```
-[kash]
-flush.num.messages=10000
-flush.timeout=-1.0
-retention.ms=-1
-consume.timeout=1.0
-auto.offset.reset=earliest
-enable.auto.commit=true
-session.timeout.ms=10000
-progress.num.messages=1000
-block.num.retries.int=50
-block.interval=0.1
+kash:
+  flush.num.messages: 10000
+  flush.timeout: -1.0
+  retention.ms: -1
+  consume.timeout: 1.0
+  auto.offset.reset: earliest
+  enable.auto.commit: true
+  session.timeout.ms: 10000
+  progress.num.messages: 1000
+  block.num.retries.int: 50
+  block.interval: 0.1
 ```
 
-You can find an in-depth explanation of these settings in the [kashpy package documentation](https://github.com/xdgrulez/kash.py/blob/main/docs/_build/markdown/source/kashpy.md), including example configuration files for connecting to [Confluent Cloud](https://www.confluent.io/confluent-cloud/) etc.
+You can find an in-depth explanation of these settings in the [kashpy package documentation](https://github.com/xdgrulez/kash.py/blob/main/docs/_build/markdown/source/kashpy.md), including example configuration files for connecting to [Confluent Cloud](https://www.confluent.io/confluent-cloud/), [Redpanda](https://redpanda.com/) etc.
 
 ## Kafka Made Simple
 
-For interactive use, e.g. using your local cluster configured in the file `clusters_unsecured/local.conf`, just do the following to list the topics:
+For interactive use, e.g. using your local cluster configured in the file `clusters/local.yaml`, just do the following to list the topics:
 ```
 $ python3
 >>> from kashpy.kash import *

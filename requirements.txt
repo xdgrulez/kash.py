@@ -1,5 +1,6 @@
 confluent_kafka
-grpcio-tools
-requests
 fastavro
+grpcio-tools
 jsonschema
+piny
+requests
