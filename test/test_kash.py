@@ -832,3 +832,26 @@ class Test(unittest.TestCase):
         self.assertEqual(topic_str_message_dict_list_dict[topic_str][9]["offset"], 11)
         #
         cluster.delete(topic_str)
+
+    def test_cp_no_target_schema(self):
+        schema_str = '{ "type": "record", "name": "myrecord", "fields": [{"name": "name",  "type": "string" }, {"name": "calories", "type": "float" }, {"name": "colour", "type": "string" }] }'
+        # Create topic with three Avro-encoded messages using the value schema schema_str.
+        cluster = Cluster(cluster_str)
+        topic_str = create_test_topic_name()
+        cluster.create(topic_str)
+        cluster.cp("./snacks_value.txt", topic_str, target_value_type="avro", target_value_schema=schema_str)
+        self.assertEqual(cluster.size(topic_str)[topic_str][0], 3)
+        # Copy the topic to another topic *with* setting the target value schema explicitly.
+        cluster.cp(topic_str, f"{topic_str}_1", source_value_type="avro", target_value_type="avro", target_value_schema=schema_str)
+        self.assertEqual(cluster.size(topic_str)[topic_str][0], 3)
+        diff_tuple = cluster.diff(topic_str, f"{topic_str}_1")
+        self.assertEqual(diff_tuple[0], [])
+        # Copy the topic to another topic *with* setting the target value schema explicitly.
+        cluster.cp(topic_str, f"{topic_str}_2", source_value_type="avro", target_value_type="avro")
+        self.assertEqual(cluster.size(topic_str)[topic_str][0], 3)
+        diff_tuple = cluster.diff(topic_str, f"{topic_str}_2")
+        self.assertEqual(diff_tuple[0], [])
+        #
+        cluster.delete(topic_str)
+        cluster.delete(f"{topic_str}_1")
+        cluster.delete(f"{topic_str}_2")
