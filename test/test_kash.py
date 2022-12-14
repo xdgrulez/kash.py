@@ -846,7 +846,7 @@ class Test(unittest.TestCase):
         self.assertEqual(cluster.size(topic_str)[topic_str][0], 3)
         diff_tuple = cluster.diff(topic_str, f"{topic_str}_1")
         self.assertEqual(diff_tuple[0], [])
-        # Copy the topic to another topic *with* setting the target value schema explicitly.
+        # Copy the topic to another topic *without* setting the target value schema explicitly.
         cluster.cp(topic_str, f"{topic_str}_2", source_value_type="avro", target_value_type="avro")
         self.assertEqual(cluster.size(topic_str)[topic_str][0], 3)
         diff_tuple = cluster.diff(topic_str, f"{topic_str}_2")
