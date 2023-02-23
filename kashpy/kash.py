@@ -1,5 +1,5 @@
 from confluent_kafka import Consumer, OFFSET_BEGINNING, OFFSET_END, OFFSET_INVALID, OFFSET_STORED, Producer, TIMESTAMP_CREATE_TIME, TopicPartition
-from confluent_kafka.admin import AclBinding, AclBindingFilter, AclOperation, AclPermissionType, AdminClient, ConfigResource, NewPartitions, NewTopic, ResourceType, ResourcePatternType
+from confluent_kafka.admin import AclBinding, AclBindingFilter, AclOperation, AclPermissionType, AdminClient, ConfigResource, ConsumerGroupDescription, _ConsumerGroupState, NewPartitions, NewTopic, ResourceType, ResourcePatternType
 from confluent_kafka.schema_registry import SchemaRegistryClient
 from confluent_kafka.schema_registry.avro import AvroDeserializer, AvroSerializer
 from confluent_kafka.schema_registry.json_schema import JSONDeserializer, JSONSerializer
@@ -392,6 +392,77 @@ def groupMember_to_dict(groupMember):
     return dict
 
 
+def consumerGroupState_to_str(consumerGroupState):
+    if consumerGroupState == _ConsumerGroupState.UNKOWN:
+        return "unknown"
+    elif consumerGroupState == _ConsumerGroupState.PREPARING_REBALANCING:
+        return "preparing_rebalancing"
+    elif consumerGroupState == _ConsumerGroupState.COMPLETING_REBALANCING:
+        return "completing_rebalancing"
+    elif consumerGroupState == _ConsumerGroupState.STABLE:
+        return "stable"
+    elif consumerGroupState == _ConsumerGroupState.DEAD:
+        return "dead"
+    elif consumerGroupState == _ConsumerGroupState.EMPTY:
+        return "empty"
+
+
+def str_to_consumerGroupState(consumerGroupState_str):
+    if consumerGroupState_str == "unknown":
+        return _ConsumerGroupState.UNKOWN
+    elif consumerGroupState_str == "preparing_rebalancing":
+        return _ConsumerGroupState.PREPARING_REBALANCING 
+    elif consumerGroupState_str == "completing_rebalancing":
+        return _ConsumerGroupState.COMPLETING_REBALANCING
+    elif consumerGroupState_str == "stable":
+        return _ConsumerGroupState.STABLE
+    elif consumerGroupState_str == "dead":
+        return _ConsumerGroupState.DEAD
+    elif consumerGroupState_str == "empty":
+        return _ConsumerGroupState.EMPTY
+
+
+def memberAssignment_to_dict(memberAssignment):
+    dict = {"topic_partitions": [topicPartition_to_dict(topicPartition) for topicPartition in memberAssignment.topic_partitions]}
+    return dict
+
+
+def memberDescription_to_dict(memberDescription):
+    dict = {"member_id": memberDescription.member_id,
+            "client_id": memberDescription.client_id,
+            "host": memberDescription.host,
+            "assignment": memberAssignment_to_dict(memberDescription.assignment),
+            "group_instance_id": memberDescription.group_instance_id}
+    return dict
+
+
+def consumerGroupDescription_to_group_dict(consumerGroupDescription):
+    group_dict = {"group_id": consumerGroupDescription.group_id,
+                  "is_simple_consumer_group": consumerGroupDescription.is_simple_consumer_group,
+                  "members": [memberDescription_to_dict(memberDescription) for memberDescription in consumerGroupDescription.members],
+                  "partition_assignor": consumerGroupDescription.partition_assignor,
+                  "state": consumerGroupState_to_str(consumerGroupDescription.state),
+                  "coordinator": node_to_dict(consumerGroupDescription.coordinator)}
+    return group_dict
+
+
+def topicPartition_to_dict(topicPartition):
+    dict = {"error": kafkaError_to_error_dict(topicPartition.error),
+            "metadata": topicPartition.metadata,
+            "offset": topicPartition.offset,
+            "partition": topicPartition.partition,
+            "topic": topicPartition.topic}
+    return dict
+
+
+def node_to_dict(node):
+    dict = {"id": node.id,
+            "id_string": node.id_string,
+            "host": node.host,
+            "port": node.port,
+            "rack": node.rack}
+    return dict
+
 # Cross-cluster
 
 def flatmap(source_cluster, source_topic_str, target_cluster, target_topic_str, flatmap_function, break_function=lambda _: False, group=None, offsets=None, config={}, source_key_type="bytes", source_value_type="bytes", target_key_type=None, target_value_type=None, target_key_schema=None, target_value_schema=None, on_delivery=None, keep_timestamps=True, n=ALL_MESSAGES, batch_size=1):
@@ -709,8 +780,8 @@ def zip_foldl(cluster1, topic_str1, cluster2, topic_str2, zip_foldl_function, in
             if message_counter_int1 >= num_messages_int:
                 break
     #
-    cluster1.unsubscribe()
-    cluster2.unsubscribe()
+    cluster1.close()
+    cluster2.close()
     return acc, message_counter_int1, message_counter_int2
 
 
@@ -1976,13 +2047,14 @@ class Cluster:
 
     # AdminClient - groups
 
-    def groups(self, pattern=None):
+    def groups(self, pattern=None, states=[]):
         """List consumer groups on the cluster.
 
         List consumer groups on the cluster. Optionally return only those consumer groups whose names match bash-like patterns.
 
         Args:
             pattern (:obj:`str` | :obj:`list(str)`, optional): The pattern or list of patterns for selecting those consumer groups which shall be listed. Defaults to None.
+            states (:obj:`str` | :obj:`list(str)`, optional): The consumer group state or list of consumer group states of the consumer groups to list ("unknown", "preparing_rebalancing", "completing_rebalancing", "stable", "dead", "empty"). Defaults to [] (all consumer group states).
 
         Returns:
             :obj:`list(str)`): List of strings (consumer group names).
@@ -2001,17 +2073,20 @@ class Cluster:
                 c.groups(["test*", "bla*"])
         """
         pattern_str_or_str_list = pattern
+        consumerGroupState_str_list = [states] if isinstance(states, str) else states
+        consumerGroupState_set = set([str_to_consumerGroupState(consumerGroupState_str) for consumerGroupState_str in consumerGroupState_str_list])
         #
-        groupMetadata_list = self.adminClient.list_groups()
-        group_str_list = [groupMetadata.id for groupMetadata in groupMetadata_list]
+        listConsumerGroupsResult = self.adminClient.list_consumer_groups(states=consumerGroupState_set).result()
+        consumerGroupListing_list = listConsumerGroupsResult.valid
         #
-        if pattern_str_or_str_list is not None:
-            if isinstance(pattern_str_or_str_list, str):
-                pattern_str_or_str_list = [pattern_str_or_str_list]
-            group_str_list = [group_str for group_str in group_str_list if any(fnmatch(group_str, pattern_str) for pattern_str in pattern_str_or_str_list)]
+        if isinstance(pattern_str_or_str_list, str):
+            pattern_str_or_str_list = [pattern_str_or_str_list]
+        else:
+            pattern_str_or_str_list = ["*"]
+        group_str_state_str_tuple_list = [(consumerGroupListing.group_id, consumerGroupState_to_str(consumerGroupListing.state)) for consumerGroupListing in consumerGroupListing_list if any(fnmatch(consumerGroupListing.group_id, pattern_str) for pattern_str in pattern_str_or_str_list)]
         #
-        group_str_list.sort()
-        return group_str_list
+        group_str_state_str_tuple_list.sort(key=lambda group_str_state_str_tuple: group_str_state_str_tuple[0])
+        return group_str_state_str_tuple_list
 
     def describe_groups(self, pattern_str_or_str_list):
         """Describe consumer groups on the cluster.
@@ -2033,12 +2108,14 @@ class Cluster:
 
                 c.describe_groups(["test*", "bla*"])
         """
-        groupMetadata_list = self.adminClient.list_groups()
+        group_str_state_str_tuple_list = self.groups()
         #
         if isinstance(pattern_str_or_str_list, str):
             pattern_str_or_str_list = [pattern_str_or_str_list]
         #
-        group_str_group_dict_dict = {groupMetadata.id: groupMetadata_to_group_dict(groupMetadata) for groupMetadata in groupMetadata_list if any(fnmatch(groupMetadata.id, pattern_str) for pattern_str in pattern_str_or_str_list)}
+        group_str_list = [group_str_state_str_tuple[0] for group_str_state_str_tuple in group_str_state_str_tuple_list if any(fnmatch(group_str_state_str_tuple[0], pattern_str) for pattern_str in pattern_str_or_str_list)]
+        group_str_consumerGroupDescription_future_dict = self.adminClient.describe_consumer_groups(group_str_list)
+        group_str_group_dict_dict = {group_str: consumerGroupDescription_to_group_dict(consumerGroupDescription_future.result()) for group_str, consumerGroupDescription_future in group_str_consumerGroupDescription_future_dict.items()}
         #
         return group_str_group_dict_dict
 
@@ -2630,6 +2707,7 @@ class Cluster:
             :obj:`tuple(str, str)` Pair of the topic unsubscribed from (string) and the used consumer group (string).
         """
         self.consumer.unsubscribe()
+        self.consumer.close()
         #
         topic_str = self.subscribed_topic_str
         group_str = self.subscribed_group_str
@@ -2640,6 +2718,13 @@ class Cluster:
         self.subscribed_value_type_str = None
         #
         return topic_str, group_str
+
+    def close(self):
+        """Close the consumer.
+
+        Close the consumer.
+        """
+        self.consumer.close()
 
     def consume(self, n=1):
         """Consume messages from a subscribed topic.
@@ -2863,7 +2948,7 @@ class Cluster:
             if num_messages_int != ALL_MESSAGES:
                 if message_counter_int >= num_messages_int:
                     break
-        self.unsubscribe()
+        self.close()
         return (acc, message_counter_int)
 
     #
@@ -3239,7 +3324,6 @@ class Cluster:
         #
         with open(path_str, mode_str) as textIOWrapper:
             ((_, line_counter_int), message_counter_int) = self.foldl(topic_str, foldl_function, (textIOWrapper, 0), break_function=break_function, group=group, offsets=offsets, config=config, key_type=key_type, value_type=value_type, n=n, batch_size=batch_size)
-        self.unsubscribe()
         #
         return message_counter_int, line_counter_int
 
