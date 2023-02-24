@@ -407,6 +407,9 @@ def consumerGroupState_to_str(consumerGroupState):
         return "empty"
 
 
+all_consumerGroupState_str_list = ["unknown", "preparing_rebalancing", "completing_rebalancing", "stable", "dead", "empty"]
+
+
 def str_to_consumerGroupState(consumerGroupState_str):
     if consumerGroupState_str == "unknown":
         return _ConsumerGroupState.UNKOWN
@@ -2047,14 +2050,14 @@ class Cluster:
 
     # AdminClient - groups
 
-    def groups(self, pattern=None, states=[]):
+    def groups(self, patterns="*", states="*"):
         """List consumer groups on the cluster.
 
         List consumer groups on the cluster. Optionally return only those consumer groups whose names match bash-like patterns.
 
         Args:
-            pattern (:obj:`str` | :obj:`list(str)`, optional): The pattern or list of patterns for selecting those consumer groups which shall be listed. Defaults to None.
-            states (:obj:`str` | :obj:`list(str)`, optional): The consumer group state or list of consumer group states of the consumer groups to list ("unknown", "preparing_rebalancing", "completing_rebalancing", "stable", "dead", "empty"). Defaults to [] (all consumer group states).
+            patterns (:obj:`str` | :obj:`list(str)`, optional): The pattern or list of patterns for selecting those consumer groups which shall be listed. Defaults to "*".
+            states (:obj:`str` | :obj:`list(str)`, optional): The pattern or list of patterns for selecting the consumer group states ("unknown", "preparing_rebalancing", "completing_rebalancing", "stable", "dead", "empty") to list. Defaults to "*" (all consumer group states).
 
         Returns:
             :obj:`list(str)`): List of strings (consumer group names).
@@ -2064,60 +2067,104 @@ class Cluster:
 
                 c.groups()
 
-            List all those consumer groups of the cluster whose name starts with "test"::
+            List all those consumer groups on the cluster whose name starts with "test"::
 
                 c.groups("test*")
 
-            List all those consumer groups of the cluster whose name starts with "test" or "bla"::
+            List all those consumer groups on the cluster whose name starts with "test" or "bla"::
 
                 c.groups(["test*", "bla*"])
+
+            List all those consumer groups on the cluster whose name starts with "test" or "bla" and whose state is either "unknown", "preparing_rebalancing" or "completing_rebalancing"::
+
+                c.groups(["test*", "bla*"], states=["unknown", "*_rebalancing"])
         """
-        pattern_str_or_str_list = pattern
-        consumerGroupState_str_list = [states] if isinstance(states, str) else states
-        consumerGroupState_set = set([str_to_consumerGroupState(consumerGroupState_str) for consumerGroupState_str in consumerGroupState_str_list])
+        pattern_str_or_str_list = [patterns] if isinstance(patterns, str) else patterns
+        #
+        consumerGroupState_pattern_str_list = [states] if isinstance(states, str) else states
+        consumerGroupState_set = set([str_to_consumerGroupState(consumerGroupState_str) for consumerGroupState_str in all_consumerGroupState_str_list if any(fnmatch(consumerGroupState_str, consumerGroupState_pattern_str) for consumerGroupState_pattern_str in consumerGroupState_pattern_str_list)])
+        if not consumerGroupState_set:
+            return []
         #
         listConsumerGroupsResult = self.adminClient.list_consumer_groups(states=consumerGroupState_set).result()
         consumerGroupListing_list = listConsumerGroupsResult.valid
         #
-        if isinstance(pattern_str_or_str_list, str):
-            pattern_str_or_str_list = [pattern_str_or_str_list]
-        else:
-            pattern_str_or_str_list = ["*"]
         group_str_state_str_tuple_list = [(consumerGroupListing.group_id, consumerGroupState_to_str(consumerGroupListing.state)) for consumerGroupListing in consumerGroupListing_list if any(fnmatch(consumerGroupListing.group_id, pattern_str) for pattern_str in pattern_str_or_str_list)]
         #
         group_str_state_str_tuple_list.sort(key=lambda group_str_state_str_tuple: group_str_state_str_tuple[0])
         return group_str_state_str_tuple_list
 
-    def describe_groups(self, pattern_str_or_str_list):
+    def describe_groups(self, patterns="*", states="*"):
         """Describe consumer groups on the cluster.
 
         Describe consumer groups on the cluster whose names match bash-like patterns.
 
         Args:
-            pattern_str_or_str_list (:obj:`str` | :obj:`list(str)`, optional): The pattern or list of patterns for selecting those consumer groups which shall be listed. Defaults to None.
+            patterns (:obj:`str` | :obj:`list(str)`, optional): The pattern or list of patterns for selecting those consumer groups which shall be listed. Defaults to "*".
+            states (:obj:`str` | :obj:`list(str)`, optional): The pattern or list of patterns for selecting the consumer group states ("unknown", "preparing_rebalancing", "completing_rebalancing", "stable", "dead", "empty") to describe. Defaults to "*" (all consumer group states).
 
         Returns:
             :obj:`dict(str, group_dict)`: Dictionary of strings (consumer group names) and group dictionaries describing the consumer group (converted from confluent_kafka.GroupMetadata objects).
 
         Examples:
-            Describe all those consumer groups of the cluster whose name starts with "test"::
+            Describe all those consumer groups on the cluster whose name starts with "test"::
 
                 c.describe_groups("test*")
 
-            Describe all those consumer groups of the cluster whose name starts with "test" or "bla"::
+            Describe all those consumer groups on the cluster whose name starts with "test" or "bla"::
 
                 c.describe_groups(["test*", "bla*"])
+
+            Describe all those consumer groups on the cluster whose name starts with "test" or "bla" and whose state is either "unknown", "preparing_rebalancing" or "completing_rebalancing"::
+
+                c.describe_groups(["test*", "bla*"], states=["unknown", "*_rebalancing"])
         """
-        group_str_state_str_tuple_list = self.groups()
+        group_str_state_str_tuple_list = self.groups(patterns=patterns, states=states)
+        if not group_str_state_str_tuple_list:
+            return {}
+        group_str_list = [group_str_state_str_tuple[0] for group_str_state_str_tuple in group_str_state_str_tuple_list]
         #
-        if isinstance(pattern_str_or_str_list, str):
-            pattern_str_or_str_list = [pattern_str_or_str_list]
-        #
-        group_str_list = [group_str_state_str_tuple[0] for group_str_state_str_tuple in group_str_state_str_tuple_list if any(fnmatch(group_str_state_str_tuple[0], pattern_str) for pattern_str in pattern_str_or_str_list)]
         group_str_consumerGroupDescription_future_dict = self.adminClient.describe_consumer_groups(group_str_list)
         group_str_group_dict_dict = {group_str: consumerGroupDescription_to_group_dict(consumerGroupDescription_future.result()) for group_str, consumerGroupDescription_future in group_str_consumerGroupDescription_future_dict.items()}
         #
         return group_str_group_dict_dict
+
+    def delete_groups(self, pattern_str_or_str_list, states="*"):
+        """Delete consumer groups on the cluster.
+
+        Delete consumer groups on the cluster whose names match bash-like patterns.
+
+        Args:
+            pattern_str_or_str_list (:obj:`str` | :obj:`list(str)`): The pattern or list of patterns for selecting those consumer groups which shall be deleted.
+            states (:obj:`str` | :obj:`list(str)`, optional): The pattern or list of patterns for selecting the consumer group states ("unknown", "preparing_rebalancing", "completing_rebalancing", "stable", "dead", "empty") to delete. Defaults to "*" (all consumer group states).
+
+        Returns:
+            :obj:`list(str)`: List of strings (consumer group names) of deleted consumer groups.
+
+        Examples:
+            Delete all those consumer groups on the cluster whose name starts with "test"::
+
+                c.delete_groups("test*")
+
+            Delete all those consumer groups on the cluster whose name starts with "test" or "bla"::
+
+                c.delete_groups(["test*", "bla*"])
+
+            Delete all those consumer groups on the cluster whose name starts with "test" or "bla" and whose state is either "unknown", "preparing_rebalancing" or "completing_rebalancing"::
+
+                c.delete_groups(["test*", "bla*"], states=["unknown", "*_rebalancing"])
+        """
+        group_str_state_str_tuple_list = self.groups(patterns=pattern_str_or_str_list, states=states)
+        if not group_str_state_str_tuple_list:
+            return []
+        group_str_list = [group_str_state_str_tuple[0] for group_str_state_str_tuple in group_str_state_str_tuple_list]
+        #
+        group_str_group_future_dict = self.adminClient.delete_consumer_groups(group_str_list)
+        for group_future in group_str_group_future_dict.values():
+            group_future.result() 
+        group_str_list = list(group_str_group_future_dict.keys())
+        #
+        return group_str_list
 
     # AdminClient - brokers
 
