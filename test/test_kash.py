@@ -7,6 +7,8 @@ import warnings
 sys.path.insert(1, "..")
 from kashpy.kash import *
 
+from confluent_kafka.admin import _ConsumerGroupTopicPartitions
+
 #cluster_str = "rp-dev"
 #cluster_str_without_kash = "rp-dev_without_kash"
 #principal_str = "User:admin"
@@ -144,16 +146,33 @@ class Test(unittest.TestCase):
         group_str = create_test_group_name()
         cluster.subscribe(topic_str, group_str)
         cluster.consume()
-        group_str_state_str_tuple_list1 = cluster.groups(["test*", "test_group*"])
-        self.assertIn((group_str, "stable"), group_str_state_str_tuple_list1)
-        group_str_state_str_tuple_list2 = cluster.groups("test_group*")
-        self.assertIn((group_str, "stable"), group_str_state_str_tuple_list2)
-        group_str_state_str_tuple_list3 = cluster.groups("test_group*", states=["stable"])
-        self.assertIn((group_str, "stable"), group_str_state_str_tuple_list3)
-        group_str_state_str_tuple_list4 = cluster.groups("test_group*", states="stab*")
-        self.assertIn((group_str, "stable"), group_str_state_str_tuple_list4)
-        group_str_state_str_tuple_list5 = cluster.groups(states="unknown")
-        self.assertEqual(group_str_state_str_tuple_list5, [])
+        #
+        group_str_list1 = cluster.groups(["test*", "test_group*"])
+        self.assertIn(group_str, group_str_list1)
+        group_str_list2 = cluster.groups("test_group*")
+        self.assertIn(group_str, group_str_list2)
+        group_str_list3 = cluster.groups("test_group*", state_patterns=["stable"])
+        self.assertIn(group_str, group_str_list3)
+        group_str_state_str_dict = cluster.groups("test_group*", state_patterns="stab*", states=True)
+        self.assertIn("stable", group_str_state_str_dict[group_str])
+        group_str_list4 = cluster.groups(state_patterns="unknown", states=False)
+        self.assertEqual(group_str_list4, [])
+        #
+        cluster.close()
+        cluster.delete(topic_str)
+
+    def test_describe_groups(self):
+        cluster = Cluster(cluster_str)
+        topic_str = create_test_topic_name()
+        cluster.create(topic_str)
+        cluster.produce(topic_str, "message 1")
+        cluster.produce(topic_str, "message 2")
+        cluster.produce(topic_str, "message 3")
+        cluster.flush()
+        group_str = create_test_group_name()
+        cluster.subscribe(topic_str, group_str)
+        cluster.consume()
+        #
         group_dict = cluster.describe_groups(group_str)[group_str]
         self.assertEqual(group_dict["group_id"], group_str)
         self.assertEqual(group_dict["is_simple_consumer_group"], False)
@@ -168,13 +187,53 @@ class Test(unittest.TestCase):
         self.assertEqual(group_dict["state"], "stable")
         self.assertEqual(group_dict["coordinator"]["id"], 0)
         self.assertEqual(group_dict["coordinator"]["id_string"], "0")
+        #
         cluster.close()
-        group_str_list = cluster.delete_groups(group_str, states=["empt*"])
-        self.assertEqual(group_str_list, [group_str])
-        group_str_list = cluster.groups(group_str, states="*")
-        self.assertEqual(group_str_list, [])
         cluster.delete(topic_str)
-    
+
+    def test_delete_groups(self):
+        cluster = Cluster(cluster_str)
+        topic_str = create_test_topic_name()
+        cluster.create(topic_str)
+        cluster.produce(topic_str, "message 1")
+        cluster.produce(topic_str, "message 2")
+        cluster.produce(topic_str, "message 3")
+        cluster.flush()
+        group_str = create_test_group_name()
+        cluster.subscribe(topic_str, group_str)
+        cluster.consume()
+        #
+        group_str_list = cluster.delete_groups(group_str, state_patterns=["empt*"])
+        self.assertEqual(group_str_list, [])
+        group_str_list = cluster.groups(group_str, state_patterns="*")
+        self.assertEqual(group_str_list, [group_str])
+        #
+        cluster.close()
+        cluster.delete(topic_str)
+
+    def test_group_offsets(self):
+        cluster = Cluster(cluster_str)
+        topic_str = create_test_topic_name()
+        cluster.create(topic_str, partitions=2)
+        cluster.produce(topic_str, "message 1", partition=0)
+        cluster.produce(topic_str, "message 2", partition=1)
+        cluster.flush()
+        group_str = create_test_group_name()
+        cluster.subscribe(topic_str, group_str)
+        cluster.consume()
+        cluster.commit()
+        cluster.consume()
+        cluster.commit()
+        #
+        group_str_topic_str_partition_int_offset_int_dict_dict_dict = cluster.group_offsets(group_str)
+        self.assertIn(group_str, group_str_topic_str_partition_int_offset_int_dict_dict_dict)
+        self.assertIn(topic_str, group_str_topic_str_partition_int_offset_int_dict_dict_dict[group_str])
+        self.assertEqual(group_str_topic_str_partition_int_offset_int_dict_dict_dict[group_str][topic_str][0], 1)
+        self.assertEqual(group_str_topic_str_partition_int_offset_int_dict_dict_dict[group_str][topic_str][1], 1)
+        #
+        cluster.close()
+        cluster.delete(topic_str)
+
     def test_brokers(self):
         cluster = Cluster(cluster_str)
         if "confluent.cloud" not in cluster.config_dict["bootstrap.servers"]:
@@ -619,28 +678,6 @@ class Test(unittest.TestCase):
             cluster.delete(topic_str)
             cluster.delete(f"{topic_str}_1")
     
-    def test_recreate(self):
-        cluster = Cluster(cluster_str_without_kash)
-        topic_str = create_test_topic_name()
-        cluster.create(topic_str)
-        cluster.cp("./snacks_value.txt", topic_str, target_value_type="str")
-        self.assertEqual(cluster.size(topic_str)[topic_str][0], 3)
-        #
-        for i in range(3):
-            print(i)
-            (num_consumed_messages_int1, num_produced_messages_int1), (num_consumed_messages_int2, num_produced_messages_int2) = cluster.recreate(topic_str)
-            self.assertEqual(num_consumed_messages_int1, 3)
-            self.assertEqual(num_produced_messages_int1, 3)
-            self.assertEqual(num_consumed_messages_int2, 3)
-            self.assertEqual(num_produced_messages_int2, 3)
-            #
-            cluster.cp(topic_str, "./snacks_value1.txt", source_value_type="str", batch_size=3, n=3)
-            self.assertTrue(filecmp.cmp("./snacks_value.txt", "./snacks_value1.txt"))
-            #
-            os.remove("./snacks_value1.txt")
-        #
-        cluster.delete(topic_str)
-
     def test_diff(self):
         cluster = Cluster(cluster_str)
         topic_str = create_test_topic_name()

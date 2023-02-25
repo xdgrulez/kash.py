@@ -1,5 +1,5 @@
 from confluent_kafka import Consumer, OFFSET_BEGINNING, OFFSET_END, OFFSET_INVALID, OFFSET_STORED, Producer, TIMESTAMP_CREATE_TIME, TopicPartition
-from confluent_kafka.admin import AclBinding, AclBindingFilter, AclOperation, AclPermissionType, AdminClient, ConfigResource, ConsumerGroupDescription, _ConsumerGroupState, NewPartitions, NewTopic, ResourceType, ResourcePatternType
+from confluent_kafka.admin import AclBinding, AclBindingFilter, AclOperation, AclPermissionType, AdminClient, ConfigResource, _ConsumerGroupTopicPartitions, _ConsumerGroupState, NewPartitions, NewTopic, ResourceType, ResourcePatternType
 from confluent_kafka.schema_registry import SchemaRegistryClient
 from confluent_kafka.schema_registry.avro import AvroDeserializer, AvroSerializer
 from confluent_kafka.schema_registry.json_schema import JSONDeserializer, JSONSerializer
@@ -439,14 +439,14 @@ def memberDescription_to_dict(memberDescription):
     return dict
 
 
-def consumerGroupDescription_to_group_dict(consumerGroupDescription):
-    group_dict = {"group_id": consumerGroupDescription.group_id,
-                  "is_simple_consumer_group": consumerGroupDescription.is_simple_consumer_group,
-                  "members": [memberDescription_to_dict(memberDescription) for memberDescription in consumerGroupDescription.members],
-                  "partition_assignor": consumerGroupDescription.partition_assignor,
-                  "state": consumerGroupState_to_str(consumerGroupDescription.state),
-                  "coordinator": node_to_dict(consumerGroupDescription.coordinator)}
-    return group_dict
+def consumerGroupDescription_to_group_description_dict(consumerGroupDescription):
+    group_description_dict = {"group_id": consumerGroupDescription.group_id,
+                              "is_simple_consumer_group": consumerGroupDescription.is_simple_consumer_group,
+                              "members": [memberDescription_to_dict(memberDescription) for memberDescription in consumerGroupDescription.members],
+                              "partition_assignor": consumerGroupDescription.partition_assignor,
+                              "state": consumerGroupState_to_str(consumerGroupDescription.state),
+                              "coordinator": node_to_dict(consumerGroupDescription.coordinator)}
+    return group_description_dict
 
 
 def topicPartition_to_dict(topicPartition):
@@ -2050,114 +2050,114 @@ class Cluster:
 
     # AdminClient - groups
 
-    def groups(self, patterns="*", states="*"):
-        """List consumer groups on the cluster.
+    def groups(self, patterns="*", state_patterns="*", states=False):
+        """List consumer groups.
 
-        List consumer groups on the cluster. Optionally return only those consumer groups whose names match bash-like patterns.
+        List consumer groups. Optionally return only those consumer groups whose group IDs match bash-like patterns.
 
         Args:
-            patterns (:obj:`str` | :obj:`list(str)`, optional): The pattern or list of patterns for selecting those consumer groups which shall be listed. Defaults to "*".
-            states (:obj:`str` | :obj:`list(str)`, optional): The pattern or list of patterns for selecting the consumer group states ("unknown", "preparing_rebalancing", "completing_rebalancing", "stable", "dead", "empty") to list. Defaults to "*" (all consumer group states).
+            patterns (:obj:`str` | :obj:`list(str)`, optional): The pattern or list of patterns for selecting the group IDs of those consumer groups which shall be listed. Defaults to "*".
+            state_patterns (:obj:`str` | :obj:`list(str)`, optional): The pattern or list of patterns for selecting the consumer group states ("unknown", "preparing_rebalancing", "completing_rebalancing", "stable", "dead", "empty") to list. Defaults to "*" (all consumer group states).
+            states (:obj:`bool`, optional): Return the consumer group states. Defaults to False.
 
         Returns:
-            :obj:`list(str)`): List of strings (consumer group names).
+            :obj:`list(str)`) | :obj:`dict(str, str)`): List of strings (group IDs) or dictionary of pairs of strings of group IDs and consumer group states.
 
         Examples:
             List all consumer groups of the cluster::
 
                 c.groups()
 
-            List all those consumer groups on the cluster whose name starts with "test"::
+            List all those consumer groups whose group ID starts with "test"::
 
                 c.groups("test*")
 
-            List all those consumer groups on the cluster whose name starts with "test" or "bla"::
+            List all those consumer groups whose group ID starts with "test" or "bla"::
 
                 c.groups(["test*", "bla*"])
 
-            List all those consumer groups on the cluster whose name starts with "test" or "bla" and whose state is either "unknown", "preparing_rebalancing" or "completing_rebalancing"::
+            List all those consumer groups and their respective states whose group ID starts with "test" or "bla" and whose state is either "unknown", "preparing_rebalancing" or "completing_rebalancing"::
 
-                c.groups(["test*", "bla*"], states=["unknown", "*_rebalancing"])
+                c.groups(["test*", "bla*"], ["unknown", "*_rebalancing"], states=True)
         """
         pattern_str_or_str_list = [patterns] if isinstance(patterns, str) else patterns
         #
-        consumerGroupState_pattern_str_list = [states] if isinstance(states, str) else states
+        consumerGroupState_pattern_str_list = [state_patterns] if isinstance(states, str) else state_patterns
         consumerGroupState_set = set([str_to_consumerGroupState(consumerGroupState_str) for consumerGroupState_str in all_consumerGroupState_str_list if any(fnmatch(consumerGroupState_str, consumerGroupState_pattern_str) for consumerGroupState_pattern_str in consumerGroupState_pattern_str_list)])
         if not consumerGroupState_set:
-            return []
+            return {} if states else []
         #
         listConsumerGroupsResult = self.adminClient.list_consumer_groups(states=consumerGroupState_set).result()
         consumerGroupListing_list = listConsumerGroupsResult.valid
         #
-        group_str_state_str_tuple_list = [(consumerGroupListing.group_id, consumerGroupState_to_str(consumerGroupListing.state)) for consumerGroupListing in consumerGroupListing_list if any(fnmatch(consumerGroupListing.group_id, pattern_str) for pattern_str in pattern_str_or_str_list)]
+        group_str_state_str_dict = {consumerGroupListing.group_id: consumerGroupState_to_str(consumerGroupListing.state) for consumerGroupListing in consumerGroupListing_list if any(fnmatch(consumerGroupListing.group_id, pattern_str) for pattern_str in pattern_str_or_str_list)}
         #
-        group_str_state_str_tuple_list.sort(key=lambda group_str_state_str_tuple: group_str_state_str_tuple[0])
-        return group_str_state_str_tuple_list
+        return group_str_state_str_dict if states else list(group_str_state_str_dict.keys())
 
-    def describe_groups(self, patterns="*", states="*"):
-        """Describe consumer groups on the cluster.
+    def describe_groups(self, patterns="*", state_patterns="*"):
+        """Describe consumer groups.
 
-        Describe consumer groups on the cluster whose names match bash-like patterns.
+        Describe consumer groups whose group IDs match bash-like patterns.
 
         Args:
-            patterns (:obj:`str` | :obj:`list(str)`, optional): The pattern or list of patterns for selecting those consumer groups which shall be listed. Defaults to "*".
-            states (:obj:`str` | :obj:`list(str)`, optional): The pattern or list of patterns for selecting the consumer group states ("unknown", "preparing_rebalancing", "completing_rebalancing", "stable", "dead", "empty") to describe. Defaults to "*" (all consumer group states).
+            patterns (:obj:`str` | :obj:`list(str)`, optional): The pattern or list of patterns for selecting the group IDs of those consumer groups which shall be described. Defaults to "*".
+            state_patterns (:obj:`str` | :obj:`list(str)`, optional): The pattern or list of patterns for selecting the consumer group states ("unknown", "preparing_rebalancing", "completing_rebalancing", "stable", "dead", "empty") to describe. Defaults to "*" (all consumer group states).
 
         Returns:
-            :obj:`dict(str, group_dict)`: Dictionary of strings (consumer group names) and group dictionaries describing the consumer group (converted from confluent_kafka.GroupMetadata objects).
+            :obj:`dict(str, group_dict)`: Dictionary of strings (group IDs) and group description dictionaries describing the consumer group.
 
         Examples:
-            Describe all those consumer groups on the cluster whose name starts with "test"::
+            Describe all those consumer groups whose group ID starts with "test"::
 
                 c.describe_groups("test*")
 
-            Describe all those consumer groups on the cluster whose name starts with "test" or "bla"::
+            Describe all those consumer groups whose group ID starts with "test" or "bla"::
 
                 c.describe_groups(["test*", "bla*"])
 
-            Describe all those consumer groups on the cluster whose name starts with "test" or "bla" and whose state is either "unknown", "preparing_rebalancing" or "completing_rebalancing"::
+            Describe all those consumer groups whose group ID starts with "test" or "bla" and whose state is either "unknown", "preparing_rebalancing" or "completing_rebalancing"::
 
-                c.describe_groups(["test*", "bla*"], states=["unknown", "*_rebalancing"])
+                c.describe_groups(["test*", "bla*"], ["unknown", "*_rebalancing"])
         """
-        group_str_state_str_tuple_list = self.groups(patterns=patterns, states=states)
-        if not group_str_state_str_tuple_list:
+        group_str_list = self.groups(patterns, state_patterns)
+        if not group_str_list:
             return {}
-        group_str_list = [group_str_state_str_tuple[0] for group_str_state_str_tuple in group_str_state_str_tuple_list]
         #
         group_str_consumerGroupDescription_future_dict = self.adminClient.describe_consumer_groups(group_str_list)
-        group_str_group_dict_dict = {group_str: consumerGroupDescription_to_group_dict(consumerGroupDescription_future.result()) for group_str, consumerGroupDescription_future in group_str_consumerGroupDescription_future_dict.items()}
+        group_str_group_description_dict_dict = {group_str: consumerGroupDescription_to_group_description_dict(consumerGroupDescription_future.result()) for group_str, consumerGroupDescription_future in group_str_consumerGroupDescription_future_dict.items()}
         #
-        return group_str_group_dict_dict
+        return group_str_group_description_dict_dict
 
-    def delete_groups(self, pattern_str_or_str_list, states="*"):
-        """Delete consumer groups on the cluster.
+    def delete_groups(self, patterns, state_patterns="*"):
+        """Delete consumer groups.
 
-        Delete consumer groups on the cluster whose names match bash-like patterns.
+        Delete consumer groups whose group IDs match bash-like patterns.
 
         Args:
-            pattern_str_or_str_list (:obj:`str` | :obj:`list(str)`): The pattern or list of patterns for selecting those consumer groups which shall be deleted.
-            states (:obj:`str` | :obj:`list(str)`, optional): The pattern or list of patterns for selecting the consumer group states ("unknown", "preparing_rebalancing", "completing_rebalancing", "stable", "dead", "empty") to delete. Defaults to "*" (all consumer group states).
+            patterns (:obj:`str` | :obj:`list(str)`): The pattern or list of patterns for selecting the group IDs of those consumer groups which shall be deleted. Defaults to "*".
+            state_patterns (:obj:`str` | :obj:`list(str)`, optional): The pattern or list of patterns for selecting the consumer group states ("unknown", "preparing_rebalancing", "completing_rebalancing", "stable", "dead", "empty") to delete.Defaults to "*" (all consumer group states).
 
         Returns:
-            :obj:`list(str)`: List of strings (consumer group names) of deleted consumer groups.
+            :obj:`list(str)`: List of strings (consumer group IDs) of the deleted consumer groups.
 
         Examples:
-            Delete all those consumer groups on the cluster whose name starts with "test"::
+            Delete all those consumer groups whose group ID starts with "test"::
 
                 c.delete_groups("test*")
 
-            Delete all those consumer groups on the cluster whose name starts with "test" or "bla"::
+            Delete all those consumer groups whose group ID starts with "test" or "bla"::
 
                 c.delete_groups(["test*", "bla*"])
 
-            Delete all those consumer groups on the cluster whose name starts with "test" or "bla" and whose state is either "unknown", "preparing_rebalancing" or "completing_rebalancing"::
+            Delete all those consumer groups whose group ID starts with "test" or "bla" and whose state is either "unknown", "preparing_rebalancing" or "completing_rebalancing"::
 
-                c.delete_groups(["test*", "bla*"], states=["unknown", "*_rebalancing"])
+                c.delete_groups(["test*", "bla*"], ["unknown", "*_rebalancing"])
         """
-        group_str_state_str_tuple_list = self.groups(patterns=pattern_str_or_str_list, states=states)
-        if not group_str_state_str_tuple_list:
+        pattern_str_or_str_list = patterns
+        #
+        group_str_list = self.groups(pattern_str_or_str_list, state_patterns)
+        if not group_str_list:
             return []
-        group_str_list = [group_str_state_str_tuple[0] for group_str_state_str_tuple in group_str_state_str_tuple_list]
         #
         group_str_group_future_dict = self.adminClient.delete_consumer_groups(group_str_list)
         for group_future in group_str_group_future_dict.values():
@@ -2165,6 +2165,58 @@ class Cluster:
         group_str_list = list(group_str_group_future_dict.keys())
         #
         return group_str_list
+
+    def group_offsets(self, patterns, state_patterns="*"):
+        """List consumer group offsets.
+
+        List consumer group offsets of those consumer groups whose group IDs match bash-like patterns.
+
+        Args:
+            patterns (:obj:`str` | :obj:`list(str)`): The pattern or list of patterns for selecting those consumer groups whose consumer groups offsets shall be listed.
+            state_patterns (:obj:`str` | :obj:`list(str)`, optional): The pattern or list of patterns for selecting the consumer group states ("unknown", "preparing_rebalancing", "completing_rebalancing", "stable", "dead", "empty") to list the consumer group offsets from. Defaults to "*" (all consumer group states).
+
+        Returns:
+            :obj:`dict(str, dict(str, dict(int, int)))`: Dictionary mapping group IDs (strings) to dictionaries mapping topics (strings) to dictionaries mapping partitions (integers) to offsets (integers).
+
+        Examples:
+            List offsets of all those consumer groups whose group ID starts with "test"::
+
+                c.group_offsets("test*")
+
+            List offsets of those consumer groups whose group ID starts with "test" or "bla"::
+
+                c.group_offsets(["test*", "bla*"])
+
+            List offsets of all those consumer groups whose group ID starts with "test" or "bla" and whose state is either "unknown", "preparing_rebalancing" or "completing_rebalancing"::
+
+                c.group_offsets(["test*", "bla*"], ["unknown", "*_rebalancing"])
+        """
+        pattern_str_or_str_list = patterns
+        #
+        group_str_list = self.groups(pattern_str_or_str_list, state_patterns)
+        if not group_str_list:
+            return {}
+        #
+        consumerGroupTopicPartitions_list = [_ConsumerGroupTopicPartitions(group_str) for group_str in group_str_list]
+        group_str_consumerGroupTopicPartitions_future_dict = self.adminClient.list_consumer_group_offsets(consumerGroupTopicPartitions_list)
+        #
+        def consumerGroupTopicPartitions_future_to_topic_str_partition_int_offset_int_dict_dict(consumerGroupTopicPartitions_future):
+            topic_str_partition_int_offset_int_tuple_list_dict = {}
+            for topicPartition in consumerGroupTopicPartitions_future.result().topic_partitions:
+                topic_str = topicPartition.topic
+                partition_int_offset_int_tuple = (topicPartition.partition, topicPartition.offset)
+                if topic_str in topic_str_partition_int_offset_int_tuple_list_dict:
+                    topic_str_partition_int_offset_int_tuple_list_dict[topic_str].append(partition_int_offset_int_tuple)
+                else:
+                    topic_str_partition_int_offset_int_tuple_list_dict[topic_str] = [(topicPartition.partition, topicPartition.offset)]
+            #
+            topic_str_partition_int_offset_int_dict_dict = {topic_str: {partition_int_offset_int_tuple[0]: partition_int_offset_int_tuple[1] for partition_int_offset_int_tuple in partition_int_offset_int_tuple_list} for topic_str, partition_int_offset_int_tuple_list in topic_str_partition_int_offset_int_tuple_list_dict.items()}
+            #
+            return topic_str_partition_int_offset_int_dict_dict
+        #
+        group_str_topic_str_partition_int_offset_int_dict_dict_dict = {group_str: consumerGroupTopicPartitions_future_to_topic_str_partition_int_offset_int_dict_dict(consumerGroupTopicPartitions_future) for group_str, consumerGroupTopicPartitions_future in group_str_consumerGroupTopicPartitions_future_dict.items()}
+        #
+        return group_str_topic_str_partition_int_offset_int_dict_dict_dict
 
     # AdminClient - brokers
 
@@ -3522,33 +3574,6 @@ class Cluster:
         elif is_file(source_str) and is_file(target_str):
             print("Please use a shell or file manager to copy files.")
 
-    def recreate(self, topic_str):
-        """Recreate a topic.
-
-        Recreate a topic by 1) replicating it to a temporary topic, 2) deleting the original topic, 3) re-creating the original topic, and 4) replicating the temporary topic back to the original topic. Can be very useful if you happen to come across a consumer that is not able to consume from the beginning of a topic - and you still wish to read the entire topic.
-
-        Args:
-            topic_str (:obj:`str`): The topic to recreate.
-
-        Returns:
-            :obj:`tuple(tuple(int, int), tuple(int, int))`: Pair of pairs of the number of messages; the first pair indicating the number of messages consumed from the original topic and produced to the temporary topic, the second pair indicating the number of messages consumed from the temporary topic and produced back to the re-created original topic.
-
-        Examples:
-            Recreate the topic "test"::
-
-                c.recreate("test")
-        """
-        temp_topic_str = f"{topic_str}_{get_millis()}"
-        (num_consumed_messages_int1, num_produced_messages_int1) = cp(self, topic_str, self, temp_topic_str)
-        #
-        if self.size(temp_topic_str)[temp_topic_str][1] == self.size(topic_str)[topic_str][1]:
-            self.delete(topic_str)
-            (num_consumed_messages_int2, num_produced_messages_int2) = cp(self, temp_topic_str, self, topic_str)
-            if self.size(topic_str)[topic_str][1] == self.size(temp_topic_str)[temp_topic_str][1]:
-                self.delete(temp_topic_str)
-        #
-        return (num_consumed_messages_int1, num_produced_messages_int1), (num_consumed_messages_int2, num_produced_messages_int2)
-
     def zip_foldl(self, topic_str1, topic_str2, zip_foldl_function, initial_acc, break_function=lambda x, y: False, group1=None, group2=None, offsets1=None, offsets2=None, config1={}, config2={}, key_type1="bytes", value_type1="bytes", key_type2="bytes", value_type2="bytes", n=ALL_MESSAGES, batch_size=1):
         """Subscribe to and consume from topic 1 and topic 2 and combine the messages using a foldl function.
 
@@ -3646,3 +3671,4 @@ class Cluster:
 
 #os.environ["KASHPY_HOME"] = "/home/ralph/kafka/kash.py"
 #c = Cluster("local")
+#print(c.group_offsets("1677188239546"))

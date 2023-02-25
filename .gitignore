@@ -129,5 +129,5 @@ dmypy.json
 .pyre/
 
 # pykash
-clusters_secured/
+clusters/
 
