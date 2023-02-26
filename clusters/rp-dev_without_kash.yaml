@@ -1,6 +1,0 @@
-kafka:
-  bootstrap.servers: ${KASHPY_KAFKA_SERVER}
-  security.protocol: sasl_plaintext
-  sasl.mechanisms: SCRAM-SHA-256
-  sasl.username: ${KASHPY_KAFKA_USERNAME}
-  sasl.password: ${KASHPY_KAFKA_PASSWORD}
