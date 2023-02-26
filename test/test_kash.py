@@ -234,6 +234,58 @@ class Test(unittest.TestCase):
         cluster.close()
         cluster.delete(topic_str)
 
+    def test_group_offsets(self):
+        cluster = Cluster(cluster_str)
+        topic_str = create_test_topic_name()
+        cluster.create(topic_str, partitions=2)
+        cluster.produce(topic_str, "message 1", partition=0)
+        cluster.produce(topic_str, "message 2", partition=1)
+        cluster.flush()
+        group_str = create_test_group_name()
+        cluster.subscribe(topic_str, group_str)
+        cluster.consume()
+        cluster.commit()
+        cluster.consume()
+        cluster.commit()
+        #
+        group_str_topic_str_partition_int_offset_int_dict_dict_dict = cluster.group_offsets(group_str)
+        self.assertIn(group_str, group_str_topic_str_partition_int_offset_int_dict_dict_dict)
+        self.assertIn(topic_str, group_str_topic_str_partition_int_offset_int_dict_dict_dict[group_str])
+        self.assertEqual(group_str_topic_str_partition_int_offset_int_dict_dict_dict[group_str][topic_str][0], 1)
+        self.assertEqual(group_str_topic_str_partition_int_offset_int_dict_dict_dict[group_str][topic_str][1], 1)
+        #
+        cluster.close()
+        cluster.delete(topic_str)
+
+    def test_alter_group_offsets(self):
+        cluster = Cluster(cluster_str)
+        #
+        topic_str = create_test_topic_name()
+        cluster.create(topic_str)
+        cluster.produce(topic_str, "message 1")
+        cluster.produce(topic_str, "message 2")
+        cluster.produce(topic_str, "message 3")
+        cluster.flush()
+        #
+        group_str = create_test_group_name()
+        #
+        cluster.subscribe(topic_str, group_str)
+        cluster.consume()
+        message_dict1 = cluster.commit()
+        self.assertEqual(message_dict1["value"], "message 1")
+        cluster.unsubscribe()
+        #
+        group_str_topic_str_partition_int_offset_int_dict_dict_dict = cluster.alter_group_offsets({group_str: {topic_str: {0: 2}}})
+        self.assertEqual(group_str_topic_str_partition_int_offset_int_dict_dict_dict, {group_str: {topic_str: {0: 2}}})
+        #
+        cluster.subscribe(topic_str, group_str)
+        cluster.consume()
+        message_dict3 = cluster.commit()
+        self.assertEqual(message_dict3["value"], "message 3")
+        #
+        cluster.close()
+        cluster.delete(topic_str)
+
     def test_brokers(self):
         cluster = Cluster(cluster_str)
         if "confluent.cloud" not in cluster.config_dict["bootstrap.servers"]:

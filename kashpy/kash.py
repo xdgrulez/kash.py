@@ -25,7 +25,6 @@ CURRENT_TIME = 0
 
 # Helpers
 
-
 def is_interactive():
     return hasattr(sys, 'ps1')
 
@@ -465,6 +464,56 @@ def node_to_dict(node):
             "port": node.port,
             "rack": node.rack}
     return dict
+
+# group_offsets =TA group_str_topic_str_partition_int_offset_int_dict_dict_dict
+# topic_offsets =TA topic_str_partition_int_offset_int_dict_dict
+# (partition_)offsets =TA partition_int_offset_int_dict
+def group_str_consumerGroupTopicPartitions_future_dict_to_consumerGroupTopicPartitions_list(group_str_consumerGroupTopicPartitions_future_dict):
+    consumerGroupTopicPartitions_list = [consumerGroupTopicPartitions_future.result() for consumerGroupTopicPartitions_future in group_str_consumerGroupTopicPartitions_future_dict.values()]
+    #
+    return consumerGroupTopicPartitions_list
+
+
+def consumerGroupTopicPartitions_list_to_group_offsets(consumerGroupTopicPartitions_list):
+    group_str_topic_str_partition_int_offset_int_dict_dict_dict = {}
+    for consumerGroupTopicPartitions in consumerGroupTopicPartitions_list:
+        group_str = consumerGroupTopicPartitions.group_id
+        topic_str_partition_int_offset_int_dict_dict = consumerGroupTopicPartitions_to_topic_offsets(consumerGroupTopicPartitions)
+        group_str_topic_str_partition_int_offset_int_dict_dict_dict[group_str] = topic_str_partition_int_offset_int_dict_dict
+    #
+    return group_str_topic_str_partition_int_offset_int_dict_dict_dict
+
+
+def consumerGroupTopicPartitions_to_topic_offsets(consumerGroupTopicPartitions):
+    topic_str_partition_int_offset_int_tuple_list_dict = {}
+    for topicPartition in consumerGroupTopicPartitions.topic_partitions:
+        topic_str = topicPartition.topic
+        partition_int_offset_int_tuple = (topicPartition.partition, topicPartition.offset)
+        if topic_str in topic_str_partition_int_offset_int_tuple_list_dict:
+            topic_str_partition_int_offset_int_tuple_list_dict[topic_str].append(partition_int_offset_int_tuple)
+        else:
+            topic_str_partition_int_offset_int_tuple_list_dict[topic_str] = [(topicPartition.partition, topicPartition.offset)]
+    #
+    topic_str_partition_int_offset_int_dict_dict = {topic_str: {partition_int_offset_int_tuple[0]: partition_int_offset_int_tuple[1] for partition_int_offset_int_tuple in partition_int_offset_int_tuple_list} for topic_str, partition_int_offset_int_tuple_list in topic_str_partition_int_offset_int_tuple_list_dict.items()}
+    #
+    return topic_str_partition_int_offset_int_dict_dict
+
+def group_str_consumerGroupTopicPartitions_future_dict_to_group_offsets(group_str_consumerGroupTopicPartitions_future_dict):
+    consumerGroupTopicPartitions_list = group_str_consumerGroupTopicPartitions_future_dict_to_consumerGroupTopicPartitions_list(group_str_consumerGroupTopicPartitions_future_dict)
+    #
+    group_offsets = consumerGroupTopicPartitions_list_to_group_offsets(consumerGroupTopicPartitions_list)
+    #
+    return group_offsets
+
+def group_offsets_to_consumerGroupTopicPartitions_list(group_offsets):
+    consumerGroupTopicPartitions_list = []
+    for group_str, topic_offsets in group_offsets.items():
+        topicPartition_list = []
+        for topic_str, partition_offsets in topic_offsets.items():
+            for partition_int, offset_int in partition_offsets.items():
+                topicPartition_list.append(TopicPartition(topic_str, partition_int, offset_int))
+        consumerGroupTopicPartitions_list.append(_ConsumerGroupTopicPartitions(group_str, topicPartition_list))
+    return consumerGroupTopicPartitions_list
 
 # Cross-cluster
 
@@ -2200,23 +2249,33 @@ class Cluster:
         consumerGroupTopicPartitions_list = [_ConsumerGroupTopicPartitions(group_str) for group_str in group_str_list]
         group_str_consumerGroupTopicPartitions_future_dict = self.adminClient.list_consumer_group_offsets(consumerGroupTopicPartitions_list)
         #
-        def consumerGroupTopicPartitions_future_to_topic_str_partition_int_offset_int_dict_dict(consumerGroupTopicPartitions_future):
-            topic_str_partition_int_offset_int_tuple_list_dict = {}
-            for topicPartition in consumerGroupTopicPartitions_future.result().topic_partitions:
-                topic_str = topicPartition.topic
-                partition_int_offset_int_tuple = (topicPartition.partition, topicPartition.offset)
-                if topic_str in topic_str_partition_int_offset_int_tuple_list_dict:
-                    topic_str_partition_int_offset_int_tuple_list_dict[topic_str].append(partition_int_offset_int_tuple)
-                else:
-                    topic_str_partition_int_offset_int_tuple_list_dict[topic_str] = [(topicPartition.partition, topicPartition.offset)]
-            #
-            topic_str_partition_int_offset_int_dict_dict = {topic_str: {partition_int_offset_int_tuple[0]: partition_int_offset_int_tuple[1] for partition_int_offset_int_tuple in partition_int_offset_int_tuple_list} for topic_str, partition_int_offset_int_tuple_list in topic_str_partition_int_offset_int_tuple_list_dict.items()}
-            #
-            return topic_str_partition_int_offset_int_dict_dict
+        group_offsets = group_str_consumerGroupTopicPartitions_future_dict_to_group_offsets(group_str_consumerGroupTopicPartitions_future_dict)
         #
-        group_str_topic_str_partition_int_offset_int_dict_dict_dict = {group_str: consumerGroupTopicPartitions_future_to_topic_str_partition_int_offset_int_dict_dict(consumerGroupTopicPartitions_future) for group_str, consumerGroupTopicPartitions_future in group_str_consumerGroupTopicPartitions_future_dict.items()}
+        return group_offsets
+
+    def alter_group_offsets(self, group_offsets):
+        """Alter consumer group offsets.
+
+        Alter consumer group offsets.
+
+        Args:
+            group_offsets (:obj:`dict(str, dict(str, dict(int, int)))`): The group offsets dictionary describing which consumer group offsets for which topics and for which partitions shall be altered. A group offsets dictionary maps group IDs (strings) to topic offsets dictionaries, which in turn map topic names (strings) to partition offset dictionaries. Partition offset dictionaries map partitions (integers) to offsets (integers).
+
+        Returns:
+            :obj:`dict(str, dict(str, dict(int, int)))`: Group offsets dictionary after the successful alteration of the consumer group offsets.
+
+        Examples:
+            Alter offsets of the consumer group "group1" and topic "topic1". Change the offset on partition 0 to 42, and on partition 1 to 4711:
+
+                c.alter_group_offsets({"group1": {"topic1": {0: 42, 1: 4711}}})
+        """
         #
-        return group_str_topic_str_partition_int_offset_int_dict_dict_dict
+        consumerGroupTopicPartitions_list = group_offsets_to_consumerGroupTopicPartitions_list(group_offsets)
+        group_str_consumerGroupTopicPartitions_future_dict = self.adminClient.alter_consumer_group_offsets(consumerGroupTopicPartitions_list)
+        #
+        group_offsets = group_str_consumerGroupTopicPartitions_future_dict_to_group_offsets(group_str_consumerGroupTopicPartitions_future_dict)
+        #
+        return group_offsets
 
     # AdminClient - brokers
 
@@ -2871,7 +2930,7 @@ class Cluster:
         """
         self.consumer.commit(self.last_consumed_message, asynchronous=asynchronous)
         #
-        return self.last_consumed_message
+        return self.message_to_message_dict(self.last_consumed_message)
 
     def offsets(self, timeout=-1.0):
         """Get committed offsets of the subscribed topic.
@@ -2882,7 +2941,7 @@ class Cluster:
             timeout (:obj:`float`, optional): Timeout (in seconds) for calling confluent_kafka.committed(). Defaults to -1.0 (no timeout).
 
         Returns:
-            :obj:`offsets_dict`: Dictionary of partitions (integers) and offsets (integers).
+            :obj:`dict(int, int)`: (Partition) offsets dictionary for the subscribed topic. A (partition) offsets dictionary maps partitions (integers) to offsets (integers).
 
         Examples:
             Get the offsets of the subscribed topic::
@@ -2901,6 +2960,16 @@ class Cluster:
             return offsets_dict
         else:
             return {}
+
+    def memberid(self):
+        """Get the group member ID of the consumer.
+
+        Get the group member ID of the consumer.
+
+        Returns:
+            :obj:`str`: Group member ID of the consumer.
+        """
+        return self.consumer.memberid()
 
     #
 
@@ -2950,7 +3019,7 @@ class Cluster:
             pattern_str (:obj:`str`): The topic/list of topics matching a bash-like pattern consume from.
             n (:obj:`int`, optional): The number of messages to consume from the topic/list of topics matching the bash-like pattern. Defaults to 10.
             group (:obj:`str`, optional): The consumer group name. If set to None, automatically create a new unique consumer group name. Defaults to None.
-            offsets (:obj:`dict(int, int)`, optional): Dictionary of integers (partitions) and integers (initial offsets for the individual partitions of the topic). If set to None, does not set any initial offsets. Defaults to None.
+            partition_offsets (:obj:`dict(int, int)`, optional): Partition offsets dictionary for setting the initial offsets for the partitions of the topic. If set to None, does not set any initial offsets. Defaults to None.
             config (:obj:`dict(str, str)`, optional): Dictionary of strings (keys) and strings (values) to augment the consumer configuration. Defaults to {}.
             key_type (:obj:`str`, optional): The key type ("bytes", "str", "json", "avro", "protobuf" or "pb", or "jsonschema"). Defaults to "str".
             value_type (:obj:`str`, optional): The value type ("bytes", "str", "json", "avro", "protobuf" or "pb", or "jsonschema"). Defaults to "str".
