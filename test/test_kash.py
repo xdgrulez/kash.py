@@ -971,3 +971,11 @@ class Test(unittest.TestCase):
         cluster.delete(topic_str)
         cluster.delete(f"{topic_str}_1")
         cluster.delete(f"{topic_str}_2")
+
+    def test_clusters(self):
+        cluster_str_list1 = clusters()
+        self.assertIn("local", cluster_str_list1)
+        cluster_str_list2 = clusters("loc*")
+        self.assertIn("local", cluster_str_list2)
+        cluster_str_list3 = clusters("this_pattern_shall_not_match_anything")
+        self.assertEqual(cluster_str_list3, [])

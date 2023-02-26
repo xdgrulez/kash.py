@@ -8,6 +8,7 @@ from confluent_kafka.serialization import MessageField, SerializationContext
 from google.protobuf.json_format import MessageToDict, ParseDict
 from piny import YamlLoader
 from fnmatch import fnmatch
+import glob
 import importlib
 import json
 import os
@@ -151,10 +152,14 @@ def get_config_dict(cluster_str):
     home_str = os.environ.get("KASHPY_HOME")
     if not home_str:
         home_str = "."
-    if os.path.exists(f"{home_str}/clusters/{cluster_str}.yaml"):
-        config_dict = YamlLoader(f"{home_str}/clusters/{cluster_str}.yaml").load()
+    #
+    cluster_path_str = f"{home_str}/clusters/{cluster_str}"
+    if os.path.exists(f"{cluster_path_str}.yaml"):
+        config_dict = YamlLoader(f"{cluster_path_str}.yaml").load()
+    elif os.path.exists(f"{cluster_path_str}.yml"):
+        config_dict = YamlLoader(f"{cluster_path_str}.yml").load()
     else:
-        raise Exception(f"No cluster configuration file \"{cluster_str}.yaml\" found in \"clusters\" directory (from: {home_str}; use KASHPY_HOME environment variable to set the kash.py home directory).")
+        raise Exception(f"No cluster configuration file \"{cluster_str}.yaml\" or \"{cluster_str}.yml\" found in \"clusters\" directory (from: {home_str}; use KASHPY_HOME environment variable to set the kash.py home directory).")
     #
     if "kafka" not in config_dict:
         raise Exception(f"Cluster configuration file \"{cluster_str}.yaml\" does not include a \"kafka\" section.")
@@ -165,6 +170,46 @@ def get_config_dict(cluster_str):
     #
     return config_dict
 
+# List clusters
+
+def clusters(pattern="*"):
+    """List cluster configuration files.
+
+    List cluster configuration files matching a bash-like pattern.
+
+    Args:
+        pattern (:obj:`str`, optional): Pattern to select the cluster configuration files to match. Defaults to "*".
+
+    Returns:
+        :obj:`list(str)`: List of cluster configuration files.
+
+    Examples:
+        List all cluster configuration files::
+
+            clusters()
+
+        List only those cluster configuration files whose names start with "rp"::
+
+            clusters("rp*")
+    """
+    pattern_str = pattern
+    #
+    home_str = os.environ.get("KASHPY_HOME")
+    if not home_str:
+        home_str = "."
+    #
+    cluster_str_list = []
+    clusters_path_str = f"{home_str}/clusters"
+    yaml_cluster_path_str_list = glob.glob(f"{clusters_path_str}/{pattern_str}.yaml")
+    yml_cluster_path_str_list = glob.glob(f"{clusters_path_str}/{pattern_str}.yml")
+    #
+    yaml_cluster_str_list = [re.search(".*/(.*)\.yaml", yaml_cluster_path_str).group(1) for yaml_cluster_path_str in yaml_cluster_path_str_list if re.search(".*/(.*)\.yaml", yaml_cluster_path_str) is not None]
+    yml_cluster_str_list = [re.search(".*/(.*)\.yml", yml_cluster_path_str).group(1) for yml_cluster_path_str in yml_cluster_path_str_list if re.search(".*/(.*)\.yml", yml_cluster_path_str) is not None]
+    #
+    cluster_str_list = yaml_cluster_str_list + yml_cluster_str_list
+    cluster_str_list.sort()
+    #
+    return cluster_str_list
 
 # Get AdminClient, Producer and Consumer objects from a configuration dictionary
 
@@ -2865,7 +2910,6 @@ class Cluster:
             :obj:`tuple(str, str)` Pair of the topic unsubscribed from (string) and the used consumer group (string).
         """
         self.consumer.unsubscribe()
-        self.consumer.close()
         #
         topic_str = self.subscribed_topic_str
         group_str = self.subscribed_group_str
@@ -2882,6 +2926,7 @@ class Cluster:
 
         Close the consumer.
         """
+        self.consumer.unsubscribe()
         self.consumer.close()
 
     def consume(self, n=1):
