@@ -42,6 +42,14 @@ def create_unique_group_id():
     return str(get_millis())
 
 
+def pretty(dict):
+    return json.dumps(dict, indent=2)
+
+
+def ppretty(dict):
+    print(pretty(dict))
+
+
 def foldl_from_file(path_str, foldl_function, initial_acc, break_function=lambda _: False, key_value_separator=None, message_separator="\n", n=ALL_MESSAGES, bufsize=4096, verbose=0, progress_num_lines=1000):
     """Read lines from a file and transform them in a foldl-like manner.
 
@@ -172,16 +180,17 @@ def get_config_dict(cluster_str):
 
 # List clusters
 
-def clusters(pattern="*"):
+def clusters(pattern="*", config=False):
     """List cluster configuration files.
 
     List cluster configuration files matching a bash-like pattern.
 
     Args:
         pattern (:obj:`str`, optional): Pattern to select the cluster configuration files to match. Defaults to "*".
+        config (:obj:`bool`, optional): Return configurations inside the configuration files as well. Defaults to False.
 
     Returns:
-        :obj:`list(str)`: List of cluster configuration files.
+        :obj:`list(str)` | :obj:`dict(str, dict(str, dict(str, str)))`: List of cluster configuration file names (excluding the "*.yaml" or "*.yml" suffix) if config==False, or dictionary mapping configuration file names (excluding the "*.yaml" or "*.yml" suffix) to dictionaries mapping configuration group names ("kafka", "schema_registry", "kash") to dictionaries mapping configuration keys (e.g. "bootstrap.servers") to configuration values (e.g. "localhost:9092") if config==True.
 
     Examples:
         List all cluster configuration files::
@@ -191,6 +200,10 @@ def clusters(pattern="*"):
         List only those cluster configuration files whose names start with "rp"::
 
             clusters("rp*")
+
+        List only those cluster configuration files whose names start with "local" and return the configurations inside the configuration files as well::
+
+            clusters("local*", config=True)
     """
     pattern_str = pattern
     #
@@ -207,9 +220,13 @@ def clusters(pattern="*"):
     yml_cluster_str_list = [re.search(".*/(.*)\.yml", yml_cluster_path_str).group(1) for yml_cluster_path_str in yml_cluster_path_str_list if re.search(".*/(.*)\.yml", yml_cluster_path_str) is not None]
     #
     cluster_str_list = yaml_cluster_str_list + yml_cluster_str_list
-    cluster_str_list.sort()
     #
-    return cluster_str_list
+    if config:
+        cluster_str_config_dict_dict = {cluster_str: get_config_dict(cluster_str) for cluster_str in cluster_str_list}
+        return cluster_str_config_dict_dict
+    else:
+        cluster_str_list.sort()
+        return cluster_str_list
 
 # Get AdminClient, Producer and Consumer objects from a configuration dictionary
 
@@ -2144,7 +2161,7 @@ class Cluster:
 
     # AdminClient - groups
 
-    def groups(self, patterns="*", state_patterns="*", states=False):
+    def groups(self, patterns="*", state_patterns="*", state=False):
         """List consumer groups.
 
         List consumer groups. Optionally return only those consumer groups whose group IDs match bash-like patterns.
@@ -2152,7 +2169,7 @@ class Cluster:
         Args:
             patterns (:obj:`str` | :obj:`list(str)`, optional): The pattern or list of patterns for selecting the group IDs of those consumer groups which shall be listed. Defaults to "*".
             state_patterns (:obj:`str` | :obj:`list(str)`, optional): The pattern or list of patterns for selecting the consumer group states ("unknown", "preparing_rebalancing", "completing_rebalancing", "stable", "dead", "empty") to list. Defaults to "*" (all consumer group states).
-            states (:obj:`bool`, optional): Return the consumer group states. Defaults to False.
+            state (:obj:`bool`, optional): Return the consumer group states. Defaults to False.
 
         Returns:
             :obj:`list(str)`) | :obj:`dict(str, str)`): List of strings (group IDs) or dictionary of pairs of strings of group IDs and consumer group states.
@@ -2172,21 +2189,21 @@ class Cluster:
 
             List all those consumer groups and their respective states whose group ID starts with "test" or "bla" and whose state is either "unknown", "preparing_rebalancing" or "completing_rebalancing"::
 
-                c.groups(["test*", "bla*"], ["unknown", "*_rebalancing"], states=True)
+                c.groups(["test*", "bla*"], ["unknown", "*_rebalancing"], state=True)
         """
         pattern_str_or_str_list = [patterns] if isinstance(patterns, str) else patterns
         #
-        consumerGroupState_pattern_str_list = [state_patterns] if isinstance(states, str) else state_patterns
+        consumerGroupState_pattern_str_list = [state_patterns] if isinstance(state_patterns, str) else state_patterns
         consumerGroupState_set = set([str_to_consumerGroupState(consumerGroupState_str) for consumerGroupState_str in all_consumerGroupState_str_list if any(fnmatch(consumerGroupState_str, consumerGroupState_pattern_str) for consumerGroupState_pattern_str in consumerGroupState_pattern_str_list)])
         if not consumerGroupState_set:
-            return {} if states else []
+            return {} if state else []
         #
         listConsumerGroupsResult = self.adminClient.list_consumer_groups(states=consumerGroupState_set).result()
         consumerGroupListing_list = listConsumerGroupsResult.valid
         #
         group_str_state_str_dict = {consumerGroupListing.group_id: consumerGroupState_to_str(consumerGroupListing.state) for consumerGroupListing in consumerGroupListing_list if any(fnmatch(consumerGroupListing.group_id, pattern_str) for pattern_str in pattern_str_or_str_list)}
         #
-        return group_str_state_str_dict if states else list(group_str_state_str_dict.keys())
+        return group_str_state_str_dict if state else list(group_str_state_str_dict.keys())
 
     def describe_groups(self, patterns="*", state_patterns="*"):
         """Describe consumer groups.
@@ -3314,7 +3331,7 @@ class Cluster:
 
     #
 
-    def cat(self, topic_str, foreach_function=print, break_function=lambda _: False, group=None, offsets=None, config={}, key_type="str", value_type="str", n=ALL_MESSAGES, batch_size=1):
+    def cat(self, topic_str, foreach_function=lambda x: ppretty(x), break_function=lambda _: False, group=None, offsets=None, config={}, key_type="str", value_type="str", n=ALL_MESSAGES, batch_size=1):
         """Subscribe to and consume messages from a topic and call an operation on each of them.
 
         Subscribe to and consume messages from a topic and call an operation on each of them, optionally explicitly set the consumer group, initial offsets, and augment the consumer configuration. Stops either if the consume timeout is exceeded (``consume.timeout`` in the kash.py cluster configuration) or the number of messages specified in ``n`` has been consumed.
