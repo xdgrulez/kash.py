@@ -153,9 +153,9 @@ class Test(unittest.TestCase):
         self.assertIn(group_str, group_str_list2)
         group_str_list3 = cluster.groups("test_group*", state_patterns=["stable"])
         self.assertIn(group_str, group_str_list3)
-        group_str_state_str_dict = cluster.groups("test_group*", state_patterns="stab*", states=True)
+        group_str_state_str_dict = cluster.groups("test_group*", state_patterns="stab*", state=True)
         self.assertIn("stable", group_str_state_str_dict[group_str])
-        group_str_list4 = cluster.groups(state_patterns="unknown", states=False)
+        group_str_list4 = cluster.groups(state_patterns="unknown", state=False)
         self.assertEqual(group_str_list4, [])
         #
         cluster.close()
@@ -270,18 +270,14 @@ class Test(unittest.TestCase):
         group_str = create_test_group_name()
         #
         cluster.subscribe(topic_str, group_str)
-        cluster.consume()
-        message_dict1 = cluster.commit()
-        self.assertEqual(message_dict1["value"], "message 1")
-        cluster.unsubscribe()
         #
         group_str_topic_str_partition_int_offset_int_dict_dict_dict = cluster.alter_group_offsets({group_str: {topic_str: {0: 2}}})
         self.assertEqual(group_str_topic_str_partition_int_offset_int_dict_dict_dict, {group_str: {topic_str: {0: 2}}})
         #
-        cluster.subscribe(topic_str, group_str)
         cluster.consume()
-        message_dict3 = cluster.commit()
-        self.assertEqual(message_dict3["value"], "message 3")
+        message_dict = cluster.commit()
+        self.assertEqual(message_dict["value"], "message 3")
+        cluster.unsubscribe()
         #
         cluster.close()
         cluster.delete(topic_str)
