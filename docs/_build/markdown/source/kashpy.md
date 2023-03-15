@@ -12,7 +12,7 @@ Initialize a kash.py Cluster object.
 
 Initialize a kash.py Cluster object based on a kash.py cluster configuration file.
 
-kash.py cluster configuration files are searched for in the directories “cluster_secured” and “cluster_unsecured” starting 1) from the directory in the KASHPY_HOME environment variable, or, if that environment variable is not set, 2) from the current directory.
+kash.py cluster configuration files are searched for in the directory “cluster” starting 1) from the directory in the KASHPY_HOME environment variable, or, if that environment variable is not set, 2) from the current directory.
 
 kash.py cluster configuration files have up to three sections: “kafka”, “schema_registry”, and “kash”.
 
@@ -68,7 +68,7 @@ The “kash” section can be used to configure the following:
 
 * **Parameters**
 
-    **cluster_str** (`str`) – Name of the cluster; kash.py searches the two folders “clusters_secured” and “clusters_unsecured” for kash.py configuration files named “<cluster.str>.conf”.
+    **cluster_str** (`str`) – Name of the cluster; kash.py searches the folder “clusters” for kash.py configuration files named “<cluster_str>.yaml”.
 
 
 ### Examples
@@ -76,90 +76,91 @@ The “kash” section can be used to configure the following:
 Simplest kash.py configuration file example (just “bootstrap.servers” is set):
 
 ```default
-[kafka]
-bootstrap.servers=localhost:9092
+kafka:
+  bootstrap.servers: localhost:9092
 ```
 
 Simple kash.py configuration file example with additional Schema Registry URL:
 
 ```default
-[kafka]
-bootstrap.servers=localhost:9092
+kafka:
+  bootstrap.servers: localhost:9092
 
-[schema_registry]
-schema.registry.url=http://localhost:8081
+schema_registry:
+  schema.registry.url: http://localhost:8081
 ```
 
 kash.py configuration file with all bells and whistles - all that can currently be configured:
 
 ```default
-[kafka]
-bootstrap.servers=localhost:9092
-[schema_registry]
-schema.registry.url=http://localhost:8081
+kafka:
+  bootstrap.servers: localhost:9092
 
-[kash]
-flush.num.messages=10000
-flush.timeout=-1.0
-retention.ms=-1
-consume.timeout=1.0
-auto.offset.reset=earliest
-enable.auto.commit=true
-session.timeout.ms=10000
-progress.num.messages=1000
-block.num.retries.int=50
-block.interval=0.1
+schema_registry:
+  schema.registry.url: http://localhost:8081
+
+kash:
+  flush.num.messages: 10000
+  flush.timeout: -1.0
+  retention.ms: -1
+  consume.timeout: 1.0
+  auto.offset.reset: earliest
+  enable.auto.commit: true
+  session.timeout.ms: 10000
+  progress.num.messages: 1000
+  block.num.retries.int: 50
+  block.interval: 0.1
 ```
 
-kash.py configuration file for a typical Confluent Cloud cluster (including Schema Registry):
+kash.py configuration file for a typical Confluent Cloud cluster (including Schema Registry). Note the use of (Piny-powered) environment variable interpolation to bring in security-relevant information such as the cluster name, user name and password:
 
 ```default
-[kafka]
-bootstrap.servers=CLUSTER.confluent.cloud:9092
-security.protocol=SASL_SSL
-sasl.mechanisms=PLAIN
-sasl.username=CLUSTER_USERNAME
-sasl.password=CLUSTER_PASSWORD
+kafka:
+  bootstrap.servers: ${CLUSTER}.confluent.cloud:9092
+  security.protocol: SASL_SSL
+  sasl.mechanisms: PLAIN
+  sasl.username: ${CLUSTER_USERNAME}
+  sasl.password: ${CLUSTER_PASSWORD}
 
-[schema_registry]
-schema.registry.url=https://SCHEMA_REGISTRY.confluent.cloud
-basic.auth.credentials.source=USER_INFO
-basic.auth.user.info=SCHEMA_REGISTRY_USERNAME:SCHEMA_REGISTRY_PASSWORD
+schema_registry:
+  schema.registry.url: https://${SCHEMA_REGISTRY}.confluent.cloud
+  basic.auth.credentials.source: USER_INFO
+  basic.auth.user.info: ${SCHEMA_REGISTRY_USERNAME}:${SCHEMA_REGISTRY_PASSWORD}
 
-[kash]
-flush.num.messages=10000
-flush.timeout=-1.0
-retention.ms=-1
-consume.timeout=10.0
-auto.offset.reset=earliest
-enable.auto.commit=true
-session.timeout.ms=10000
-progress.num.messages=1000
-block.num.retries.int=50
-block.interval=0.1
+kash:
+  flush.num.messages: 10000
+  flush.timeout: -1.0
+  retention.ms: -1
+  consume.timeout: 10.0
+  auto.offset.reset: earliest
+  enable.auto.commit: true
+  session.timeout.ms: 10000
+  progress.num.messages: 1000
+  block.num.retries.int: 50
+  block.interval: 0.1
 ```
 
 kash.py configuration file for a self-hosted Redpanda cluster (without Schema Registry):
 
 ```default
-[kafka]
-bootstrap.servers=CLUSTER:9094
-security.protocol=sasl_plaintext
-sasl.mechanisms=SCRAM-SHA-256
-sasl.username=CLUSTER_USERNAME
-sasl.password=CLUSTER_PASSWORD
+kafka:
+  bootstrap.servers: ${CLUSTER}:9094
+  security.protocol: sasl_plaintext
+  sasl.mechanisms: SCRAM-SHA-256
+  sasl.username: ${CLUSTER_USERNAME}
+  sasl.password: ${CLUSTER_PASSWORD}
 
-[kash]
-flush.num.messages=10000
-flush.timeout=-1.0
-retention.ms=-1
-consume.timeout=5.0
-auto.offset.reset=earliest
-enable.auto.commit=true
-session.timeout.ms=10000
-progress.num.messages=1000
-block.num.retries.int=50
-block.interval=0.1
+kash:
+  flush.num.messages: 10000
+  flush.timeout: -1.0
+  retention.ms: -1
+  consume.timeout: 5.0
+  auto.offset.reset: earliest
+  enable.auto.commit: true
+  session.timeout.ms: 10000
+  progress.num.messages: 1000
+  block.num.retries.int: 50
+  block.interval: 0.1
 ```
 
 
@@ -218,6 +219,36 @@ List all ACLs for the topics of the cluster:
 ```default
 c.acls(restype="topic")
 ```
+
+
+#### alter_group_offsets(group_offsets)
+Alter consumer group offsets.
+
+Alter consumer group offsets.
+
+
+* **Parameters**
+
+    **group_offsets** (`dict(str, dict(str, dict(int, int)))`) – The group offsets dictionary describing which consumer group offsets for which topics and for which partitions shall be altered. A group offsets dictionary maps group IDs (strings) to topic offsets dictionaries, which in turn map topic names (strings) to partition offset dictionaries. Partition offset dictionaries map partitions (integers) to offsets (integers).
+
+
+
+* **Returns**
+
+    Group offsets dictionary after the successful alteration of the consumer group offsets.
+
+
+
+* **Return type**
+
+    `dict(str, dict(str, dict(int, int)))`
+
+
+### Examples
+
+Alter offsets of the consumer group “group1” and topic “topic1”. Change the offset on partition 0 to 42, and on partition 1 to 4711:
+
+> c.alter_group_offsets({“group1”: {“topic1”: {0: 42, 1: 4711}}})
 
 
 #### auto_offset_reset(new_value_str=None)
@@ -362,7 +393,7 @@ c.brokers([0, 1])
 ```
 
 
-#### cat(topic_str, foreach_function=<built-in function print>, group=None, offsets=None, config={}, key_type='str', value_type='str', n=-1, batch_size=1)
+#### cat(topic_str, foreach_function=<function Cluster.<lambda>>, break_function=<function Cluster.<lambda>>, group=None, offsets=None, config={}, key_type='str', value_type='str', n=-1, batch_size=1)
 Subscribe to and consume messages from a topic and call an operation on each of them.
 
 Subscribe to and consume messages from a topic and call an operation on each of them, optionally explicitly set the consumer group, initial offsets, and augment the consumer configuration. Stops either if the consume timeout is exceeded (`consume.timeout` in the kash.py cluster configuration) or the number of messages specified in `n` has been consumed.
@@ -375,6 +406,9 @@ Subscribe to and consume messages from a topic and call an operation on each of 
 
 
     * **foreach_function** (`function`, optional) – Foreach function (takes a message dictionary and returns None). Defaults to `print`.
+
+
+    * **break_function** (`function`, optional) – The break function (takes a message dictionary and returns True (stop consuming the topic) or False (continue consuming)). Defaults to lambda _: False, i.e., always continue consuming.
 
 
     * **group** (`str`, optional) – Consumer group name used for subscribing to the topic. If set to None, creates a new unique consumer group name. Defaults to None.
@@ -417,6 +451,12 @@ Consume topic “test” and print out all the consumed messages to standard out
 ```default
 c.cat("test")
 ```
+
+
+#### close()
+Close the consumer.
+
+Close the consumer.
 
 
 #### commit(asynchronous=False)
@@ -541,7 +581,7 @@ Get/set the consume.timeout kash setting.
 
 
 
-#### cp(source_str, target_str, group=None, offsets=None, config={}, flatmap_function=<function Cluster.<lambda>>, source_key_type='str', source_value_type='str', target_key_type='str', target_value_type='str', target_key_schema=None, target_value_schema=None, key_value_separator=None, message_separator='\\n', overwrite=True, keep_timestamps=True, n=-1, batch_size=1, bufsize=4096)
+#### cp(source_str, target_str, break_function=<function Cluster.<lambda>>, group=None, offsets=None, config={}, flatmap_function=<function Cluster.<lambda>>, source_key_type='str', source_value_type='str', target_key_type='str', target_value_type='str', target_key_schema=None, target_value_schema=None, key_value_separator=None, message_separator='\\n', overwrite=True, keep_timestamps=True, n=-1, batch_size=1, bufsize=4096)
 Copy local files to topics, topics to local files, or topics to topics.
 
 Copy files to topics, topics to files, or topics to topics. Uses `Cluster.upload()` for copying files to topics, `Cluster.download()` for copying topics to files, and `cp` for copying topics to topics. Paths to local files are distinguished from topics by having a forward slash “/” in their path.
@@ -554,6 +594,9 @@ Copy files to topics, topics to files, or topics to topics. Uses `Cluster.upload
 
 
     * **target_str** (`str`) – The target local file/topic.
+
+
+    * **break_function** (`function`, optional) – The break function (takes a message dictionary and returns True (stop reading the file/consuming the topic) or False (continue reading/consuming)). Defaults to lambda _: False, i.e., always continue reading/consuming.
 
 
     * **group** (`str`, optional) – Consumer group name used for subscribing to the topic to consume from. If set to None, creates a new unique consumer group name. Defaults to None.
@@ -850,6 +893,54 @@ c.delete_acl(restype="topic", name="test", resource_pattern_type="literal", prin
 ```
 
 
+#### delete_groups(patterns, state_patterns='\*')
+Delete consumer groups.
+
+Delete consumer groups whose group IDs match bash-like patterns.
+
+
+* **Parameters**
+
+    
+    * **patterns** (`str` | `list(str)`) – The pattern or list of patterns for selecting the group IDs of those consumer groups which shall be deleted. Defaults to “\*”.
+
+
+    * **state_patterns** (`str` | `list(str)`, optional) – The pattern or list of patterns for selecting the consumer group states (“unknown”, “preparing_rebalancing”, “completing_rebalancing”, “stable”, “dead”, “empty”) to delete.Defaults to “\*” (all consumer group states).
+
+
+
+* **Returns**
+
+    List of strings (consumer group IDs) of the deleted consumer groups.
+
+
+
+* **Return type**
+
+    `list(str)`
+
+
+### Examples
+
+Delete all those consumer groups whose group ID starts with “test”:
+
+```default
+c.delete_groups("test*")
+```
+
+Delete all those consumer groups whose group ID starts with “test” or “bla”:
+
+```default
+c.delete_groups(["test*", "bla*"])
+```
+
+Delete all those consumer groups whose group ID starts with “test” or “bla” and whose state is either “unknown”, “preparing_rebalancing” or “completing_rebalancing”:
+
+```default
+c.delete_groups(["test*", "bla*"], ["unknown", "*_rebalancing"])
+```
+
+
 #### describe(pattern_str_or_str_list)
 Describe topics.
 
@@ -888,21 +979,25 @@ c.describe(["test*", "bla*"])
 ```
 
 
-#### describe_groups(pattern_str_or_str_list)
-Describe consumer groups on the cluster.
+#### describe_groups(patterns='\*', state_patterns='\*')
+Describe consumer groups.
 
-Describe consumer groups on the cluster whose names match bash-like patterns.
+Describe consumer groups whose group IDs match bash-like patterns.
 
 
 * **Parameters**
 
-    **pattern_str_or_str_list** (`str` | `list(str)`, optional) – The pattern or list of patterns for selecting those consumer groups which shall be listed. Defaults to None.
+    
+    * **patterns** (`str` | `list(str)`, optional) – The pattern or list of patterns for selecting the group IDs of those consumer groups which shall be described. Defaults to “\*”.
+
+
+    * **state_patterns** (`str` | `list(str)`, optional) – The pattern or list of patterns for selecting the consumer group states (“unknown”, “preparing_rebalancing”, “completing_rebalancing”, “stable”, “dead”, “empty”) to describe. Defaults to “\*” (all consumer group states).
 
 
 
 * **Returns**
 
-    Dictionary of strings (consumer group names) and group dictionaries describing the consumer group (converted from confluent_kafka.GroupMetadata objects).
+    Dictionary of strings (group IDs) and group description dictionaries describing the consumer group.
 
 
 
@@ -913,20 +1008,26 @@ Describe consumer groups on the cluster whose names match bash-like patterns.
 
 ### Examples
 
-Describe all those consumer groups of the cluster whose name starts with “test”:
+Describe all those consumer groups whose group ID starts with “test”:
 
 ```default
 c.describe_groups("test*")
 ```
 
-Describe all those consumer groups of the cluster whose name starts with “test” or “bla”:
+Describe all those consumer groups whose group ID starts with “test” or “bla”:
 
 ```default
 c.describe_groups(["test*", "bla*"])
 ```
 
+Describe all those consumer groups whose group ID starts with “test” or “bla” and whose state is either “unknown”, “preparing_rebalancing” or “completing_rebalancing”:
 
-#### diff(topic_str1, topic_str2, group1=None, group2=None, offsets1=None, offsets2=None, key_type1='bytes', value_type1='bytes', key_type2='bytes', value_type2='bytes', n=-1, batch_size=1)
+```default
+c.describe_groups(["test*", "bla*"], ["unknown", "*_rebalancing"])
+```
+
+
+#### diff(topic_str1, topic_str2, break_function=<function Cluster.<lambda>>, group1=None, group2=None, offsets1=None, offsets2=None, key_type1='bytes', value_type1='bytes', key_type2='bytes', value_type2='bytes', n=-1, batch_size=1)
 Create a diff of topic 1 and topic 2 using a diff function.
 
 Create a diff of (parts of) a topic (topic_str1) and another topic (topic_str2) with respect to their keys and values. Stops on either topic/cluster if either the consume timeout is exceeded (`consume.timeout` in the kash.py cluster configuration) or the number of messages specified in `n` has been consumed.
@@ -939,6 +1040,9 @@ Create a diff of (parts of) a topic (topic_str1) and another topic (topic_str2) 
 
 
     * **topic_str2** (`str`) – Topic 2
+
+
+    * **break_function** (`function`, optional) – The break function (takes two message dictionaries and returns True (stop consuming the topics) or False (continue consuming)). Defaults to lambda x, y: False, i.e., always continue consuming.
 
 
     * **group1** (`str`, optional) – Consumer group name used for consuming from topic 1. If set to None, creates a new unique consumer group name. Defaults to None.
@@ -992,7 +1096,7 @@ diff(cluster1, "topic1", cluster2, "topic2")
 ```
 
 
-#### diff_fun(topic_str1, topic_str2, diff_function, group1=None, group2=None, offsets1=None, offsets2=None, key_type1='bytes', value_type1='bytes', key_type2='bytes', value_type2='bytes', n=-1, batch_size=1)
+#### diff_fun(topic_str1, topic_str2, diff_function, break_function=<function Cluster.<lambda>>, group1=None, group2=None, offsets1=None, offsets2=None, key_type1='bytes', value_type1='bytes', key_type2='bytes', value_type2='bytes', n=-1, batch_size=1)
 Create a diff of topic 1 and topic 2 using a diff function.
 
 Create a diff of (parts of) a topic (topic_str1) and another topic (topic_str2) using a diff function (diff_function). Stops on either topic/cluster if either the consume timeout is exceeded (`consume.timeout` in the kash.py cluster configuration) or the number of messages specified in `n` has been consumed.
@@ -1008,6 +1112,9 @@ Create a diff of (parts of) a topic (topic_str1) and another topic (topic_str2) 
 
 
     * **diff_function** (`function`) – Diff function (takes a message dictionary from topic 1 and a message dictionary from topic 2 and returns True if the message dictionaries are different, False if they are not different).
+
+
+    * **break_function** (`function`, optional) – The break function (takes two message dictionaries and returns True (stop consuming the topics) or False (continue consuming)). Defaults to lambda x, y: False, i.e., always continue consuming.
 
 
     * **group1** (`str`, optional) – Consumer group name used for consuming from topic 1. If set to None, creates a new unique consumer group name. Defaults to None.
@@ -1061,7 +1168,7 @@ c.diff_fun("topic1", "topic2", lambda message_dict1, message_dict2: message_dict
 ```
 
 
-#### download(topic_str, path_str, flatmap_function=<function Cluster.<lambda>>, group=None, offsets=None, config={}, key_type='str', value_type='str', key_value_separator=None, message_separator='\\n', overwrite=True, n=-1, batch_size=1)
+#### download(topic_str, path_str, flatmap_function=<function Cluster.<lambda>>, break_function=<function Cluster.<lambda>>, group=None, offsets=None, config={}, key_type='str', value_type='str', key_value_separator=None, message_separator='\\n', overwrite=True, n=-1, batch_size=1)
 Download messages from a topic to a local file while optionally transforming them in a flatmap-like manner.
 
 Subscribe to and consume messages from a topic, optionally transform them in a flatmap-like manner and write the resulting messages to a local file, optionally explicitly set the consumer group, initial offsets, and augment the consumer configuration. Stops either if the consume timeout is exceeded (`consume.timeout` in the kash.py cluster configuration) or the number of messages specified in `n` has been consumed.
@@ -1074,6 +1181,9 @@ Subscribe to and consume messages from a topic, optionally transform them in a f
 
 
     * **flatmap_function** (`function`, optional) – Flatmap function (takes a message dictionary and returns a list of message dictionaries). Defaults to lambda x: [x] (=the identify function for flatmap, leading to a one-to-one copy from the messages in the topic to the messages in the file).
+
+
+    * **break_function** (`function`, optional) – The break function (takes a message dictionary and returns True (stop consuming the topic) or False (continue consuming)). Defaults to lambda _: False, i.e., always continue consuming.
 
 
     * **group** (`str`, optional) – Consumer group name used for subscribing to the topic. If set to None, creates a new unique consumer group name. Defaults to None.
@@ -1181,7 +1291,7 @@ c.exists("test")
 ```
 
 
-#### filter(topic_str, filter_function, group=None, offsets=None, config={}, key_type='str', value_type='str', n=-1, batch_size=1)
+#### filter(topic_str, filter_function, break_function=<function Cluster.<lambda>>, group=None, offsets=None, config={}, key_type='str', value_type='str', n=-1, batch_size=1)
 Subscribe to and consume messages from a topic and return only those messages fulfilling a filter condition.
 
 Subscribe to and consume messages from a topic and return only those messages fulfilling a filter condition, optionally explicitly set the consumer group, initial offsets, and augment the consumer configuration. Stops either if the consume timeout is exceeded (`consume.timeout` in the kash.py cluster configuration) or the number of messages specified in `n` has been consumed.
@@ -1194,6 +1304,9 @@ Subscribe to and consume messages from a topic and return only those messages fu
 
 
     * **filter_function** (`function`) – Filter function (takes a message dictionary and returns a boolean; if True, keep the message, if False, drop it).
+
+
+    * **break_function** (`function`, optional) – The break function (takes a message dictionary and returns True (stop consuming the topic) or False (continue consuming)). Defaults to lambda _: False, i.e., always continue consuming.
 
 
     * **group** (`str`, optional) – Consumer group name used for subscribing to the topic. If set to None, creates a new unique consumer group name. Defaults to None.
@@ -1244,7 +1357,7 @@ c.filter("test", lambda x: x["value"] is not None)
 ```
 
 
-#### filter_from_file(path_str, topic_str, filter_function, key_type='str', value_type='str', key_schema=None, value_schema=None, partition=-1, on_delivery=None, key_value_separator=None, message_separator='\\n', n=-1, bufsize=4096)
+#### filter_from_file(path_str, topic_str, filter_function, break_function=<function Cluster.<lambda>>, key_type='str', value_type='str', key_schema=None, value_schema=None, partition=-1, on_delivery=None, key_value_separator=None, message_separator='\\n', n=-1, bufsize=4096)
 Read messages from a local file and produce them to a topic, while only keeping those messages which fulfil a filter condition.
 
 Read messages from a local file with path path_str and produce them to topic topic_str, while only keeping those messages which fulfil a filter condition.
@@ -1260,6 +1373,9 @@ Read messages from a local file with path path_str and produce them to topic top
 
 
     * **filter_function** (`function`) – Filter function (takes a pair of a key (string) and a value (string) and returns a boolean; if True keeps the message, if False drops it).
+
+
+    * **break_function** (`function`, optional) – The break function (takes a pair of strings (key and value) and returns True (stop reading from the file) or False (continue reading)). Defaults to lambda _: False, i.e., always continue reading.
 
 
     * **key_type** (`str`, optional) – The key type (“bytes”, “str”, “json”, “avro”, “protobuf” or “pb”, or “jsonschema”). Defaults to “str”.
@@ -1307,7 +1423,7 @@ c.filter_from_file("./snacks_value.txt", "test", filter_function=lambda x: x["va
 ```
 
 
-#### filter_to_file(topic_str, path_str, filter_function, group=None, offsets=None, config={}, key_type='str', value_type='str', key_value_separator=None, message_separator='\\n', overwrite=True, n=-1, batch_size=1)
+#### filter_to_file(topic_str, path_str, filter_function, break_function=<function Cluster.<lambda>>, group=None, offsets=None, config={}, key_type='str', value_type='str', key_value_separator=None, message_separator='\\n', overwrite=True, n=-1, batch_size=1)
 Subscribe to and consume messages from a topic and write only those messages to a local file which fulfil a filter condition.
 
 Subscribe to and consume messages from a topic and write only those messages to a file which fulfil a filter condition, optionally explicitly set the consumer group, initial offsets, and augment the consumer configuration. Stops either if the consume timeout is exceeded (`consume.timeout` in the kash.py cluster configuration) or the number of messages specified in `n` has been consumed.
@@ -1320,6 +1436,9 @@ Subscribe to and consume messages from a topic and write only those messages to 
 
 
     * **filter_function** (`function`) – Filter function (takes a message dictionary and returns a boolean; if True, keep the message, if False, drop it).
+
+
+    * **break_function** (`function`, optional) – The break function (takes a message dictionary and returns True (stop consuming the topic) or False (continue consuming)). Defaults to lambda _: False, i.e., always continue consuming.
 
 
     * **group** (`str`, optional) – Consumer group name used for subscribing to the topic. If set to None, creates a new unique consumer group name. Defaults to None.
@@ -1373,7 +1492,7 @@ c.filter_to_file("test", "./test.txt", lambda x: x["value"] is not None)
 ```
 
 
-#### flatmap(topic_str, flatmap_function, group=None, offsets=None, config={}, key_type='str', value_type='str', n=-1, batch_size=1)
+#### flatmap(topic_str, flatmap_function, break_function=<function Cluster.<lambda>>, group=None, offsets=None, config={}, key_type='str', value_type='str', n=-1, batch_size=1)
 Subscribe to and consume messages from a topic and transform them in a flatmap-like manner.
 
 Subscribe to and consume messages from a topic and transform them in a flatmap-like manner, optionally explicitly set the consumer group, initial offsets, and augment the consumer configuration. Stops either if the consume timeout is exceeded (`consume.timeout` in the kash.py cluster configuration) or the number of messages specified in `n` has been consumed.
@@ -1385,7 +1504,7 @@ Subscribe to and consume messages from a topic and transform them in a flatmap-l
     * **topic_str** (`str`) – The topic to subscribe to and consume from.
 
 
-    * **flatmap_function** (`function`) – Flatmap function (takes a message dictionary and returns a list of anything).
+    * **flatmap_function** (`function`) – Flatmap function (takes a message dictionary and returns a list of anything).                break_function (`function`, optional): The break function (takes a message dictionary and returns True (stop consuming the topic) or False (continue consuming)). Defaults to lambda _: False, i.e., always continue consuming.
 
 
     * **group** (`str`, optional) – Consumer group name used for subscribing to the topic. If set to None, creates a new unique consumer group name. Defaults to None.
@@ -1436,7 +1555,7 @@ c.flatmap("test", lambda x: [x, x, x])
 ```
 
 
-#### flatmap_from_file(path_str, topic_str, flatmap_function, key_type='str', value_type='str', key_schema=None, value_schema=None, partition=-1, on_delivery=None, key_value_separator=None, message_separator='\\n', n=-1, bufsize=4096)
+#### flatmap_from_file(path_str, topic_str, flatmap_function, break_function=<function Cluster.<lambda>>, key_type='str', value_type='str', key_schema=None, value_schema=None, partition=-1, on_delivery=None, key_value_separator=None, message_separator='\\n', n=-1, bufsize=4096)
 Read messages from a local file and produce them to a topic, while transforming the messages in a flatmap-like manner.
 
 Read messages from a local file with path path_str and produce them to topic topic_str, while transforming the messages in a flatmap-like manner.
@@ -1452,6 +1571,9 @@ Read messages from a local file with path path_str and produce them to topic top
 
 
     * **flatmap_function** (`function`) – Flatmap function (takes a pair of a key (string) and a value (string) and returns a list of pairs of keys (string) and values (string)).
+
+
+    * **break_function** (`function`, optional) – The break function (takes a pair of strings (key and value) and returns True (stop reading from the file) or False (continue reading)). Defaults to lambda _: False, i.e., always continue reading.
 
 
     * **key_type** (`str`, optional) – The key type (“bytes”, “str”, “json”, “avro”, “protobuf” or “pb”, or “jsonschema”). Defaults to “str”.
@@ -1511,7 +1633,7 @@ c.flatmap("./snacks_value.txt", "test", flatmap_function=lambda x: [x], value_ty
 ```
 
 
-#### flatmap_to_file(topic_str, path_str, flatmap_function, group=None, offsets=None, config={}, key_type='str', value_type='str', key_value_separator=None, message_separator='\\n', overwrite=True, n=-1, batch_size=1)
+#### flatmap_to_file(topic_str, path_str, flatmap_function, break_function=<function Cluster.<lambda>>, group=None, offsets=None, config={}, key_type='str', value_type='str', key_value_separator=None, message_separator='\\n', overwrite=True, n=-1, batch_size=1)
 Subscribe to and consume messages from a topic, transform them in a flatmap-like manner and write the resulting messages to a local file.
 
 Subscribe to and consume messages from a topic, transform them in a flatmap-like manner and write the resulting messages to a local file, optionally explicitly set the consumer group, initial offsets, and augment the consumer configuration. Stops either if the consume timeout is exceeded (`consume.timeout` in the kash.py cluster configuration) or the number of messages specified in `n` has been consumed.
@@ -1524,6 +1646,9 @@ Subscribe to and consume messages from a topic, transform them in a flatmap-like
 
 
     * **flatmap_function** (`function`) – Flatmap function (takes a message dictionary and returns a list of message dictionaries).
+
+
+    * **break_function** (`function`, optional) – The break function (takes a message dictionary and returns True (stop consuming the topic) or False (continue consuming)). Defaults to lambda _: False, i.e., always continue consuming.
 
 
     * **group** (`str`, optional) – Consumer group name used for subscribing to the topic. If set to None, creates a new unique consumer group name. Defaults to None.
@@ -1633,7 +1758,7 @@ Get/set the flush.timeout kash setting.
 
 
 
-#### foldl(topic_str, foldl_function, initial_acc, group=None, offsets=None, config={}, key_type='str', value_type='str', n=-1, batch_size=1)
+#### foldl(topic_str, foldl_function, initial_acc, break_function=<function Cluster.<lambda>>, group=None, offsets=None, config={}, key_type='str', value_type='str', n=-1, batch_size=1)
 Subscribe to and consume messages from a topic and transform them in a foldl-like manner.
 
 Subscribe to and consume messages from a topic and transform them in a foldl-like manner, optionally explicitly set the consumer group, initial offsets, and augment the consumer configuration. Stops either if the consume timeout is exceeded (`consume.timeout` in the kash.py cluster configuration) or the number of messages specified in `n` has been consumed.
@@ -1649,6 +1774,9 @@ Subscribe to and consume messages from a topic and transform them in a foldl-lik
 
 
     * **initial_acc** – Initial value of the accumulator (any type).
+
+
+    * **break_function** (`function`, optional) – The break function (takes a message dictionary and returns True (stop consuming the topic) or False (continue consuming)). Defaults to lambda _: False, i.e., always continue consuming.
 
 
     * **group** (`str`, optional) – Consumer group name used for subscribing to the topic. Creates a new unique consumer group name if set to None. Defaults to None.
@@ -1699,7 +1827,7 @@ c.foldl("test", lambda acc, x: acc + x["value"]["calories"], 0, value_type="json
 ```
 
 
-#### foreach(topic_str, foreach_function, group=None, offsets=None, config={}, key_type='str', value_type='str', n=-1, batch_size=1)
+#### foreach(topic_str, foreach_function, break_function=<function Cluster.<lambda>>, group=None, offsets=None, config={}, key_type='str', value_type='str', n=-1, batch_size=1)
 Subscribe to and consume messages from a topic and call an operation on each of them.
 
 Subscribe to and consume messages from a topic and call an operation on each of them, optionally explicitly set the consumer group, initial offsets, and augment the consumer configuration. Stops either if the consume timeout is exceeded (`consume.timeout` in the kash.py cluster configuration) or the number of messages specified in `n` has been consumed.
@@ -1712,6 +1840,9 @@ Subscribe to and consume messages from a topic and call an operation on each of 
 
 
     * **foreach_function** (`function`) – Foreach function (takes a message dictionary and returns None).
+
+
+    * **break_function** (`function`, optional) – The break function (takes a message dictionary and returns True (stop consuming the topic) or False (continue consuming)). Defaults to lambda _: False, i.e., always continue consuming.
 
 
     * **group** (`str`, optional) – Consumer group name used for subscribing to the topic. If set to None, creates a new unique consumer group name. Defaults to None.
@@ -1756,7 +1887,7 @@ c.foreach("test", print)
 ```
 
 
-#### grep(topic_str, re_pattern_str, group=None, offsets=None, config={}, key_type='str', value_type='str', n=-1, batch_size=1)
+#### grep(topic_str, re_pattern_str, break_function=<function Cluster.<lambda>>, group=None, offsets=None, config={}, key_type='str', value_type='str', n=-1, batch_size=1)
 Find matching messages in a topic (regular expression matching).
 
 Find matching messages in a topic using regular expression matching. Optionally explicitly set the consumer group, initial offsets, and augment the consumer configuration. Stops either if the consume timeout is exceeded (`consume.timeout` in the kash.py cluster configuration) or the number of messages specified in `n` has been consumed.
@@ -1769,6 +1900,9 @@ Find matching messages in a topic using regular expression matching. Optionally 
 
 
     * **re_pattern_str** (`str`) – Regular expression to for matching messages.
+
+
+    * **break_function** (`function`, optional) – The break function (takes a message dictionary and returns True (stop consuming the topic) or False (continue consuming)). Defaults to lambda _: False, i.e., always continue consuming.
 
 
     * **group** (`str`, optional) – Consumer group name used for subscribing to the topic. If set to None, creates a new unique consumer group name. Defaults to None.
@@ -1813,7 +1947,7 @@ c.grep("test", ".*name.*cake")
 ```
 
 
-#### grep_fun(topic_str, match_function, group=None, offsets=None, config={}, key_type='str', value_type='str', n=-1, batch_size=1)
+#### grep_fun(topic_str, match_function, break_function=<function Cluster.<lambda>>, group=None, offsets=None, config={}, key_type='str', value_type='str', n=-1, batch_size=1)
 Find matching messages in a topic (custom function matching).
 
 Find matching messages in a topic using a custom match function match_function. Optionally explicitly set the consumer group, initial offsets, and augment the consumer configuration. Stops either if the consume timeout is exceeded (`consume.timeout` in the kash.py cluster configuration) or the number of messages specified in `n` has been consumed.
@@ -1826,6 +1960,9 @@ Find matching messages in a topic using a custom match function match_function. 
 
 
     * **match_function** (`function`) – Match function (takes a message dictionary and returns a True for a match and False otherwise).
+
+
+    * **break_function** (`function`, optional) – The break function (takes a message dictionary and returns True (stop consuming the topic) or False (continue consuming)). Defaults to lambda _: False, i.e., always continue consuming.
 
 
     * **group** (`str`, optional) – Consumer group name used for subscribing to the topic. If set to None, creates a new unique consumer group name. Defaults to None.
@@ -1870,27 +2007,82 @@ c.grep_fun("test", lambda x: x["value"]["name"] == "cake", value_type="json")
 ```
 
 
-#### groups(pattern=None)
-List consumer groups on the cluster.
+#### group_offsets(patterns, state_patterns='\*')
+List consumer group offsets.
 
-List consumer groups on the cluster. Optionally return only those consumer groups whose names match bash-like patterns.
+List consumer group offsets of those consumer groups whose group IDs match bash-like patterns.
 
 
 * **Parameters**
 
-    **pattern** (`str` | `list(str)`, optional) – The pattern or list of patterns for selecting those consumer groups which shall be listed. Defaults to None.
+    
+    * **patterns** (`str` | `list(str)`) – The pattern or list of patterns for selecting those consumer groups whose consumer groups offsets shall be listed.
+
+
+    * **state_patterns** (`str` | `list(str)`, optional) – The pattern or list of patterns for selecting the consumer group states (“unknown”, “preparing_rebalancing”, “completing_rebalancing”, “stable”, “dead”, “empty”) to list the consumer group offsets from. Defaults to “\*” (all consumer group states).
 
 
 
 * **Returns**
 
-    List of strings (consumer group names).
+    Dictionary mapping group IDs (strings) to dictionaries mapping topics (strings) to dictionaries mapping partitions (integers) to offsets (integers).
 
 
 
 * **Return type**
 
-    `list(str)`)
+    `dict(str, dict(str, dict(int, int)))`
+
+
+### Examples
+
+List offsets of all those consumer groups whose group ID starts with “test”:
+
+```default
+c.group_offsets("test*")
+```
+
+List offsets of those consumer groups whose group ID starts with “test” or “bla”:
+
+```default
+c.group_offsets(["test*", "bla*"])
+```
+
+List offsets of all those consumer groups whose group ID starts with “test” or “bla” and whose state is either “unknown”, “preparing_rebalancing” or “completing_rebalancing”:
+
+```default
+c.group_offsets(["test*", "bla*"], ["unknown", "*_rebalancing"])
+```
+
+
+#### groups(patterns='\*', state_patterns='\*', state=False)
+List consumer groups.
+
+List consumer groups. Optionally return only those consumer groups whose group IDs match bash-like patterns.
+
+
+* **Parameters**
+
+    
+    * **patterns** (`str` | `list(str)`, optional) – The pattern or list of patterns for selecting the group IDs of those consumer groups which shall be listed. Defaults to “\*”.
+
+
+    * **state_patterns** (`str` | `list(str)`, optional) – The pattern or list of patterns for selecting the consumer group states (“unknown”, “preparing_rebalancing”, “completing_rebalancing”, “stable”, “dead”, “empty”) to list. Defaults to “\*” (all consumer group states).
+
+
+    * **state** (`bool`, optional) – Return the consumer group states. Defaults to False.
+
+
+
+* **Returns**
+
+    List of strings (group IDs) or dictionary of pairs of strings of group IDs and consumer group states.
+
+
+
+* **Return type**
+
+    `list(str)`) | `dict(str, str)`)
 
 
 ### Examples
@@ -1901,16 +2093,22 @@ List all consumer groups of the cluster:
 c.groups()
 ```
 
-List all those consumer groups of the cluster whose name starts with “test”:
+List all those consumer groups whose group ID starts with “test”:
 
 ```default
 c.groups("test*")
 ```
 
-List all those consumer groups of the cluster whose name starts with “test” or “bla”:
+List all those consumer groups whose group ID starts with “test” or “bla”:
 
 ```default
 c.groups(["test*", "bla*"])
+```
+
+List all those consumer groups and their respective states whose group ID starts with “test” or “bla” and whose state is either “unknown”, “preparing_rebalancing” or “completing_rebalancing”:
+
+```default
+c.groups(["test*", "bla*"], ["unknown", "*_rebalancing"], state=True)
 ```
 
 
@@ -2178,7 +2376,7 @@ c.ls(["test*", "bla*"])
 ```
 
 
-#### map(topic_str, map_function, group=None, offsets=None, config={}, key_type='str', value_type='str', n=-1, batch_size=1)
+#### map(topic_str, map_function, break_function=<function Cluster.<lambda>>, group=None, offsets=None, config={}, key_type='str', value_type='str', n=-1, batch_size=1)
 Subscribe to and consume messages from a topic and transform them in a map-like manner.
 
 Subscribe to and consume messages from a topic and transform them in a map-like manner, optionally explicitly set the consumer group, initial offsets, and augment the consumer configuration. Stops either if the consume timeout is exceeded (`consume.timeout` in the kash.py cluster configuration) or the number of messages specified in `n` has been consumed.
@@ -2191,6 +2389,9 @@ Subscribe to and consume messages from a topic and transform them in a map-like 
 
 
     * **map_function** (`function`) – Map function (takes a message dictionary and returns anything).
+
+
+    * **break_function** (`function`, optional) – The break function (takes a message dictionary and returns True (stop consuming the topic) or False (continue consuming)). Defaults to lambda _: False, i.e., always continue consuming.
 
 
     * **group** (`str`, optional) – Consumer group name used for subscribing to the topic. If set to None, creates a new unique consumer group name. Defaults to None.
@@ -2241,7 +2442,7 @@ c.map("test", lambda x: x["value"].update({"colour": "yellow"}) or x, value_type
 ```
 
 
-#### map_from_file(path_str, topic_str, map_function, key_type='str', value_type='str', key_schema=None, value_schema=None, partition=-1, on_delivery=None, key_value_separator=None, message_separator='\\n', n=-1, bufsize=4096)
+#### map_from_file(path_str, topic_str, map_function, break_function=<function Cluster.<lambda>>, key_type='str', value_type='str', key_schema=None, value_schema=None, partition=-1, on_delivery=None, key_value_separator=None, message_separator='\\n', n=-1, bufsize=4096)
 Read messages from a local file and produce them to a topic, while transforming the messages in a map-like manner.
 
 Read messages from a local file with path path_str and produce them to topic topic_str, while transforming the messages in a map-like manner.
@@ -2257,6 +2458,9 @@ Read messages from a local file with path path_str and produce them to topic top
 
 
     * **map_function** (`function`) – Map function (takes a pair of a key (string) and a value (string) and returns a transformed pair of key (string) and value (string)).
+
+
+    * **break_function** (`function`, optional) – The break function (takes a pair of strings (key and value) and returns True (stop reading from the file) or False (continue reading)). Defaults to lambda _: False, i.e., always continue reading.
 
 
     * **key_type** (`str`, optional) – The key type (“bytes”, “str”, “json”, “avro”, “protobuf” or “pb”, or “jsonschema”). Defaults to “str”.
@@ -2304,7 +2508,7 @@ c.map_from_file("./snacks_value.txt", "test", map_function=lambda x: x)
 ```
 
 
-#### map_to_file(topic_str, path_str, map_function, group=None, offsets=None, config={}, key_type='str', value_type='str', key_value_separator=None, message_separator='\\n', overwrite=True, n=-1, batch_size=1)
+#### map_to_file(topic_str, path_str, map_function, break_function=<function Cluster.<lambda>>, group=None, offsets=None, config={}, key_type='str', value_type='str', key_value_separator=None, message_separator='\\n', overwrite=True, n=-1, batch_size=1)
 Subscribe to and consume messages from a topic, transform them in a map-like manner and write the resulting messages to a local file.
 
 Subscribe to and consume messages from a topic, transform them in a map-like manner and write the resulting messages to a local file, optionally explicitly set the consumer group, initial offsets, and augment the consumer configuration. Stops either if the consume timeout is exceeded (`consume.timeout` in the kash.py cluster configuration) or the number of messages specified in `n` has been consumed.
@@ -2317,6 +2521,9 @@ Subscribe to and consume messages from a topic, transform them in a map-like man
 
 
     * **map_function** (`function`) – Map function (takes a message dictionary and returns a message dictionary).
+
+
+    * **break_function** (`function`, optional) – The break function (takes a message dictionary and returns True (stop consuming the topic) or False (continue consuming)). Defaults to lambda _: False, i.e., always continue consuming.
 
 
     * **group** (`str`, optional) – Consumer group name used for subscribing to the topic. If set to None, creates a new unique consumer group name. Defaults to None.
@@ -2370,6 +2577,24 @@ c.map_to_file("test", "./test.txt", lambda x: x)
 ```
 
 
+#### memberid()
+Get the group member ID of the consumer.
+
+Get the group member ID of the consumer.
+
+
+* **Returns**
+
+    Group member ID of the consumer.
+
+
+
+* **Return type**
+
+    `str`
+
+
+
 #### offsets(timeout=-1.0)
 Get committed offsets of the subscribed topic.
 
@@ -2384,13 +2609,13 @@ Get committed offsets of the subscribed topic.
 
 * **Returns**
 
-    Dictionary of partitions (integers) and offsets (integers).
+    (Partition) offsets dictionary for the subscribed topic. A (partition) offsets dictionary maps partitions (integers) to offsets (integers).
 
 
 
 * **Return type**
 
-    `offsets_dict`
+    `dict(int, int)`
 
 
 ### Examples
@@ -2622,38 +2847,6 @@ Get/set the progress.num.messages kash setting.
 
     `int`
 
-
-
-#### recreate(topic_str)
-Recreate a topic.
-
-Recreate a topic by 1) replicating it to a temporary topic, 2) deleting the original topic, 3) re-creating the original topic, and 4) replicating the temporary topic back to the original topic. Can be very useful if you happen to come across a consumer that is not able to consume from the beginning of a topic - and you still wish to read the entire topic.
-
-
-* **Parameters**
-
-    **topic_str** (`str`) – The topic to recreate.
-
-
-
-* **Returns**
-
-    Pair of pairs of the number of messages; the first pair indicating the number of messages consumed from the original topic and produced to the temporary topic, the second pair indicating the number of messages consumed from the temporary topic and produced back to the re-created original topic.
-
-
-
-* **Return type**
-
-    `tuple(tuple(int, int), tuple(int, int))`
-
-
-### Examples
-
-Recreate the topic “test”:
-
-```default
-c.recreate("test")
-```
 
 
 #### retention_ms(new_value_int=None)
@@ -3023,7 +3216,7 @@ Subscribe to a topic/list of topics matching a bash-like pattern, optionally exp
     * **group** (`str`, optional) – The consumer group name. If set to None, automatically create a new unique consumer group name. Defaults to None.
 
 
-    * **offsets** (`dict(int, int)`, optional) – Dictionary of integers (partitions) and integers (initial offsets for the individual partitions of the topic). If set to None, does not set any initial offsets. Defaults to None.
+    * **partition_offsets** (`dict(int, int)`, optional) – Partition offsets dictionary for setting the initial offsets for the partitions of the topic. If set to None, does not set any initial offsets. Defaults to None.
 
 
     * **config** (`dict(str, str)`, optional) – Dictionary of strings (keys) and strings (values) to augment the consumer configuration. Defaults to {}.
@@ -3203,7 +3396,7 @@ Unsubscribe from a topic.
 
 
 
-#### upload(path_str, topic_str, flatmap_function=<function Cluster.<lambda>>, key_type='str', value_type='str', key_schema=None, value_schema=None, partition=-1, on_delivery=None, key_value_separator=None, message_separator='\\n', n=-1, bufsize=4096)
+#### upload(path_str, topic_str, flatmap_function=<function Cluster.<lambda>>, break_function=<function Cluster.<lambda>>, key_type='str', value_type='str', key_schema=None, value_schema=None, partition=-1, on_delivery=None, key_value_separator=None, message_separator='\\n', n=-1, bufsize=4096)
 Upload messages from a local file to a topic, while optionally transforming the messages in a flatmap-like manner.
 
 Read messages from a local file with path path_str and produce them to topic topic_str, while optionally transforming the messages in a flatmap-like manner.
@@ -3219,6 +3412,9 @@ Read messages from a local file with path path_str and produce them to topic top
 
 
     * **flatmap_function** (`function`, optional) – Flatmap function (takes a pair of key (string) and value (string) and returns a list of pairs of keys and values). Defaults to lambda x: [x] (=the identify function for flatmap, leading to a one-to-one copy from the messages in the file to the messages in the topic).
+
+
+    * **break_function** (`function`, optional) – The break function (takes a pair of strings (key and value) and returns True (stop reading from the file) or False (continue reading)). Defaults to lambda _: False, i.e., always continue reading.
 
 
     * **key_type** (`str`, optional) – The key type (“bytes”, “str”, “json”, “avro”, “protobuf” or “pb”, or “jsonschema”). Defaults to “str”.
@@ -3342,7 +3538,7 @@ c.watermarks(["test", "bla"], timeout=1.0)
 ```
 
 
-#### wc(topic_str, group=None, offsets=None, config={}, key_type='str', value_type='str', n=-1, batch_size=1)
+#### wc(topic_str, break_function=<function Cluster.<lambda>>, group=None, offsets=None, config={}, key_type='str', value_type='str', n=-1, batch_size=1)
 Count the number of messages, words, and bytes in a topic.
 
 Count the number of messages, words, and bytes in a topic. Optionally explicitly set the consumer group, initial offsets, and augment the consumer configuration. Stops either if the consume timeout is exceeded (`consume.timeout` in the kash.py cluster configuration) or the number of messages specified in `n` has been consumed.
@@ -3352,6 +3548,9 @@ Count the number of messages, words, and bytes in a topic. Optionally explicitly
 
     
     * **topic_str** (`str`) – The topic to subscribe to and consume from.
+
+
+    * **break_function** (`function`, optional) – The break function (takes a message dictionary and returns True (stop consuming the topic) or False (continue consuming)). Defaults to lambda _: False, i.e., always continue consuming.
 
 
     * **group** (`str`, optional) – Consumer group name used for subscribing to the topic. If set to None, creates a new unique consumer group name. Defaults to None.
@@ -3396,7 +3595,7 @@ c.wc("test")
 ```
 
 
-#### zip_foldl(topic_str1, topic_str2, zip_foldl_function, initial_acc, group1=None, group2=None, offsets1=None, offsets2=None, config1={}, config2={}, key_type1='bytes', value_type1='bytes', key_type2='bytes', value_type2='bytes', n=-1, batch_size=1)
+#### zip_foldl(topic_str1, topic_str2, zip_foldl_function, initial_acc, break_function=<function Cluster.<lambda>>, group1=None, group2=None, offsets1=None, offsets2=None, config1={}, config2={}, key_type1='bytes', value_type1='bytes', key_type2='bytes', value_type2='bytes', n=-1, batch_size=1)
 Subscribe to and consume from topic 1 and topic 2 and combine the messages using a foldl function.
 
 Consume (parts of) a topic (topic_str1) and another topic (topic_str2) and combine them using a foldl function. Stops on either topic/cluster if either the consume timeout is exceeded (`consume.timeout` in the kash.py cluster configuration) or the number of messages specified in `n` has been consumed.
@@ -3415,6 +3614,9 @@ Consume (parts of) a topic (topic_str1) and another topic (topic_str2) and combi
 
 
     * **initial_acc** – Initial value of the accumulator (any type).
+
+
+    * **break_function** (`function`, optional) – The break function (takes two message dictionaries and returns True (stop consuming the topics) or False (continue consuming)). Defaults to lambda x, y: False, i.e., always continue consuming.
 
 
     * **group1** (`str`, optional) – Consumer group name used for consuming from topic 1. If set to None, creates a new unique consumer group name. Defaults to None.
@@ -3474,7 +3676,63 @@ c.zip_foldl("topic1", "topic2", lambda acc, message_dict1, message_dict2: acc + 
 ```
 
 
-### kashpy.kash.cp(source_cluster, source_topic_str, target_cluster, target_topic_str, flatmap_function=<function <lambda>>, group=None, offsets=None, config={}, source_key_type='bytes', source_value_type='bytes', target_key_type=None, target_value_type=None, target_key_schema=None, target_value_schema=None, on_delivery=None, keep_timestamps=True, n=-1, batch_size=1)
+### kashpy.kash.clusters(pattern='\*', config=False)
+List cluster configuration files.
+
+List cluster configuration files matching a bash-like pattern.
+
+
+* **Parameters**
+
+    
+    * **pattern** (`str`, optional) – Pattern to select the cluster configuration files to match. Defaults to “\*”.
+
+
+    * **config** (`bool`, optional) – Return configurations inside the configuration files as well. Defaults to False.
+
+
+
+* **Returns**
+
+    List of cluster configuration file names (excluding the “*.yaml” or “*.yml” suffix) if config==False, or dictionary mapping configuration file names (excluding the “*.yaml” or “*.yml” suffix) to dictionaries mapping configuration group names (“kafka”, “schema_registry”, “kash”) to dictionaries mapping configuration keys (e.g. “bootstrap.servers”) to configuration values (e.g. “localhost:9092”) if config==True.
+
+
+
+* **Return type**
+
+    `list(str)` | `dict(str, dict(str, dict(str, str)))`
+
+
+### Examples
+
+List all cluster configuration files:
+
+```default
+clusters()
+```
+
+List only those cluster configuration files whose names start with “rp”:
+
+```default
+clusters("rp*")
+```
+
+List only those cluster configuration files whose names start with “local” and return the configurations inside the configuration files as well:
+
+```default
+clusters("local*", config=True)
+```
+
+
+### kashpy.kash.consumerGroupDescription_to_group_description_dict(consumerGroupDescription)
+
+### kashpy.kash.consumerGroupState_to_str(consumerGroupState)
+
+### kashpy.kash.consumerGroupTopicPartitions_list_to_group_offsets(consumerGroupTopicPartitions_list)
+
+### kashpy.kash.consumerGroupTopicPartitions_to_topic_offsets(consumerGroupTopicPartitions)
+
+### kashpy.kash.cp(source_cluster, source_topic_str, target_cluster, target_topic_str, flatmap_function=<function <lambda>>, break_function=<function <lambda>>, group=None, offsets=None, config={}, source_key_type='bytes', source_value_type='bytes', target_key_type=None, target_value_type=None, target_key_schema=None, target_value_schema=None, on_delivery=None, keep_timestamps=True, n=-1, batch_size=1)
 Replicate a topic and optionally transform the messages in a flatmap-like manner.
 
 Replicate (parts of) a topic (source_topic_str) on one cluster (source_cluster) to another topic (target_topic_str) on another (or the same) cluster (target_cluster). Each replicated message can be transformed into a list of other messages in a flatmap-like manner. The source and target topics can have different message key and value types; e.g. the source topic can have value type Avro whereas the target topic will be written with value type Protobuf. Stops either if the consume timeout is exceeded on the source cluster (`consume.timeout` in the kash.py cluster configuration) or the number of messages specified in `n` has been consumed.
@@ -3496,6 +3754,9 @@ Replicate (parts of) a topic (source_topic_str) on one cluster (source_cluster) 
 
 
     * **flatmap_function** (`function`, optional) – Flatmap function (takes a message dictionary and returns a list of message dictionaries). Defaults to lambda x: [x].
+
+
+    * **break_function** (`function`, optional) – The break function (takes a message dictionary and returns True (stop consuming the source topic) or False (continue consuming)). Defaults to lambda _: False, i.e., always continue consuming.
 
 
     * **group** (`str`, optional) – Consumer group name used for subscribing to the source topic. If set to None, creates a new unique consumer group name. Defaults to None.
@@ -3576,7 +3837,7 @@ cp(cluster1, "topic1", cluster2, "topic2", offsets={0:100}, keep_timestamps=Fals
 ```
 
 
-### kashpy.kash.diff(cluster1, topic_str1, cluster2, topic_str2, group1=None, group2=None, offsets1=None, offsets2=None, key_type1='bytes', value_type1='bytes', key_type2='bytes', value_type2='bytes', n=-1, batch_size=1)
+### kashpy.kash.diff(cluster1, topic_str1, cluster2, topic_str2, break_function=<function <lambda>>, group1=None, group2=None, offsets1=None, offsets2=None, key_type1='bytes', value_type1='bytes', key_type2='bytes', value_type2='bytes', n=-1, batch_size=1)
 Create a diff of topic 1 on cluster 1 and topic 2 on cluster 2 using a diff function.
 
 Create a diff of (parts of) a topic (topic_str1) on one cluster (cluster1) and another topic (topic_str2) on another (or the same) cluster (cluster2) with respect to their keys and values. Stops on either topic/cluster if either the consume timeout is exceeded (`consume.timeout` in the kash.py cluster configuration) or the number of messages specified in `n` has been consumed. If cluster 1 and cluster 2 are the same, a new temporary Cluster object is created under the covers.
@@ -3595,6 +3856,9 @@ Create a diff of (parts of) a topic (topic_str1) on one cluster (cluster1) and a
 
 
     * **topic_str2** (`str`) – Topic 2
+
+
+    * **break_function** (`function`, optional) – The break function (takes two message dictionaries and returns True (stop consuming from the topics) or False (continue consuming)). Defaults to lambda x, y: False, i.e., always continue consuming.
 
 
     * **group1** (`str`, optional) – Consumer group name used for consuming from topic 1. If set to None, creates a new unique consumer group name. Defaults to None.
@@ -3648,7 +3912,7 @@ diff(cluster1, "topic1", cluster2, "topic2")
 ```
 
 
-### kashpy.kash.diff_fun(cluster1, topic_str1, cluster2, topic_str2, diff_function, group1=None, group2=None, offsets1=None, offsets2=None, key_type1='bytes', value_type1='bytes', key_type2='bytes', value_type2='bytes', n=-1, batch_size=1)
+### kashpy.kash.diff_fun(cluster1, topic_str1, cluster2, topic_str2, diff_function, break_function=<function <lambda>>, group1=None, group2=None, offsets1=None, offsets2=None, key_type1='bytes', value_type1='bytes', key_type2='bytes', value_type2='bytes', n=-1, batch_size=1)
 Create a diff of topic 1 on cluster 1 and topic 2 on cluster 2 using a diff function.
 
 Create a diff of (parts of) a topic (topic_str1) on one cluster (cluster1) and another topic (topic_str2) on another (or the same) cluster (cluster2) using a diff function (diff_function). Stops on either topic/cluster if either the consume timeout is exceeded (`consume.timeout` in the kash.py cluster configuration) or the number of messages specified in `n` has been consumed. If cluster 1 and cluster 2 are the same, a new temporary Cluster object is created under the covers.
@@ -3670,6 +3934,9 @@ Create a diff of (parts of) a topic (topic_str1) on one cluster (cluster1) and a
 
 
     * **diff_function** (`function`) – Diff function (takes a message dictionary from topic 1 and a message dictionary from topic 2 and returns True if the message dictionaries are different, False if they are not different).
+
+
+    * **break_function** (`function`, optional) – The break function (takes two message dictionaries and returns True (stop consuming from the topics) or False (continue consuming)). Defaults to lambda x, y: False, i.e., always continue consuming.
 
 
     * **group1** (`str`, optional) – Consumer group name used for consuming from topic 1. If set to None, creates a new unique consumer group name. Defaults to None.
@@ -3723,7 +3990,7 @@ diff_fun(cluster1, "topic1", cluster2, "topic2", lambda message_dict1, message_d
 ```
 
 
-### kashpy.kash.filter(source_cluster, source_topic_str, target_cluster, target_topic_str, filter_function, group=None, offsets=None, config={}, source_key_type='bytes', source_value_type='bytes', target_key_type=None, target_value_type=None, target_key_schema=None, target_value_schema=None, on_delivery=None, keep_timestamps=True, n=-1, batch_size=1)
+### kashpy.kash.filter(source_cluster, source_topic_str, target_cluster, target_topic_str, filter_function, break_function=<function <lambda>>, group=None, offsets=None, config={}, source_key_type='bytes', source_value_type='bytes', target_key_type=None, target_value_type=None, target_key_schema=None, target_value_schema=None, on_delivery=None, keep_timestamps=True, n=-1, batch_size=1)
 Replicate a topic and only keep those messages which fulfil a filter condition.
 
 Replicate (parts of) a topic (source_topic_str) on one cluster (source_cluster) to another topic (target_topic_str) on another (or the same) cluster (target_cluster) and only keep those messages fulfilling a filter condition. Each replicated message is transformed into a list of other messages in a flatmap-like manner. The source and target topics can have different message key and value types; e.g. the source topic can have value type Avro whereas the target topic will be written with value type Protobuf.
@@ -3745,6 +4012,9 @@ Replicate (parts of) a topic (source_topic_str) on one cluster (source_cluster) 
 
 
     * **filter_function** (`function`) – Filter function (takes a message dictionary and returns True to keep the message and False to drop it).
+
+
+    * **break_function** (`function`, optional) – The break function (takes a message dictionary and returns True (stop consuming the source topic) or False (continue consuming)). Defaults to lambda _: False, i.e., always continue consuming.
 
 
     * **group** (`str`, optional) – Consumer group name used for subscribing to the source topic. If set to None, creates a new unique consumer group name. Defaults to None.
@@ -3807,7 +4077,7 @@ filter(cluster1, "topic1", cluster2, "topic2", lambda message_dict: "cake" in me
 ```
 
 
-### kashpy.kash.flatmap(source_cluster, source_topic_str, target_cluster, target_topic_str, flatmap_function, group=None, offsets=None, config={}, source_key_type='bytes', source_value_type='bytes', target_key_type=None, target_value_type=None, target_key_schema=None, target_value_schema=None, on_delivery=None, keep_timestamps=True, n=-1, batch_size=1)
+### kashpy.kash.flatmap(source_cluster, source_topic_str, target_cluster, target_topic_str, flatmap_function, break_function=<function <lambda>>, group=None, offsets=None, config={}, source_key_type='bytes', source_value_type='bytes', target_key_type=None, target_value_type=None, target_key_schema=None, target_value_schema=None, on_delivery=None, keep_timestamps=True, n=-1, batch_size=1)
 Replicate a topic and transform the messages in a flatmap-like manner.
 
 Replicate (parts of) a topic (source_topic_str) on one cluster (source_cluster) to another topic (target_topic_str) on another (or the same) cluster (target_cluster). Each replicated message is transformed into a list of other messages in a flatmap-like manner. The source and target topics can have different message key and value types; e.g. the source topic can have value type Avro whereas the target topic will be written with value type Protobuf.
@@ -3829,6 +4099,9 @@ Replicate (parts of) a topic (source_topic_str) on one cluster (source_cluster) 
 
 
     * **flatmap_function** (`function`) – Flatmap function (takes a message dictionary and returns a list of message dictionaries).
+
+
+    * **break_function** (`function`, optional) – The break function (takes a message dictionary and returns True (stop consuming the source topic) or False (continue consuming)). Defaults to lambda _: False, i.e., always continue consuming.
 
 
     * **group** (`str`, optional) – Consumer group name used for subscribing to the source topic. If set to None, creates a new unique consumer group name. Defaults to None.
@@ -3909,7 +4182,7 @@ flatmap(cluster1, "topic1", cluster2, "topic2", lambda message_dict: [message_di
 ```
 
 
-### kashpy.kash.foldl_from_file(path_str, foldl_function, initial_acc, delimiter='\\n', n=-1, bufsize=4096, verbose=0, progress_num_lines=1000)
+### kashpy.kash.foldl_from_file(path_str, foldl_function, initial_acc, break_function=<function <lambda>>, key_value_separator=None, message_separator='\\n', n=-1, bufsize=4096, verbose=0, progress_num_lines=1000)
 Read lines from a file and transform them in a foldl-like manner.
 
 Read lines/messages from a file and transform them in a foldl-like manner. Stops either if the file is read until the end or the number of lines/messages specified in `n` has been consumed.
@@ -3921,13 +4194,19 @@ Read lines/messages from a file and transform them in a foldl-like manner. Stops
     * **path_str** (`str`) – The path to the local file to read from.
 
 
-    * **foldl_function** (`function`) – Foldl function (takes an accumulator (any type) and a line/message (string) and returns the updated accumulator).
+    * **foldl_function** (`function`) – Foldl function (takes an accumulator (any type) and a pair of strings (key and value) and returns the updated accumulator).
 
 
     * **initial_acc** – Initial value of the accumulator (any type).
 
 
-    * **delimiter** (`str`, optional) – The separator between individual lines/messages in the local file to read from. Defaults to the newline character.
+    * **break_function** (`function`, optional) – The break function (takes a pair of strings (key and value) and returns True (stop reading from the file) or False (continue reading)). Defaults to lambda _: False, i.e., always continue reading.
+
+
+    * **key_value_separator** (`str`, optional) – The separator between key and value. Defaults to None.
+
+
+    * **message_separator** (`str`, optional) – The separator between individual lines/messages in the local file to read from. Defaults to the newline character.
 
 
     * **n** (`int`, optional) – The number of lines/messages to read from the local file. Defaults to ALL_MESSAGES = -1.
@@ -3969,7 +4248,13 @@ foldl_from_file("./snacks_value.txt", lambda acc, x: acc + json.loads(x)["calori
 ```
 
 
-### kashpy.kash.map(source_cluster, source_topic_str, target_cluster, target_topic_str, map_function, group=None, offsets=None, config={}, source_key_type='bytes', source_value_type='bytes', target_key_type=None, target_value_type=None, target_key_schema=None, target_value_schema=None, on_delivery=None, keep_timestamps=True, n=-1, batch_size=1)
+### kashpy.kash.group_offsets_to_consumerGroupTopicPartitions_list(group_offsets)
+
+### kashpy.kash.group_str_consumerGroupTopicPartitions_future_dict_to_consumerGroupTopicPartitions_list(group_str_consumerGroupTopicPartitions_future_dict)
+
+### kashpy.kash.group_str_consumerGroupTopicPartitions_future_dict_to_group_offsets(group_str_consumerGroupTopicPartitions_future_dict)
+
+### kashpy.kash.map(source_cluster, source_topic_str, target_cluster, target_topic_str, map_function, break_function=<function <lambda>>, group=None, offsets=None, config={}, source_key_type='bytes', source_value_type='bytes', target_key_type=None, target_value_type=None, target_key_schema=None, target_value_schema=None, on_delivery=None, keep_timestamps=True, n=-1, batch_size=1)
 Replicate a topic and optionally transform the messages in a map-like manner.
 
 Replicate (parts of) a topic (source_topic_str) on one cluster (source_cluster) to another topic (target_topic_str) on another (or the same) cluster (target_cluster). Each replicated message can be transformed into another messages in a map-like manner. The source and target topics can have different message key and value types; e.g. the source topic can have value type Avro whereas the target topic will be written with value type Protobuf. Stops either if the consume timeout is exceeded on the source cluster (`consume.timeout` in the kash.py cluster configuration) or the number of messages specified in `n` has been consumed.
@@ -3990,7 +4275,10 @@ Replicate (parts of) a topic (source_topic_str) on one cluster (source_cluster) 
     * **target_topic_str** (`str`) – Target topic
 
 
-    * **map_function** (`function`, optional) – Map function (takes a message dictionary and returns a message dictionary). Defaults to lambda x: [x].
+    * **map_function** (`function`) – Map function (takes a message dictionary and returns a message dictionary).
+
+
+    * **break_function** (`function`, optional) – The break function (takes a message dictionary and returns True (stop consuming the source topic) or False (continue consuming)). Defaults to lambda _: False, i.e., always continue consuming.
 
 
     * **group** (`str`, optional) – Consumer group name used for subscribing to the source topic. If set to None, creates a new unique consumer group name. Defaults to None.
@@ -4053,7 +4341,21 @@ map(cluster1, "topic1", cluster2, "topic2", lambda x: x)
 ```
 
 
-### kashpy.kash.zip_foldl(cluster1, topic_str1, cluster2, topic_str2, zip_foldl_function, initial_acc, group1=None, group2=None, offsets1=None, offsets2=None, config1={}, config2={}, key_type1='bytes', value_type1='bytes', key_type2='bytes', value_type2='bytes', n=-1, batch_size=1)
+### kashpy.kash.memberAssignment_to_dict(memberAssignment)
+
+### kashpy.kash.memberDescription_to_dict(memberDescription)
+
+### kashpy.kash.node_to_dict(node)
+
+### kashpy.kash.ppretty(dict)
+
+### kashpy.kash.pretty(dict)
+
+### kashpy.kash.str_to_consumerGroupState(consumerGroupState_str)
+
+### kashpy.kash.topicPartition_to_dict(topicPartition)
+
+### kashpy.kash.zip_foldl(cluster1, topic_str1, cluster2, topic_str2, zip_foldl_function, initial_acc, break_function=<function <lambda>>, group1=None, group2=None, offsets1=None, offsets2=None, config1={}, config2={}, key_type1='bytes', value_type1='bytes', key_type2='bytes', value_type2='bytes', n=-1, batch_size=1)
 Subscribe to and consume from topic 1 on cluster 1 and topic 2 on cluster 2 and combine the messages using a foldl function.
 
 Consume (parts of) a topic (topic_str1) on one cluster (cluster1) and another topic (topic_str2) on another (or the same) cluster (cluster2) and combine them using a foldl function. Stops on either topic/cluster if either the consume timeout is exceeded (`consume.timeout` in the kash.py cluster configuration) or the number of messages specified in `n` has been consumed. If cluster 1 and cluster 2 are the same, a new temporary Cluster object is created under the covers.
@@ -4078,6 +4380,9 @@ Consume (parts of) a topic (topic_str1) on one cluster (cluster1) and another to
 
 
     * **initial_acc** – Initial value of the accumulator (any type).
+
+
+    * **break_function** (`function`, optional) – The break function (takes two message dictionaries and returns True (stop consuming from the topics) or False (continue consuming)). Defaults to lambda x, y: False, i.e., always continue consuming.
 
 
     * **group1** (`str`, optional) – Consumer group name used for consuming from topic 1. If set to None, creates a new unique consumer group name. Defaults to None.

@@ -2,7 +2,7 @@
 
 *kash.py* is a Kafka shell based on Python, or, in other words, a Python-based client library for Kafka based on [confluent-kafka-python](https://github.com/confluentinc/confluent-kafka-python) by Magnus Edenhill, which is itself based on the native Kafka client library [librdkafka](https://github.com/edenhill/librdkafka) by the same author.
 
-The idea behind *kash.py* is to make it as easy as possible to interact with Kafka using Python, without having to know any of the implementation details of the underlying [confluent-kafka-python](https://github.com/confluentinc/confluent-kafka-python) module. To this end, not only are the functions/methods are simpler to use, but also all classes are converted to simple Python types like tuples and dictionaries. As a result, chores that took numerous of lines of boilerplate code before can be formulated as one-liners, both in interactive mode using the Python REPL, or within convenient scripts.
+The idea behind *kash.py* is to make it as easy as possible to interact with Kafka using Python, without having to know any of the implementation details of the underlying [confluent-kafka-python](https://github.com/confluentinc/confluent-kafka-python) module. To this end, not only are the functions/methods are simpler to use, but also all classes are converted to simple Python types like tuples and dictionaries. As a result, development chores that took numerous of lines of boilerplate code before can be formulated as one-liners, both in interactive mode using the Python REPL, or within convenient scripts.
 
 *kash.py* has been built for Kafka users of all kinds:
 * For *developers and devops engineers* to view and manipulate Kafka topics using familiar shell syntax (you have *ls*, *touch*, *rm*, *cp*, *cat*, *grep*, *wc* etc.).
@@ -53,28 +53,6 @@ kash:
 ```
 
 You can find an in-depth explanation of these settings in the [kashpy package documentation](https://github.com/xdgrulez/kash.py/blob/main/docs/_build/markdown/source/kashpy.md), including example configuration files for connecting to [Confluent Cloud](https://www.confluent.io/confluent-cloud/), [Redpanda](https://redpanda.com/) etc.
-
-### Apologies to Early adopters
-
-The new configuration file format has been introduced with *kash.py* 0.0.10 and is a breaking change. Apologies for all you early adopters who will stumble on this (because you have already created configuration files in the old `.conf` format and in another directory, either `clusters_secured` or `clusters_unsecured`). I just didn't want to keep downward compatibility with the old `.conf` files because the new way is so much more powerful and, on the other, simpler - and *kash.py* is still at the beginning.
-
-To convert the old `.conf` files to the new interpolated Piny-`.yaml` format, you just have to change sections like `[kafka]` to `kafka:`, and replace the equal characters `=` with colons `:`. 
-
-The cool thing about the new Piny-`.yaml` format is that for security-relevant information such as cluster URLs, user names or passwords, you can use environment variable interpolation like this (which also meant that having to separate directories `clusters_secured` and `clusters_unsecured` was not necessary any longer):
-
-```
-kafka:
-  bootstrap.servers: ${KASHPY_KAFKA_SERVER}
-  security.protocol: SASL_SSL
-  sasl.mechanisms: PLAIN
-  sasl.username: ${KASHPY_KAFKA_USERNAME}
-  sasl.password: ${KASHPY_KAFKA_PASSWORD}
-  
-schema_registry:
-  schema.registry.url: ${KASHPY_SCHEMA_REGISTRY_URL}
-  basic.auth.credentials.source: USER_INFO
-  basic.auth.user.info: ${KASHPY_SCHEMA_REGISTRY_USER_INFO}
-```
 
 ## Kafka Made Simple
 
@@ -269,10 +247,16 @@ The resulting file `snacks1.txt` looks like this:
 
 This is the second tutorial, showcasing the cross-cluster capabilities of *kash.py* in interactive mode.
 
-Again, let's start Python, import kash.py and create a `Cluster` object `c1`:
+First, let's start Python, import kash.py and let's see what clusters we have defined in our `clusters` directory:
 ```
 $ python3
 >>> from kashpy.kash import *
+>>> clusters()
+['ccloud', 'local', 'redpanda']
+```
+
+Next, we create a `Cluster` object `c1`:
+```
 >>> c1 = Cluster("local")
 >>>
 ```

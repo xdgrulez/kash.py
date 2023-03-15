@@ -6,7 +6,7 @@ long_description = (this_directory / "README.md").read_text()
 
 setup(
     name='kashpy',
-    version='0.0.10',
+    version='0.0.11',
     description='A Kafka Shell based on Python',
     long_description=long_description,
     long_description_content_type='text/markdown',
@@ -15,7 +15,7 @@ setup(
     author_email='matthias.debusmann@gmail.com',
     license='Apache License 2.0',
     packages=['kashpy'],
-    install_requires=['confluent_kafka>=1.9.0',
+    install_requires=['confluent_kafka>=2.0.2',
                       'fastavro',
                       'grpcio-tools',
                       'jsonschema',
