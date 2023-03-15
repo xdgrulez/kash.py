@@ -126,9 +126,61 @@ Upload the following local file `snacks.txt` to the topic `snacks` (examples ins
 Show the contents of topic `snacks`:
 ```
 >>> c.cat("snacks")
-{'headers': None, 'partition': 0, 'offset': 0, 'timestamp': (1, 1664989815680), 'key': None, 'value': '{"name": "cookie", "calories": 500.0, "colour": "brown"}'}
-{'headers': None, 'partition': 0, 'offset': 1, 'timestamp': (1, 1664989815680), 'key': None, 'value': '{"name": "cake", "calories": 260.0, "colour": "white"}'}
-{'headers': None, 'partition': 0, 'offset': 2, 'timestamp': (1, 1664989815680), 'key': None, 'value': '{"name": "timtam", "calories": 80.0, "colour": "chocolate"}'}
+{'headers': None, 'partition': 0, 'offset': 0, 'timestamp': (1, 1678915066323), 'key': None, 'value': '{"name": "cookie", "calories": 500.0, "colour": "brown"}'}
+{'headers': None, 'partition': 0, 'offset': 1, 'timestamp': (1, 1678915066323), 'key': None, 'value': '{"name": "cake", "calories": 260.0, "colour": "white"}'}
+{'headers': None, 'partition': 0, 'offset': 2, 'timestamp': (1, 1678915066323), 'key': None, 'value': '{"name": "timtam", "calories": 80.0, "colour": "chocolate"}'}
+3
+>>> 
+```
+
+If you'd like to see the output of the values of the messages in an indented fashion, you can tell `kash.py` 1) that you'd like to pretty print the messages and 2) that the values have the type `json`:
+```
+>>> c.cat("snacks", foreach_function=ppretty, value_type="json")
+{
+  "headers": null,
+  "partition": 0,
+  "offset": 0,
+  "timestamp": [
+    1,
+    1678915066323
+  ],
+  "key": null,
+  "value": {
+    "name": "cookie",
+    "calories": 500.0,
+    "colour": "brown"
+  }
+}
+{
+  "headers": null,
+  "partition": 0,
+  "offset": 1,
+  "timestamp": [
+    1,
+    1678915066323
+  ],
+  "key": null,
+  "value": {
+    "name": "cake",
+    "calories": 260.0,
+    "colour": "white"
+  }
+}
+{
+  "headers": null,
+  "partition": 0,
+  "offset": 2,
+  "timestamp": [
+    1,
+    1678915066323
+  ],
+  "key": null,
+  "value": {
+    "name": "timtam",
+    "calories": 80.0,
+    "colour": "chocolate"
+  }
+}
 3
 >>> 
 ```
@@ -186,6 +238,58 @@ Show the contents of the topic `snacks_protobuf` again (decoding the values usin
 {'headers': None, 'partition': 0, 'offset': 0, 'timestamp': (1, 1664989815680), 'key': None, 'value': {'name': 'cookie', 'calories': 500.0, 'colour': 'brown'}}
 {'headers': None, 'partition': 0, 'offset': 1, 'timestamp': (1, 1664989815680), 'key': None, 'value': {'name': 'cake', 'calories': 260.0, 'colour': 'white'}}
 {'headers': None, 'partition': 0, 'offset': 2, 'timestamp': (1, 1664989815680), 'key': None, 'value': {'name': 'timtam', 'calories': 80.0, 'colour': 'chocolate'}}
+3
+>>>
+```
+
+Again, `kash.py` can give you a prettified indented output:
+```
+>>> c.cat("snacks_protobuf", foreach_function=ppretty, value_type="protobuf")
+{
+  "headers": null,
+  "partition": 0,
+  "offset": 0,
+  "timestamp": [
+    1,
+    1678915066323
+  ],
+  "key": null,
+  "value": {
+    "name": "cookie",
+    "calories": 500.0,
+    "colour": "brown"
+  }
+}
+{
+  "headers": null,
+  "partition": 0,
+  "offset": 1,
+  "timestamp": [
+    1,
+    1678915066323
+  ],
+  "key": null,
+  "value": {
+    "name": "cake",
+    "calories": 260.0,
+    "colour": "white"
+  }
+}
+{
+  "headers": null,
+  "partition": 0,
+  "offset": 2,
+  "timestamp": [
+    1,
+    1678915066323
+  ],
+  "key": null,
+  "value": {
+    "name": "timtam",
+    "calories": 80.0,
+    "colour": "chocolate"
+  }
+}
 3
 >>>
 ```

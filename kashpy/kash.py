@@ -3331,7 +3331,7 @@ class Cluster:
 
     #
 
-    def cat(self, topic_str, foreach_function=lambda x: ppretty(x), break_function=lambda _: False, group=None, offsets=None, config={}, key_type="str", value_type="str", n=ALL_MESSAGES, batch_size=1):
+    def cat(self, topic_str, foreach_function=print, break_function=lambda _: False, group=None, offsets=None, config={}, key_type="str", value_type="str", n=ALL_MESSAGES, batch_size=1):
         """Subscribe to and consume messages from a topic and call an operation on each of them.
 
         Subscribe to and consume messages from a topic and call an operation on each of them, optionally explicitly set the consumer group, initial offsets, and augment the consumer configuration. Stops either if the consume timeout is exceeded (``consume.timeout`` in the kash.py cluster configuration) or the number of messages specified in ``n`` has been consumed.
