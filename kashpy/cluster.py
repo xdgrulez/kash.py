@@ -2193,6 +2193,33 @@ class Cluster(Kafka):
 
     #
 
+    def subs(self):
+        return self.subscription_dict
+
+    def create_subscription_id(self):
+        self.subscription_id_counter_int += 1
+        return self.subscription_id_counter_int
+
+    def get_subscription_id(self, sub=None):
+        if sub is None:
+            if not self.subscription_dict:
+                raise Exception("No subscription.")
+            elif len(self.subscription_dict) == 1:
+                subscription_id_int = list(self.subscription_dict.keys())[0]
+            else:
+                subscription_id_int_list = list(self.subscription_dict.keys())
+                raise Exception(f"Multiple subscriptions; please specify one of {subscription_id_int_list}.")
+        else:
+            subscription_id_int = sub
+        #
+        return subscription_id_int
+
+    def get_subscription(self, sub=None):
+        subscription_id_int = self.get_subscription_id(sub)
+        return self.subscription_dict[subscription_id_int]
+
+    #
+
     def subscribe(self, topics, group=None, offsets=None, config={}, key_type="str", value_type="str"):
         """Subscribe to a topic or a list of topics.
 
@@ -2288,31 +2315,6 @@ class Cluster(Kafka):
         #
         return topic_str_list, group_str, subscription_id_int
     
-    def subs(self):
-        return self.subscription_dict
-
-    def create_subscription_id(self):
-        self.subscription_id_counter_int += 1
-        return self.subscription_id_counter_int
-
-    def get_subscription_id(self, sub=None):
-        if sub is None:
-            if not self.subscription_dict:
-                raise Exception("No subscription.")
-            elif len(self.subscription_dict) == 1:
-                subscription_id_int = list(self.subscription_dict.keys())[0]
-            else:
-                subscription_id_int_list = list(self.subscription_dict.keys())
-                raise Exception(f"Multiple subscriptions; please specify one of {subscription_id_int_list}.")
-        else:
-            subscription_id_int = sub
-        #
-        return subscription_id_int
-
-    def get_subscription(self, sub=None):
-        subscription_id_int = self.get_subscription_id(sub)
-        return self.subscription_dict[subscription_id_int]
-
     def unsubscribe(self, sub=None):
         """Unsubscribe.
 
