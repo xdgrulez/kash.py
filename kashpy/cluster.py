@@ -9,6 +9,7 @@ from google.protobuf.json_format import MessageToDict, ParseDict
 from piny import YamlLoader
 from fnmatch import fnmatch
 import glob
+#import hashlib
 import importlib
 import json
 import os
@@ -51,6 +52,7 @@ def pretty(dict):
 
 def ppretty(dict):
     print(pretty(dict))
+
 
 # Get cluster configurations
 
@@ -417,6 +419,23 @@ def topicPartition_to_dict(topicPartition):
     return dict
 
 
+def topicPartition_list_to_offsets_dict(topicPartition_list):
+    offsets_dict = {}
+    for topicPartition in topicPartition_list:
+        topic_str = topicPartition.topic
+        partition_int = topicPartition.partition
+        offset_int = topicPartition.offset
+        #
+        if topic_str in offsets_dict:
+            offsets = offsets_dict[topic_str]
+        else:
+            offsets = {}
+        offsets[partition_int] = offset_int
+        offsets_dict[topic_str] = offsets
+    #
+    return offsets_dict
+
+
 def node_to_dict(node):
     dict = {"id": node.id,
             "id_string": node.id_string,
@@ -615,18 +634,12 @@ class Cluster(Kafka):
             self.schemaRegistryClient = get_schemaRegistryClient(self.schema_registry_config_dict)
         else:
             self.schemaRegistryClient = None
-        #
-        self.subscribed_topic_str = None
-        self.subscribed_group_str = None
-        self.subscribed_key_type_str = None
-        self.subscribed_value_type_str = None
-        self.last_consumed_message = None
-        self.last_consumed_message_key_schema_str = None
-        self.last_consumed_message_value_schema_str = None
+        # subscription_dict: subscription_id_str -> dict(topics: list(str), group: str, consumer: Consumer, key_type: str, value_type: str, key_schema: str, value_schema: str)
+        # where uuid_str identifies the subscription.
+        self.subscription_dict = {}
+        self.subscription_id_counter_int = 0
         #
         self.schema_id_int_generalizedProtocolMessageType_protobuf_schema_str_tuple_dict = {}
-        self.schema_id_int_avro_schema_str_dict = {}
-        self.schema_id_int_jsonschema_str_dict = {}
         #
         self.produced_messages_counter_int = 0
         #
@@ -856,23 +869,23 @@ class Cluster(Kafka):
         return generalizedProtocolMessageType
 
     def schema_id_int_to_generalizedProtocolMessageType_protobuf_schema_str_tuple(self, schema_id_int):
+        # No additional caching necessary here:
+        # get_schema(schema_id)[source]
+        # Fetches the schema associated with schema_id from the Schema Registry. The result is cached so subsequent attempts will not require an additional round-trip to the Schema Registry.
         schema = self.schemaRegistryClient.get_schema(schema_id_int)
         schema_str = schema.schema_str
         #
         generalizedProtocolMessageType = self.schema_id_int_and_schema_str_to_generalizedProtocolMessageType(schema_id_int, schema_str)
         return generalizedProtocolMessageType, schema_str
 
-    def schema_id_int_to_avro_schema_str(self, schema_id_int):
+    def schema_id_int_to_schema_str(self, schema_id_int):
+        # No additional caching necessary here:
+        # get_schema(schema_id)[source]
+        # Fetches the schema associated with schema_id from the Schema Registry. The result is cached so subsequent attempts will not require an additional round-trip to the Schema Registry.
         schema = self.schemaRegistryClient.get_schema(schema_id_int)
-        avro_schema_str = schema.schema_str
+        schema_str = schema.schema_str
         #
-        return avro_schema_str
-
-    def schema_id_int_to_jsonschema_str(self, schema_id_int):
-        schema = self.schemaRegistryClient.get_schema(schema_id_int)
-        jsonschema_str = schema.schema_str
-        #
-        return jsonschema_str
+        return schema_str
 
     def schema_id_int_and_schema_str_to_generalizedProtocolMessageType(self, schema_id_int, schema_str):
         path_str = f"/{tempfile.gettempdir()}/kash.py/clusters/{self.cluster_str}"
@@ -911,11 +924,7 @@ class Cluster(Kafka):
 
     def bytes_avro_to_dict(self, bytes, key_bool):
         schema_id_int = int.from_bytes(bytes[1:5], "big")
-        if schema_id_int in self.schema_id_int_avro_schema_str_dict:
-            avro_schema_str = self.schema_id_int_avro_schema_str_dict[schema_id_int]
-        else:
-            avro_schema_str = self.schema_id_int_to_avro_schema_str(schema_id_int)
-            self.schema_id_int_avro_schema_str_dict[schema_id_int] = avro_schema_str
+        avro_schema_str = self.schema_id_int_to_schema_str(schema_id_int)
         #
         if key_bool:
             self.last_consumed_message_key_schema_str = avro_schema_str
@@ -928,11 +937,7 @@ class Cluster(Kafka):
 
     def bytes_jsonschema_to_dict(self, bytes, key_bool):
         schema_id_int = int.from_bytes(bytes[1:5], "big")
-        if schema_id_int in self.schema_id_int_jsonschema_str_dict:
-            jsonschema_str = self.schema_id_int_jsonschema_str_dict[schema_id_int]
-        else:
-            jsonschema_str = self.schema_id_int_to_jsonschema_str(schema_id_int)
-            self.schema_id_int_jsonschema_str_dict[schema_id_int] = jsonschema_str
+        jsonschema_str = self.schema_id_int_to_schema_str(schema_id_int)
         #
         if key_bool:
             self.last_consumed_message_key_schema_str = jsonschema_str
@@ -992,7 +997,7 @@ class Cluster(Kafka):
             def decode_value(bytes):
                 return self.bytes_jsonschema_to_dict(bytes, key_bool=False)
         #
-        message_dict = {"headers": message.headers(), "partition": message.partition(), "offset": message.offset(), "timestamp": message.timestamp(), "key": decode_key(message.key()), "value": decode_value(message.value())}
+        message_dict = {"headers": message.headers(), "topic": message.topic(), "partition": message.partition(), "offset": message.offset(), "timestamp": message.timestamp(), "key": decode_key(message.key()), "value": decode_value(message.value())}
         return message_dict
 
     # Configuration helpers
@@ -2049,13 +2054,6 @@ class Cluster(Kafka):
 
     # Producer
 
-    def openw(self, topic:str):
-        self.topic_str = topic
-        return self.topic_str
-
-    def closew(self):
-        return self.flush()
-
     def write(self, value:Any, key:Any=None, key_type:str="str", value_type:str="str", key_schema:str=None, value_schema:str=None, partition:int=RD_KAFKA_PARTITION_UA, timestamp:int=CURRENT_TIME, headers:Union[Dict, List]=None, on_delivery:Callable[[KafkaError, Message], None]=None):
         return self.produce(self.topic_str, value, key, key_type, value_type, key_schema, value_schema, partition, timestamp, headers, on_delivery)
 
@@ -2185,24 +2183,23 @@ class Cluster(Kafka):
 
     # Consumer
 
-    def openr(self, topic:str, group:str=None, offsets:Dict[int, int]=None, config:Dict[str, str]={}, key_type:str="str", value_type:str="str"):
-        return self.subscribe(topic, group, offsets, config, key_type, value_type)
-
-    def closer(self):
-        return self.close()
-
-    def read(self, n:str=1):
-        return self.consume(n)
+    def read(self, topics=None, group=None, offsets=None, config={}, key_type="str", value_type="str", n=1, sub=None):
+        try:
+            subscription_id_int = self.get_subscription_id(sub)
+        except:
+            _, _, subscription_id_int = self.subscribe(topics, group, offsets, config, key_type, value_type)
+        #
+        return self.consume(n, sub=subscription_id_int)
 
     #
 
-    def subscribe(self, topic_str, group=None, offsets=None, config={}, key_type="str", value_type="str"):
-        """Subscribe to a topic.
+    def subscribe(self, topics, group=None, offsets=None, config={}, key_type="str", value_type="str"):
+        """Subscribe to a topic or a list of topics.
 
-        Subscribe to a topic, optionally explicitly set the consumer group, initial offsets, and augment the consumer configuration. Prerequisite for consuming from a topic. Set "auto.offset.reset" to the configured "auto.offset.value" in the configuration ("kash"-section), and "enable.auto.commit" and "session.timeout.ms" as well.
+        Subscribe to a topic or a list of topics, optionally explicitly set the consumer group, initial offsets, and augment the consumer configuration. Prerequisite for consuming from a topic. Set "auto.offset.reset" to the configured "auto.offset.value" in the configuration ("kash"-section), and "enable.auto.commit" and "session.timeout.ms" as well.
 
         Args:
-            topic_str (:obj:`str`): The topic to subscribe to.
+            topic (:obj:`str`): The topic to subscribe to.
             group (:obj:`str`, optional): The consumer group name. If set to None, automatically create a new unique consumer group name. Defaults to None.
             offsets (:obj:`dict(int, int)`, optional): Dictionary of integers (partitions) and integers (initial offsets for the individual partitions of the topic). If set to None, does not set any initial offsets. Defaults to None.
             config (:obj:`dict(str, str)`, optional): Dictionary of strings (keys) and strings (values) to augment the consumer configuration. Defaults to {}.
@@ -2233,13 +2230,36 @@ class Cluster(Kafka):
 
                 c.subscribe("test", key_type="avro", value_type="avro")
         """
-        offsets_dict = offsets
-        config_dict = config
-        #
+        # topics
+        topic_str_list = topics if isinstance(topics, list) else [topics]
+        if not topic_str_list:
+            raise Exception("No topic to subscribe to.")
+        # group
         if group is None:
             group_str = create_unique_group_id()
         else:
             group_str = group
+        # offsets
+        if offsets is None:
+            offsets_dict = None
+        else:
+            str_or_int = list(offsets.keys())[0]
+            if isinstance(str_or_int, str):
+                offsets_dict = offsets
+            elif isinstance(str_or_int, int):
+                offsets_dict = {topic_str: offsets for topic_str in topic_str_list}
+        # config
+        config_dict = config
+        # key_type
+        if isinstance(key_type, dict):
+            key_type_dict = key_type
+        else:
+            key_type_dict = {topic_str: key_type for topic_str in topic_str_list}
+        # value_type
+        if isinstance(value_type, dict):
+            value_type_dict = value_type
+        else:
+            value_type_dict = {topic_str: value_type for topic_str in topic_str_list}
         #
         self.config_dict["group.id"] = group_str
         self.config_dict["auto.offset.reset"] = self.kash_dict["auto.offset.reset"]
@@ -2247,62 +2267,86 @@ class Cluster(Kafka):
         self.config_dict["session.timeout.ms"] = self.kash_dict["session.timeout.ms"]
         for key_str, value in config_dict.items():
             self.config_dict[key_str] = value
-        self.consumer = get_consumer(self.config_dict)
+        consumer = get_consumer(self.config_dict)
         #
-        clusterMetaData = self.consumer.list_topics(topic=topic_str)
-        self.topicPartition_list = [TopicPartition(topic_str, partition_int) for partition_int in clusterMetaData.topics[topic_str].partitions.keys()]
-        #
-
         def on_assign(consumer, partitions):
-            topicPartition_list = partitions
+            def set_offset(topicPartition):
+                if topicPartition.topic in offsets_dict:
+                    offsets = offsets_dict[topicPartition.topic]
+                    if topicPartition.partition in offsets:
+                        offset_int = offsets[topicPartition.partition]
+                        topicPartition.offset = offset_int
+                return topicPartition
             #
             if offsets_dict is not None:
-                for index_int, offset_int in offsets_dict.items():
-                    topicPartition_list[index_int].offset = offset_int
+                topicPartition_list = [set_offset(topicPartition) for topicPartition in partitions]
                 consumer.assign(topicPartition_list)
-        self.consumer.subscribe([topic_str], on_assign=on_assign)
-        self.subscribed_topic_str = topic_str
-        self.subscribed_group_str = group_str
-        self.subscribed_key_type_str = key_type
-        self.subscribed_value_type_str = value_type
+        consumer.subscribe(topic_str_list, on_assign=on_assign)
         #
-        return topic_str, group_str
+        subscription_id_int = self.create_subscription_id()
+        self.subscription_dict[subscription_id_int] = {"topics": topic_str_list, "group": group_str, "key_type": key_type_dict, "value_type": value_type_dict, "consumer": consumer, "last_key_schema": None, "last_value_schema": None}
+        #
+        return topic_str_list, group_str, subscription_id_int
+    
+    def subs(self):
+        return self.subscription_dict
 
-    def unsubscribe(self):
-        """Unsubscribe from a topic.
+    def create_subscription_id(self):
+        self.subscription_id_counter_int += 1
+        return self.subscription_id_counter_int
 
-        Unsubscribe from a topic.
+    def get_subscription_id(self, sub=None):
+        if sub is None:
+            if not self.subscription_dict:
+                raise Exception("No subscription.")
+            elif len(self.subscription_dict) == 1:
+                subscription_id_int = list(self.subscription_dict.keys())[0]
+            else:
+                subscription_id_int_list = list(self.subscription_dict.keys())
+                raise Exception(f"Multiple subscriptions; please specify one of {subscription_id_int_list}.")
+        else:
+            subscription_id_int = sub
+        #
+        return subscription_id_int
+
+    def get_subscription(self, sub=None):
+        subscription_id_int = self.get_subscription_id(sub)
+        return self.subscription_dict[subscription_id_int]
+
+    def unsubscribe(self, sub=None):
+        """Unsubscribe.
+
+        Unsubscribe a subscription.
 
         Returns:
             :obj:`tuple(str, str)` Pair of the topic unsubscribed from (string) and the used consumer group (string).
         """
-        self.consumer.unsubscribe()
+        subscription_id_int = self.get_subscription_id(sub)
         #
-        topic_str = self.subscribed_topic_str
-        group_str = self.subscribed_group_str
+        subscription = self.subscription_dict.pop(subscription_id_int)
+        topic_str_list = subscription["topics"]
+        group_str = subscription["group"]
+        consumer = subscription["consumer"]
         #
-        self.subscribed_topic_str = None
-        self.subscribed_group_str = None
-        self.subscribed_key_type_str = None
-        self.subscribed_value_type_str = None
+        consumer.unsubscribe()
         #
-        return topic_str, group_str
+        return topic_str_list, group_str, subscription_id_int
 
-    def close(self):
+    def close(self, sub=None):
         """Close the consumer.
 
         Close the consumer.
         """
-        topicPartition_list = self.consumer.assignment()
-        topic_str_list = [topicPartition.topic for topicPartition in topicPartition_list]
-        topic_str_set = set(topic_str_list)
+        subscription = self.get_subscription(sub)
+        consumer = subscription["consumer"]
         #
-        self.consumer.unsubscribe()
-        self.consumer.close()
+        topic_str_list, group_str, subscription_id_int = self.unsubscribe(sub)
         #
-        return list(topic_str_set)
+        consumer.close()
+        #
+        return topic_str_list, group_str, subscription_id_int
 
-    def consume(self, n=1):
+    def consume(self, n=1, sub=None):
         """Consume messages from a subscribed topic.
 
         Consume messages from a subscribed topic.
@@ -2322,20 +2366,18 @@ class Cluster(Kafka):
 
                 c.consume(n=100)
         """
+        subscription = self.get_subscription(sub)
+        #
         num_messages_int = n
         #
-        if self.subscribed_topic_str is None:
-            print("Please subscribe to a topic before consuming.")
-            return
+        consumer = subscription["consumer"]
+        message_list = consumer.consume(num_messages_int, self.kash_dict["consume.timeout"])
         #
-        message_list = self.consumer.consume(num_messages_int, self.kash_dict["consume.timeout"])
-        if message_list:
-            self.last_consumed_message = message_list[-1]
-        message_dict_list = [self.message_to_message_dict(message, key_type=self.subscribed_key_type_str, value_type=self.subscribed_value_type_str) for message in message_list]
+        message_dict_list = [self.message_to_message_dict(message, key_type=subscription["key_type"][message.topic()], value_type=subscription["value_type"][message.topic()]) for message in message_list]
         #
         return message_dict_list
 
-    def commit(self, asynchronous=False):
+    def commit(self, offsets=None, asynchronous=False, sub=None):
         """Commit the last consumed message from the topic subscribed to.
 
         Commit the last consumed message from the topic subscribed to.
@@ -2346,11 +2388,28 @@ class Cluster(Kafka):
         Returns:
             :obj:`message_dict`: Last consumed message dictionary (converted from confluent_kafka.Message).
         """
-        self.consumer.commit(self.last_consumed_message, asynchronous=asynchronous)
+        subscription = self.get_subscription(sub)
         #
-        return self.message_to_message_dict(self.last_consumed_message)
+        consumer = subscription["consumer"]
+        #
+        if offsets is None:
+            offsets_topicPartition_list = None
+            commit_topicPartition_list = consumer.commit(asynchronous=asynchronous)
+        else:
+            str_or_int = list(offsets.keys())[0]
+            if isinstance(str_or_int, str):
+                offsets_dict = offsets
+            elif isinstance(str_or_int, int):
+                offsets_dict = {topic_str: offsets for topic_str in subscription["topics"]}
+            #
+            offsets_topicPartition_list = [TopicPartition(topic_str, partition_int, offset_int) for topic_str, offsets in offsets_dict.items() for partition_int, offset_int in offsets.items()]
+            commit_topicPartition_list = consumer.commit(offsets=offsets_topicPartition_list, asynchronous=asynchronous)
+        #
+        offsets_dict = topicPartition_list_to_offsets_dict(commit_topicPartition_list)
+        #
+        return offsets_dict
 
-    def offsets(self, timeout=-1.0):
+    def offsets(self, timeout=-1.0, sub=None):
         """Get committed offsets of the subscribed topic.
 
         Get committed offsets of the subscribed topic.
@@ -2370,16 +2429,19 @@ class Cluster(Kafka):
 
                 c.offsets(timeout=1.0)
         """
+        subscription = self.get_subscription(sub)
+        #
         timeout_float = timeout
         #
-        topicPartition_list = self.consumer.committed(self.topicPartition_list, timeout=timeout_float)
-        if self.subscribed_topic_str:
-            offsets_dict = {topicPartition.partition: offset_int_to_int_or_str(topicPartition.offset) for topicPartition in topicPartition_list if topicPartition.topic == self.subscribed_topic_str}
-            return offsets_dict
-        else:
-            return {}
+        consumer = subscription["consumer"]
+        assignment_topicPartition_list = consumer.assignment()
+        committed_topicPartition_list = consumer.committed(assignment_topicPartition_list, timeout=timeout_float)
+        #
+        offsets_dict = topicPartition_list_to_offsets_dict(committed_topicPartition_list)
+        #
+        return offsets_dict
 
-    def memberid(self):
+    def memberid(self, sub=None):
         """Get the group member ID of the consumer.
 
         Get the group member ID of the consumer.
@@ -2387,4 +2449,9 @@ class Cluster(Kafka):
         Returns:
             :obj:`str`: Group member ID of the consumer.
         """
-        return self.consumer.memberid()
+        subscription = self.get_subscription(sub)
+        #
+        consumer = subscription["consumer"]
+        member_id_str = consumer.memberid()
+        #
+        return member_id_str 
