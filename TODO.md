@@ -1,3 +1,8 @@
+* changes:
+  * config_dict bei set_config
+  
+* set offsets (? - do we want to support assignments without consumer groups at all?)
+
 * Transactional API!!!
 
 * subscribe mit mehreren Topics (Pattern auch???)

@@ -1094,7 +1094,7 @@ class Cluster(Kafka):
         #
         return topic_str_config_dict_dict
 
-    def set_config(self, pattern_str_or_str_list, key_str, value_str, test=False):
+    def set_config(self, pattern_str_or_str_list, config_dict, test=False):
         """Set a configuration item of topics.
 
         Set the configuration item with key key_str and value value_str of those topics whose names match the bash-like pattern (or list of patterns) pattern_str_or_str_list.
@@ -1124,9 +1124,9 @@ class Cluster(Kafka):
         topic_str_list = self.topics(pattern_str_or_str_list)
         #
         for topic_str in topic_str_list:
-            self.set_config_dict(ResourceType.TOPIC, topic_str, {key_str: value_str}, test_bool)
+            self.set_config_dict(ResourceType.TOPIC, topic_str, config_dict, test_bool)
         #
-        topic_str_key_str_value_str_tuple_dict = {topic_str: (key_str, value_str) for topic_str in topic_str_list}
+        topic_str_key_str_value_str_tuple_dict = {topic_str: config_dict for topic_str in topic_str_list}
         return topic_str_key_str_value_str_tuple_dict
 
     def block_topic(self, topic_str, exists=True):

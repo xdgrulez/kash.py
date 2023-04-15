@@ -54,6 +54,76 @@ class RestProxy(Kafka):
 
     #
 
+    # AdminClient - ACLs
+
+    def kafkaAcl_dict_to_dict(kafkaAcl_dict):
+        dict = {"restype": kafkaAcl_dict["resource_type"],
+                "name": kafkaAcl_dict["resource_name"],
+                "resource_pattern_type": kafkaAcl_dict["pattern_type"],
+                "principal": kafkaAcl_dict["principal"],
+                "host": kafkaAcl_dict["host"],
+                "operation": kafkaAcl_dict["operation"],
+                "permission_type": kafkaAcl_dict["permission"]}
+        return dict
+
+    def acls(self, restype="any", name=None, resource_pattern_type="any", principal=None, host=None, operation="any", permission_type="any"):
+        rest_proxy_url_str = "http://localhost:8082"
+        #
+        url_str = f"{rest_proxy_url_str}/v3/clusters/{self.cluster_id_str}/acls"
+        headers_dict = {"Content-Type": "application/json"}
+        #
+        payload_dict = {"resource_type": restype, "pattern_type": resource_pattern_type, "operation": operation, "permission": permission_type}
+        if name is not None:
+            payload_dict["resource_name"] = name
+        if principal is not None:
+            payload_dict["principal"] = principal
+        if host is not None:
+            payload_dict["host"] = host 
+        #
+        response_dict = get(url_str, headers_dict, payload_dict=payload_dict)
+        kafkaAcl_dict_list = response_dict["data"]
+        #
+        dict_list = [self.kafkaAcl_dict_to_dict(kafkaAcl_dict) for kafkaAcl_dict in kafkaAcl_dict_list]
+        return dict_list
+
+    def create_acl(self, restype="any", name=None, resource_pattern_type="any", principal=None, host=None, operation="any", permission_type="any"):
+        rest_proxy_url_str = "http://localhost:8082"
+        #
+        url_str = f"{rest_proxy_url_str}/v3/clusters/{self.cluster_id_str}/acls"
+        headers_dict = {"Content-Type": "application/json"}
+        #
+        payload_dict = {"resource_type": restype, "pattern_type": resource_pattern_type, "operation": operation, "permission": permission_type}
+        if name is not None:
+            payload_dict["resource_name"] = name
+        if principal is not None:
+            payload_dict["principal"] = principal
+        if host is not None:
+            payload_dict["host"] = host 
+        #
+        post(url_str, headers_dict, payload_dict=payload_dict)
+
+    def delete_acl(self, restype="any", name=None, resource_pattern_type="any", principal=None, host=None, operation="any", permission_type="any"):
+        rest_proxy_url_str = "http://localhost:8082"
+        #
+        url_str = f"{rest_proxy_url_str}/v3/clusters/{self.cluster_id_str}/acls"
+        headers_dict = {"Content-Type": "application/json"}
+        #
+        payload_dict = {"resource_type": restype, "pattern_type": resource_pattern_type, "operation": operation, "permission": permission_type}
+        if name is not None:
+            payload_dict["resource_name"] = name
+        if principal is not None:
+            payload_dict["principal"] = principal
+        if host is not None:
+            payload_dict["host"] = host 
+        #
+        response_dict = delete(url_str, headers_dict, payload_dict=payload_dict)
+        kafkaAcl_dict_list = response_dict["data"]
+        #
+        dict_list = [self.kafkaAcl_dict_to_dict(kafkaAcl_dict) for kafkaAcl_dict in kafkaAcl_dict_list]
+        return dict_list
+
+    #
+
     def get_cluster_id(self):
         rest_proxy_url_str = "http://localhost:8082"
         #
@@ -241,7 +311,19 @@ class RestProxy(Kafka):
         message_dict_list = [{"headers": None, "topic": rest_message_dict["topic"], "partition": rest_message_dict["partition"], "offset": rest_message_dict["offset"], "timestamp": None, "key": rest_message_dict["key"], "value": rest_message_dict["value"]} for rest_message_dict in response_dict]
         return message_dict_list
 
+    def offsets_dict_to_rest_offsets_dict_list(self, offsets_dict, topic_str_list):
+        str_or_int = list(offsets_dict.keys())[0]
+        if isinstance(str_or_int, str):
+            topic_str_offsets_dict_dict = offsets_dict
+        elif isinstance(str_or_int, int):
+            topic_str_offsets_dict_dict = {topic_str: offsets_dict for topic_str in topic_str_list}
+        #
+        rest_offsets_dict_list = [{"topic": topic_str, "partition": partition_int, "offset": offset_int} for topic_str, offsets_dict in topic_str_offsets_dict_dict.items() for partition_int, offset_int in offsets_dict.items()]
+        return rest_offsets_dict_list
+
     def commit(self, offsets=None, asynchronous=False, sub=None):
+        offsets_dict = offsets
+        #
         subscription_id_int = self.get_subscription_id(sub)
         subscription = self.subscription_dict[subscription_id_int]
         #
@@ -253,13 +335,7 @@ class RestProxy(Kafka):
         if offsets is None:
             payload_dict = None
         else:
-            str_or_int = list(offsets.keys())[0]
-            if isinstance(str_or_int, str):
-                offsets_dict = offsets
-            elif isinstance(str_or_int, int):
-                offsets_dict = {topic_str: offsets for topic_str in subscription["topics"]}
-            #
-            rest_offsets_dict_list = [{"topic": topic_str, "partition": partition_int, "offset": offset_int} for topic_str, offsets in offsets_dict.items() for partition_int, offset_int in offsets.items()]
+            rest_offsets_dict_list = self.offsets_dict_to_rest_offsets_dict_list(offsets_dict, subscription["topics"])
             payload_dict = {"offsets": rest_offsets_dict_list}
         #
         url_str = f"{rest_proxy_url_str}/consumers/{group_str}/instances/{subscription_id_int}/offsets"
@@ -325,7 +401,7 @@ class RestProxy(Kafka):
             offsets_dict[topic_str] = partition_int_offset_int_dict
         #
         return offsets_dict
-
+ 
     def unsubscribe(self, sub=None):
         subscription_id_int = self.get_subscription_id(sub)
         subscription = self.subscription_dict[subscription_id_int]
