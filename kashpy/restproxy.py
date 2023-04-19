@@ -4,10 +4,14 @@ import requests
 
 from kashpy.kafka import Kafka
 
+# Constants
+
+RD_KAFKA_PARTITION_UA = -1
+
 #
 
-def get(url_str, headers_dict, payload_dict=None):
-    response = requests.get(url_str, headers=headers_dict, json=payload_dict)
+def get(url_str, headers_dict):
+    response = requests.get(url_str, headers=headers_dict)
     if response.text == "":
         response_dict = {}
     else:
@@ -54,9 +58,144 @@ class RestProxy(Kafka):
 
     #
 
+    # AdminClient - groups
+
+    def groups(self, patterns="*", state_patterns="*", state=False):
+        pattern_str_list = [patterns] if isinstance(patterns, str) else patterns
+        state_pattern_str_list = [state_patterns] if isinstance(patterns, str) else state_patterns
+        state_bool = state
+        #
+        rest_proxy_url_str = "http://localhost:8082"
+        #
+        url_str = f"{rest_proxy_url_str}/v3/clusters/{self.cluster_id_str}/consumer-groups"
+        headers_dict = {"Content-Type": "application/json"}
+        response_dict = get(url_str, headers_dict)
+        kafkaConsumerGroup_dict_list = response_dict["data"]
+        #
+        group_str_state_str_dict = {kafkaConsumerGroup_dict["consumer_group_id"]: kafkaConsumerGroup_dict["state"] for kafkaConsumerGroup_dict in kafkaConsumerGroup_dict_list if any(fnmatch(kafkaConsumerGroup_dict["consumer_group_id"], pattern_str) for pattern_str in pattern_str_list) and any(fnmatch(kafkaConsumerGroup_dict["state"], state_pattern_str.upper()) for state_pattern_str in state_pattern_str_list)}
+        #
+        return group_str_state_str_dict if state_bool else list(group_str_state_str_dict.keys())
+
+    def describe_groups(self, patterns="*", state_patterns="*"):
+        pattern_str_list = [patterns] if isinstance(patterns, str) else patterns
+        state_pattern_str_list = [state_patterns] if isinstance(patterns, str) else state_patterns
+        #
+        rest_proxy_url_str = "http://localhost:8082"
+        #
+        url_str = f"{rest_proxy_url_str}/v3/clusters/{self.cluster_id_str}/consumer-groups"
+        headers_dict = {"Content-Type": "application/json"}
+        response_dict = get(url_str, headers_dict)
+        kafkaConsumerGroup_dict_list = response_dict["data"]
+        #
+        group_str_group_description_dict_dict = {kafkaConsumerGroup_dict["consumer_group_id"]: {"group_id": kafkaConsumerGroup_dict["consumer_group_id"], "is_simple_consumer_group": kafkaConsumerGroup_dict["is_simple"], "partition_assignor": kafkaConsumerGroup_dict["partition_assignor"], "state": kafkaConsumerGroup_dict["state"]} for kafkaConsumerGroup_dict in kafkaConsumerGroup_dict_list if any(fnmatch(kafkaConsumerGroup_dict["consumer_group_id"], pattern_str) for pattern_str in pattern_str_list) and any(fnmatch(kafkaConsumerGroup_dict["state"], state_pattern_str.upper()) for state_pattern_str in state_pattern_str_list)}
+        #
+        for group_str, group_description_dict in group_str_group_description_dict_dict.items():
+            url_str = f"{rest_proxy_url_str}/v3/clusters/{self.cluster_id_str}/consumer-groups/{group_str}/consumers"
+            headers_dict = {"Content-Type": "application/json"}
+            response_dict = get(url_str, headers_dict)
+            kafkaConsumer_dict_list = response_dict["data"]
+            #
+            dict_list = [{"member_id": kafkaConsumer_dict["consumer_id"], "client_id": kafkaConsumer_dict["client_id"], "host": kafkaConsumer_dict["cluster_id"], "group_instance_id": kafkaConsumer_dict["instance_id"]} for kafkaConsumer_dict in kafkaConsumer_dict_list]
+            for dict in dict_list:
+                consumer_id_str = dict["member_id"]
+                url_str = f"{rest_proxy_url_str}/v3/clusters/{self.cluster_id_str}/consumer-groups/{group_str}/consumers/{consumer_id_str}/assignments"
+                headers_dict = {"Content-Type": "application/json"}
+                response_dict = get(url_str, headers_dict)
+                kafkaConsumerAssignment_dict_list = response_dict["data"]
+                #
+                dict["topic_partitions"] = [{"error": None, "metadata": None, "offset": None, "partition": kafkaConsumerAssignment_dict["partition_id"], "topic": kafkaConsumerAssignment_dict["topic_name"]} for kafkaConsumerAssignment_dict in kafkaConsumerAssignment_dict_list]
+            #
+            group_description_dict["members"] = dict_list
+        #
+        return group_str_group_description_dict_dict
+
+    def group_offsets(self, patterns, state_patterns="*"):
+        pattern_str_list = [patterns] if isinstance(patterns, str) else patterns
+        state_pattern_str_list = [state_patterns] if isinstance(patterns, str) else state_patterns
+        #
+        rest_proxy_url_str = "http://localhost:8082"
+        #
+        url_str = f"{rest_proxy_url_str}/v3/clusters/{self.cluster_id_str}/consumer-groups"
+        headers_dict = {"Content-Type": "application/json"}
+        response_dict = get(url_str, headers_dict)
+        kafkaConsumerGroup_dict_list = response_dict["data"]
+        #
+        group_str_list = [kafkaConsumerGroup_dict["consumer_group_id"] for kafkaConsumerGroup_dict in kafkaConsumerGroup_dict_list if any(fnmatch(kafkaConsumerGroup_dict["consumer_group_id"], pattern_str) for pattern_str in pattern_str_list) and any(fnmatch(kafkaConsumerGroup_dict["state"], state_pattern_str.upper()) for state_pattern_str in state_pattern_str_list)]
+        #
+        group_offsets = {}
+        headers_dict = {"Content-Type": "application/json"}
+        for group_str in group_str_list:
+            url_str = f"{rest_proxy_url_str}/v3/clusters/{self.cluster_id_str}/consumer-groups/{group_str}/lags"
+            response_dict = get(url_str, headers_dict)
+            kafkaConsumerLag_dict_list = response_dict["data"]
+            #
+            if group_str in group_offsets:
+                topic_str_partition_int_offset_int_dict_dict = group_offsets[group_str]
+            else:
+                topic_str_partition_int_offset_int_dict_dict = {}
+            #
+            for kafkaConsumerLag_dict in kafkaConsumerLag_dict_list:
+                topic_str = kafkaConsumerLag_dict["topic_name"]
+                partition_int = kafkaConsumerLag_dict["partition_id"]
+                offset_int = kafkaConsumerLag_dict["current_offset"]
+                if topic_str in topic_str_partition_int_offset_int_dict_dict:
+                    partition_int_offset_int_dict = topic_str_partition_int_offset_int_dict_dict[topic_str]
+                else:
+                    partition_int_offset_int_dict = {}
+                #
+                partition_int_offset_int_dict[partition_int] = offset_int
+                topic_str_partition_int_offset_int_dict_dict[topic_str] = partition_int_offset_int_dict
+            #
+            group_offsets[group_str] = topic_str_partition_int_offset_int_dict_dict
+        #
+        return group_offsets
+
+    # AdminClient - brokers
+
+    def brokers(self):
+        rest_proxy_url_str = "http://localhost:8082"
+        #
+        url_str = f"{rest_proxy_url_str}/v3/clusters/{self.cluster_id_str}/brokers"
+        headers_dict = {"Content-Type": "application/json"}
+        response_dict = get(url_str, headers_dict)
+        kafkaBroker_dict_list = response_dict["data"]
+        #
+        broker_dict = {kafkaBroker_dict["broker_id"]: kafkaBroker_dict["host"] + ":" + str(kafkaBroker_dict["port"]) for kafkaBroker_dict in kafkaBroker_dict_list}
+        #
+        return broker_dict
+
+    def broker_config(self):
+        rest_proxy_url_str = "http://localhost:8082"
+        #
+        url_str = f"{rest_proxy_url_str}/v3/clusters/{self.cluster_id_str}/broker-configs"
+        headers_dict = {"Content-Type": "application/json"}
+        response_dict = get(url_str, headers_dict)
+        kafkaClusterConfig_dict_list = response_dict["data"]
+        #
+        config_dict = {}
+        for kafkaClusterConfig_dict in kafkaClusterConfig_dict_list:
+            key_str = kafkaClusterConfig_dict["name"]
+            value_str = kafkaClusterConfig_dict["value"]
+            #
+            config_dict[key_str] = value_str
+        #
+        return config_dict
+
+    def set_broker_config(self, config_dict, test=False):
+        rest_proxy_url_str = "http://localhost:8082"
+        #
+        url_str = f"{rest_proxy_url_str}/v3/clusters/{self.cluster_id_str}/broker-configs:alter"
+        headers_dict = {"Content-Type": "application/json"}
+        #
+        dict_list = [{"name": key_str, "value": value_str} for key_str, value_str in config_dict.items()]
+        payload_dict = {"data": dict_list}
+        post(url_str, headers_dict, payload_dict)
+        #
+        return config_dict
+
     # AdminClient - ACLs
 
-    def kafkaAcl_dict_to_dict(kafkaAcl_dict):
+    def kafkaAcl_dict_to_dict(self, kafkaAcl_dict):
         dict = {"restype": kafkaAcl_dict["resource_type"],
                 "name": kafkaAcl_dict["resource_name"],
                 "resource_pattern_type": kafkaAcl_dict["pattern_type"],
@@ -92,7 +231,7 @@ class RestProxy(Kafka):
         url_str = f"{rest_proxy_url_str}/v3/clusters/{self.cluster_id_str}/acls"
         headers_dict = {"Content-Type": "application/json"}
         #
-        payload_dict = {"resource_type": restype, "pattern_type": resource_pattern_type, "operation": operation, "permission": permission_type}
+        payload_dict = {"resource_type": restype.upper(), "pattern_type": resource_pattern_type.upper(), "operation": operation.upper(), "permission": permission_type.upper()}
         if name is not None:
             payload_dict["resource_name"] = name
         if principal is not None:
@@ -105,18 +244,16 @@ class RestProxy(Kafka):
     def delete_acl(self, restype="any", name=None, resource_pattern_type="any", principal=None, host=None, operation="any", permission_type="any"):
         rest_proxy_url_str = "http://localhost:8082"
         #
-        url_str = f"{rest_proxy_url_str}/v3/clusters/{self.cluster_id_str}/acls"
-        headers_dict = {"Content-Type": "application/json"}
-        #
-        payload_dict = {"resource_type": restype, "pattern_type": resource_pattern_type, "operation": operation, "permission": permission_type}
+        url_str = f"{rest_proxy_url_str}/v3/clusters/{self.cluster_id_str}/acls?resource_type={restype.upper()}&pattern_type={resource_pattern_type.upper()}&operation={operation.upper()}&permission={permission_type.upper()}"
         if name is not None:
-            payload_dict["resource_name"] = name
+            url_str += f"&resource_name={name}"
         if principal is not None:
-            payload_dict["principal"] = principal
+            url_str += f"&principal={principal}"
         if host is not None:
-            payload_dict["host"] = host 
+            url_str += f"&host={host}"         
         #
-        response_dict = delete(url_str, headers_dict, payload_dict=payload_dict)
+        headers_dict = {"Content-Type": "application/json"}
+        response_dict = delete(url_str, headers_dict)
         kafkaAcl_dict_list = response_dict["data"]
         #
         dict_list = [self.kafkaAcl_dict_to_dict(kafkaAcl_dict) for kafkaAcl_dict in kafkaAcl_dict_list]
@@ -223,12 +360,14 @@ class RestProxy(Kafka):
 
     #
 
-    def partitions(self, pattern):
+    def partitions(self, pattern=None, verbose=False):
         pattern_str_or_str_list = pattern
         if pattern_str_or_str_list is None:
             pattern_str_or_str_list = ["*"]
         elif isinstance(pattern_str_or_str_list, str):
             pattern_str_or_str_list = [pattern_str_or_str_list]
+        #
+        verbose_bool = verbose
         #
         rest_proxy_url_str = "http://localhost:8082"
         #
@@ -236,9 +375,55 @@ class RestProxy(Kafka):
         headers_dict = {"Content-Type": "application/json"}
         response_dict = get(url_str, headers_dict)
         kafkaTopic_dict_list = response_dict["data"]
+        #
         topic_str_num_partitions_int_dict = {kafkaTopic_dict["topic_name"]: kafkaTopic_dict["partitions_count"] for kafkaTopic_dict in kafkaTopic_dict_list if any(fnmatch(kafkaTopic_dict["topic_name"], pattern_str) for pattern_str in pattern_str_or_str_list)}
         #
-        return topic_str_num_partitions_int_dict
+        if verbose_bool:
+            topic_str_partition_int_partition_dict_dict_dict = {}
+            for topic_str in topic_str_num_partitions_int_dict.keys():
+                partition_int_partition_dict_dict = {}
+                for partition_int in range(topic_str_num_partitions_int_dict[topic_str]):
+                    url_str = f"{rest_proxy_url_str}/v3/clusters/{self.cluster_id_str}/topics/{topic_str}/partitions/{partition_int}/replicas"
+                    headers_dict = {"Content-Type": "application/json"}
+                    response_dict = get(url_str, headers_dict)
+                    kafkaReplica_dict_list = response_dict["data"]
+                    #
+                    if partition_int in partition_int_partition_dict_dict:
+                        partition_dict = partition_int_partition_dict_dict[partition_int]
+                    else:
+                        partition_dict = {}
+                    #
+                    for kafkaReplica_dict in kafkaReplica_dict_list:
+                        broker_id_int = kafkaReplica_dict["broker_id"]
+                        partition_int = kafkaReplica_dict["partition_id"]
+                        is_leader_bool = kafkaReplica_dict["is_leader"]
+                        is_in_sync_bool =  kafkaReplica_dict["is_in_sync"]
+                        #
+                        if is_leader_bool:
+                            partition_dict["leader"] = broker_id_int
+                        #
+                        if "replicas" in partition_dict:
+                            replica_int_list = partition_dict["replicas"]
+                        else:
+                            replica_int_list = []
+                        replica_int_list.append(broker_id_int)
+                        partition_dict["replicas"] = replica_int_list
+                        #
+                        if "isrs" in partition_dict:
+                            isr_int_list = partition_dict["isrs"]
+                        else:
+                            isr_int_list = []
+                        if is_in_sync_bool:
+                            isr_int_list.append(broker_id_int)
+                        partition_dict["isrs"] = isr_int_list
+                    #
+                    partition_int_partition_dict_dict[partition_int] = partition_dict
+                #
+                topic_str_partition_int_partition_dict_dict_dict[topic_str] = partition_int_partition_dict_dict
+            #
+            return topic_str_partition_int_partition_dict_dict_dict
+        else:
+            return topic_str_num_partitions_int_dict
 
     def watermarks(self, pattern, timeout=-1.0):
         rest_proxy_url_str = "http://localhost:8082"
@@ -353,39 +538,11 @@ class RestProxy(Kafka):
         url_str1 = f"{rest_proxy_url_str}/consumers/{group_str}/instances/{subscription_id_int}/assignments"
         headers_dict1 = {"Accept": "application/vnd.kafka.v2+json"}
         response_dict1 = get(url_str1, headers_dict1)
-# {
-#   "partitions": [
-#     {
-#       "topic": "test",
-#       "partition": 0
-#     },
-#     {
-#       "topic": "test",
-#       "partition": 1
-#     }
-
-#   ]
-# }
         #
         url_str2 = f"{rest_proxy_url_str}/consumers/{group_str}/instances/{subscription_id_int}/offsets"
         headers_dict2 = {"Content-Type": "application/vnd.kafka.v2+json"}
         response_dict2 = get(url_str2, headers_dict2, response_dict1)
-# {"offsets":
-#  [
-#   {
-#     "topic": "test",
-#     "partition": 0,
-#     "offset": 21,
-#     "metadata":""
-#   },
-#   {
-#     "topic": "test",
-#     "partition": 1,
-#     "offset": 31,
-#     "metadata":""
-#   }
-#  ]
-# }
+        #
         offsets_dict = {}
         for rest_topic_partition_offset_dict in response_dict2["offsets"]:
             topic_str = rest_topic_partition_offset_dict["topic"]
@@ -440,18 +597,21 @@ class RestProxy(Kafka):
     #     return produce(value, key)
 
     #
-
-    def produce(self, topic, value, key=None):
+    def produce(self, topic, value, key=None, partition=RD_KAFKA_PARTITION_UA):
         topic_str = topic
+        partition_int = partition
         #
         rest_proxy_url_str = "http://localhost:8082"
         #
         url_str = f"{rest_proxy_url_str}/v3/clusters/{self.cluster_id_str}/topics/{topic_str}/records"
+        #
         headers_dict = {"Content-Type": "application/json"}
-        #
-        rest_message_dict = {"value": {"type": "JSON", "data": value}}
+        payload_dict = {"value": {"type": "JSON", "data": value}}
         if key is not None:
-            rest_message_dict["key"] = {"type": "JSON", "data": key}
+            payload_dict["key"] = {"type": "JSON", "data": key}
         #
-        post(url_str, headers_dict, rest_message_dict)
+        if partition_int != RD_KAFKA_PARTITION_UA:
+            payload_dict["partition_id"] = partition_int
+        #
+        post(url_str, headers_dict, payload_dict)
         return key, value

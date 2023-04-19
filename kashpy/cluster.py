@@ -303,26 +303,26 @@ def aclOperation_to_str(aclOperation):
 
 
 def str_to_aclPermissionType(permission_type_str):
-    permission_type_str1 = permission_type_str.lower()
-    if permission_type_str1 == "unknown":
+    permission_type_str1 = permission_type_str.upper()
+    if permission_type_str1 == "UNKNOWN":
         return AclPermissionType.UNKNOWN
-    elif permission_type_str1 == "any":
+    elif permission_type_str1 == "ANY":
         return AclPermissionType.ANY
-    elif permission_type_str1 == "deny":
+    elif permission_type_str1 == "DENY":
         return AclPermissionType.DENY
-    elif permission_type_str1 == "allow":
+    elif permission_type_str1 == "ALLOW":
         return AclPermissionType.ALLOW
 
 
 def aclPermissionType_to_str(aclPermissionType):
     if aclPermissionType == AclPermissionType.UNKNOWN:
-        return "unknown"
+        return "UNKNOWN"
     elif aclPermissionType == AclPermissionType.ANY:
-        return "any"
+        return "ANY"
     elif aclPermissionType == AclPermissionType.DENY:
-        return "deny"
+        return "DENY"
     elif aclPermissionType == AclPermissionType.ALLOW:
-        return "allow"
+        return "ALLOW"
 
 
 def aclBinding_to_dict(aclBinding):
@@ -1329,35 +1329,6 @@ class Cluster(Kafka):
         #
         return topic_str_partition_int_offsets_int_dict_dict
 
-    def describe(self, pattern_str_or_str_list):
-        """Describe topics.
-
-        Describe all topics matching the bash-like pattern (or list of patterns) pattern_str_or_str_list.
-
-        Args:
-            pattern_str_or_str_list (:obj:`str` | :obj:`list(str)`): The pattern (or list of patterns) for selecting the topics.
-
-        Returns:
-            :obj:`dict(str, topic_dict)`: Dictionary of strings (topic names) and topic dictionaries describing the topic (converted from confluent_kafka.TopicMetadata objects).
-
-        Examples:
-            Describe the topic "test"::
-
-                c.describe("test")
-
-            Describe all topics whose names start with "test" or "bla"::
-
-                c.describe(["test*", "bla*"])
-        """
-        if isinstance(pattern_str_or_str_list, str):
-            pattern_str_or_str_list = [pattern_str_or_str_list]
-        #
-        topic_str_topicMetadata_dict = self.adminClient.list_topics().topics
-        #
-        topic_str_topic_dict_dict = {topic_str: topicMetadata_to_topic_dict(topic_str_topicMetadata_dict[topic_str]) for topic_str in topic_str_topicMetadata_dict if any(fnmatch(topic_str, pattern_str) for pattern_str in pattern_str_or_str_list)}
-        #
-        return topic_str_topic_dict_dict
-
     def exists(self, topic_str):
         """Test whether a topic exists on the cluster.
 
@@ -1376,7 +1347,7 @@ class Cluster(Kafka):
         """
         return self.topics(topic_str) != []
 
-    def partitions(self, pattern_str_or_str_list):
+    def partitions(self, pattern=None, verbose=False):
         """Get the number of partitions of topics.
 
         Get the number of partitions of all topics matching the bash-like pattern (or list of patterns) pattern_str_or_str_list.
@@ -1396,14 +1367,22 @@ class Cluster(Kafka):
 
                 c.partitions(["test*", "bla*"])
         """
-        if isinstance(pattern_str_or_str_list, str):
+        pattern_str_or_str_list = pattern
+        if pattern_str_or_str_list is None:
+            pattern_str_or_str_list = ["*"]
+        elif isinstance(pattern_str_or_str_list, str):
             pattern_str_or_str_list = [pattern_str_or_str_list]
+        #
+        verbose_bool = verbose
         #
         topic_str_topicMetadata_dict = self.adminClient.list_topics().topics
         #
-        topic_str_num_partitions_int_dict = {topic_str: len(topic_str_topicMetadata_dict[topic_str].partitions) for topic_str in topic_str_topicMetadata_dict if any(fnmatch(topic_str, pattern_str) for pattern_str in pattern_str_or_str_list)}
-        #
-        return topic_str_num_partitions_int_dict
+        if verbose_bool:
+            topic_str_topic_dict_dict = {topic_str: topicMetadata_to_topic_dict(topic_str_topicMetadata_dict[topic_str]) for topic_str in topic_str_topicMetadata_dict if any(fnmatch(topic_str, pattern_str) for pattern_str in pattern_str_or_str_list)}
+            return topic_str_topic_dict_dict
+        else:
+            topic_str_num_partitions_int_dict = {topic_str: len(topic_str_topicMetadata_dict[topic_str].partitions) for topic_str in topic_str_topicMetadata_dict if any(fnmatch(topic_str, pattern_str) for pattern_str in pattern_str_or_str_list)}
+            return topic_str_num_partitions_int_dict
 
     def set_partitions(self, pattern_str_or_str_list, num_partitions_int, test=False):
         """Set the number of partitions of topics.

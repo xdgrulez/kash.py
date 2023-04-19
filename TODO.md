@@ -1,3 +1,5 @@
+* lags?
+
 * changes:
   * config_dict bei set_config
   
@@ -30,3 +32,21 @@
 * Schema Registry-Funktionen von confluent_kafka einbauen
 * Default für value_type in kash-Section
 * REST-Proxy-Support
+
+# Methods
+
+## AdminClient
+
+* watermarks
+* list_topics
+* config
+* set_config
+* create/touch
+* delete/rm
+* offsets_for_times (cluster-only)
+* exists
+* partitions (=> no more describe but partitions(verbose))
+* set_partitions (cluster-only)
+
+
+## RestProxy
