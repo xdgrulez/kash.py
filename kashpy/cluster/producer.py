@@ -1,8 +1,18 @@
-CURRENT_TIME = 0
+import requests
 
+import confluent_kafka
+
+CURRENT_TIME = 0
 RD_KAFKA_PARTITION_UA = -1
 
-    # Schema Registry helper methods (inside the Cluster class to do caching etc.)
+class Producer:
+    def __init__(self, kafka_config_dict, kash_config_dict):
+        self.kafka_config_dict = kafka_config_dict
+        self.kash_config_dict = kash_config_dict
+        #
+        self.producer = confluent_kafka.Producer(self.kafka_config_dict)
+        #
+        self.produced_messages_counter_int = 0
 
     def post_schema(self, schema_str, schema_type_str, topic_str, key_bool):
         key_or_value_str = "key" if key_bool else "value"

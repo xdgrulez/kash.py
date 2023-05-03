@@ -7,27 +7,30 @@ from piny import YamlLoader
 
 
 class Storage:
-    def __init__(self, dir_str, mandatory_section_str_list, optional_section_str_list):
+    def __init__(self, dir_str, config_str, mandatory_section_str_list, optional_section_str_list):
         self.dir_str = dir_str
+        self.config_str = config_str
         self.mandatory_section_str_list = mandatory_section_str_list
         self.optional_section_str_list = optional_section_str_list
+        #
+        self.config_dict = self.get_config_dict()
         
-    def get_config_dict(self, config_str):
+    def get_config_dict(self):
         home_str = os.environ.get("KASHPY_HOME")
         if not home_str:
             home_str = "."
         #
-        config_path_str = f"{home_str}/config/{self.dir_str}/{storage_str}"
-        if os.path.exists(f"{storages_path_str}.yaml"):
-            config_dict = YamlLoader(f"{storages_path_str}.yaml").load()
-        elif os.path.exists(f"{storages_path_str}.yml"):
-            config_dict = YamlLoader(f"{storages_path_str}.yml").load()
+        configs_path_str = f"{home_str}/configs/{self.dir_str}"
+        if os.path.exists(f"{configs_path_str}/{self.config_str}.yaml"):
+            config_dict = YamlLoader(f"{configs_path_str}/{self.config_str}.yaml").load()
+        elif os.path.exists(f"{configs_path_str}/{self.config_str}.yml"):
+            config_dict = YamlLoader(f"{configs_path_str}/{self.config_str}.yml").load()
         else:
-            raise Exception(f"No storage configuration file \"{storage_str}.yaml\" or \"{storage_str}.yml\" found in \"{storages_path_str}\" directory (hint: use KASHPY_HOME environment variable to set the kash.py home directory).")
+            raise Exception(f"No configuration file \"{self.config_str}.yaml\" or \"{self.config_str}.yml\" found in \"{configs_path_str}\" directory (hint: use KASHPY_HOME environment variable to set the kash.py home directory).")
         #
         for mandatory_section_str in self.mandatory_section_str_list:
             if mandatory_section_str not in config_dict:
-                raise Exception(f"Connection configuration file \"{storage_str}.yaml\" does not include a \"{mandatory_section_str}\" section.")
+                raise Exception(f"Connection configuration file \"{self.config_str}.yaml\" does not include a \"{mandatory_section_str}\" section.")
         #
         for optional_section_str in self.optional_section_str_list:
             if optional_section_str not in config_dict:
@@ -35,28 +38,29 @@ class Storage:
         #
         return config_dict
 
-    def storages(self, pattern="*", config=False):
+    def configs(self, pattern="*", verbose=False):
         pattern_str = pattern
+        verbose_bool = verbose
         #
         home_str = os.environ.get("KASHPY_HOME")
         if not home_str:
             home_str = "."
         #
-        storages_path_str = f"{home_str}/{self.dir_str}"
-        yaml_storage_path_str_list = glob.glob(f"{storages_path_str}/{pattern_str}.yaml")
-        yml_storage_path_str_list = glob.glob(f"{storages_path_str}/{pattern_str}.yml")
+        configs_path_str = f"{home_str}/configs/{self.dir_str}"
+        yaml_config_path_str_list = glob.glob(f"{configs_path_str}/{pattern_str}.yaml")
+        yml_config_path_str_list = glob.glob(f"{configs_path_str}/{pattern_str}.yml")
         #
-        yaml_storage_str_list = [re.search(".*/(.*)\.yaml", yaml_storage_path_str).group(1) for yaml_storage_path_str in yaml_storage_path_str_list if re.search(".*/(.*)\.yaml", yaml_storage_path_str) is not None]
-        yml_storage_str_list = [re.search(".*/(.*)\.yml", yml_storage_path_str).group(1) for yml_storage_path_str in yml_storage_path_str_list if re.search(".*/(.*)\.yml", yml_storage_path_str) is not None]
+        yaml_config_str_list = [re.search(f"{configs_path_str}/(.*)\.yaml", yaml_config_path_str).group(1) for yaml_config_path_str in yaml_config_path_str_list if re.search(".*/(.*)\.yaml", yaml_config_path_str) is not None]
+        yml_config_str_list = [re.search(".*/(.*)\.yml", yml_config_path_str).group(1) for yml_config_path_str in yml_config_path_str_list if re.search(".*/(.*)\.yml", yml_config_path_str) is not None]
         #
-        storage_str_list = yaml_storage_str_list + yml_storage_str_list
+        config_str_list = yaml_config_str_list + yml_config_str_list
         #
-        if config:
-            storage_str_config_dict_dict = {storage_str: self.get_config_dict(storage_str) for storage_str in storage_str_list}
-            return storage_str_config_dict_dict
+        if verbose_bool:
+            config_str_config_dict_dict = {config_str: self.get_config_dict(config_str) for config_str in config_str_list}
+            return config_str_config_dict_dict
         else:
-            storage_str_list.sort()
-            return storage_str_list
+            config_str_list.sort()
+            return config_str_list
 
     # Read
 

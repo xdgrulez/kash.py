@@ -10,16 +10,6 @@ from google.protobuf.json_format import MessageToDict
 
 from kashpy.helpers import get_millis
 
-def get_schemaRegistryClient(config_dict):
-    dict = {}
-    #
-    dict["url"] = config_dict["schema.registry.url"]
-    if "basic.auth.user.info" in config_dict:
-        dict["basic.auth.user.info"] = config_dict["basic.auth.user.info"]
-    #
-    schemaRegistryClient = SchemaRegistryClient(dict)
-    return schemaRegistryClient
-
 class Consumer:
     def __init__(self, config_dict):
         self.group_str = None
