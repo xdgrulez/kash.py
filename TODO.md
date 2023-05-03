@@ -1,56 +1,107 @@
-* replication factor
-
-* touch mit Liste
-
-* lags?
-
-* changes:
-  * config_dict bei set_config
-  
-* set offsets (? - do we want to support assignments without consumer groups at all?)
-
-* Transactional API!!!
-
-* subscribe mit mehreren Topics (Pattern auch???)
-
-* produce mit Schema-ID (nicht ganzes Schema) - ist jetzt in produce() implementiert, noch nachziehen + tests anpassen
-
-* consumer_timeout() dokumentieren!!
-
-* set_broker_config und set_config mit Records statt nur einzeln
-
-* clusters OK
-* neue Consumer Group-Features OK
-* Pretty print JSON (indent) OK
-* LakeFS ausprobieren; evtl. auch Versionierungs-Layer für kash.py OK (ist kein Git, sondern eher CVS)
-* kash.py-Layering/Modularisierung
-  - original wrapper
-  - functional layer? vielleicht core
-  - file layer? vielleicht core
-  - table layer
-  - versioning layer
-  - blob storage layer
-  - pandas Layer (u.a. Topic2Table/Table2Topic, CSV, XLSX...)
-* Argument-Variablen (auch obligatorische Argumente) ohne Typannotationen
-* Tests: alle Consumer Groups explizit erzeugen und aufräumen nach jedem Test
-* Schema Registry-Funktionen von confluent_kafka einbauen
-* Default für value_type in kash-Section
-* REST-Proxy-Support
+* intra-cluster map: support source/target-key/value types + schemas
+* Pretty print JSON etc. (as default output?)
+* kash.py layering:
+  - connection -> kafka -> cluster/restproxy etc.
+  - connection -> file -> local/blob
+  - functional layer
+  - table layer?
+  - versioning layer?
+  - pandas?
+* all arguments (also obligatory ones) without "hungarian" type annotations
+* tests: create consumer groups explicitly and clean them up
+* schema registry functionality?
+* set default value for value_type in kash-section
 
 # Methods
 
 ## AdminClient
 
-* watermarks
-* list_topics
-* config
-* set_config
-* create/touch
-* delete/rm
-* offsets_for_times (cluster-only)
-* exists
-* partitions (=> no more describe but partitions(verbose))
-* set_partitions (cluster-only)
+### Topics
 
+* size() (kafka)
+* topics()/ls()/l()/ll() (kafka)
+* exists() (kafka)
 
-## RestProxy
+* watermarks()
+* list_topics()
+* config()
+* set_config() - (TODO: allow records, not just one key/value pair)
+* create()/touch() - (TOOD: support replication factor, support list of topics to be created)
+* delete()/rm()
+* offsets_for_times()
+* X describe()
+* partitions()
+* set_partitions() (cluster-only)
+
+### Consumer Groups
+
+* groups()
+* describe_groups()
+* delete_groups() (cluster-only)
+* group_offsets()
+* alter_group_offsets()
+
+### Brokers
+
+* brokers()
+* broker_config()
+* set_broker_config() - (TODO: allow records, not just one key/value pair)
+
+### ACLs
+
+* acls()
+* create_acl()
+* delete_acl()
+
+## Producer
+
+* produce() - (TODO: provide schema ID only/no schema)
+* flush() (cluster-only)
+* purge() (TODO)
+* abort_transaction() (TODO)
+* begin_transaction() (TODO)
+* commit_transaction() (TODO)
+* init_transaction() (TODO)
+* poll() (TODO)
+* send_offsets_to_transaction() (TODO)
+
+better:
+* producer() - create producer
+* producers() - list producers
+* => default: only one producer per e.g. cluster object as in kash.py before
+
+## Consumer
+
+* subscribe() - (TODO: support for multiple topics)
+* unsubscribe()
+* consume() - (TODO: document consumer_timeout())
+* commit()
+* offsets()
+* close()
+* memberid() (cluster-only)
+* assign() (TODO?)
+* assignment() (TODO?)
+* committed() (TODO?)
+* incremental_assign() (TODO?)
+* incremental_unassign() (TODO?)
+* pause() (TODO?)
+* position() (TODO?)
+* resume() (TODO?)
+* seek() (TODO?)
+* store_offsets() (TODO?)
+* unassign() (TODO?)
+
+cluster:
+* subs() (kafka)
+* create_subscription_id() (kafka)
+* get_subscription_id() (kafka)
+* get_subscription() (kafka)
+
+better:
+* consumer()
+* consumers()
+* -> close()
+* subscribe()
+* subscriptions()/subs()
+* -> unsubscribe()
+* => default: only one consumer + one subscription per e.g. cluster object as in kash.py before

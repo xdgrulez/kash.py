@@ -1,22 +1,10 @@
-from kashpy.connection import Connection
+from kashpy.storage import Storage
 
 from fnmatch import fnmatch
-import time
 
-class Kafka(Connection):
+class Kafka(Storage):
     def __init__(self):
-        self.subscription_dict = {}
-        self.subscription_id_counter_int = 0
-
-    # Helpers
-
-    def get_millis(self):
-        return int(time.time()*1000)
-
-    def create_unique_group_id(self):
-        return str(self.get_millis())
-
-    #
+        pass
 
     def size(self, pattern_str_or_str_list, timeout=-1.0):
         """List topics, their total sizes and the sizes of their partitions.
@@ -234,6 +222,26 @@ class Kafka(Connection):
             c.ll(["test*", "bla*"])
     """
 
+    def exists(self, topic_str):
+        """Test whether a topic exists on the cluster.
+
+        Test whether a topic exists on the cluster.
+
+        Args:
+            topic_str (:obj:`str`): A topic.
+
+        Returns:
+            :obj:`bool`: True if the topic topic_str exists, False otherwise.
+
+        Examples:
+            Test whether the topic "test" exists on the cluster::
+            
+                c.exists("test")
+        """
+        return self.topics(topic_str) != []
+
+#
+
     def read(self, topics=None, group=None, offsets=None, config={}, key_type="str", value_type="str", n=1, sub=None):
         try:
             subscription_id_int = self.get_subscription_id(sub)
@@ -251,30 +259,3 @@ class Kafka(Connection):
             _, _, subscription_id_int = self.subscribe(topics, group, offsets, config, key_type, value_type)
         #
         return self.consume(n, sub=subscription_id_int)
-
-    #
-
-    def subs(self):
-        return self.subscription_dict
-
-    def create_subscription_id(self):
-        self.subscription_id_counter_int += 1
-        return self.subscription_id_counter_int
-
-    def get_subscription_id(self, sub=None):
-        if sub is None:
-            if not self.subscription_dict:
-                raise Exception("No subscription.")
-            elif len(self.subscription_dict) == 1:
-                subscription_id_int = list(self.subscription_dict.keys())[0]
-            else:
-                subscription_id_int_list = list(self.subscription_dict.keys())
-                raise Exception(f"Multiple subscriptions; please specify one of {subscription_id_int_list}.")
-        else:
-            subscription_id_int = sub
-        #
-        return subscription_id_int
-
-    def get_subscription(self, sub=None):
-        subscription_id_int = self.get_subscription_id(sub)
-        return self.subscription_dict[subscription_id_int]
