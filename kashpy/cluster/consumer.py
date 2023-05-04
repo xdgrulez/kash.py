@@ -154,22 +154,6 @@ class Consumer:
         dict = jsonDeserializer(bytes, None)
         return dict
 
-    def topicPartition_list_to_offsets_dict(self, topicPartition_list):
-        offsets_dict = {}
-        for topicPartition in topicPartition_list:
-            topic_str = topicPartition.topic
-            partition_int = topicPartition.partition
-            offset_int = topicPartition.offset
-            #
-            if topic_str in offsets_dict:
-                offsets = offsets_dict[topic_str]
-            else:
-                offsets = {}
-            offsets[partition_int] = offset_int
-            offsets_dict[topic_str] = offsets
-        #
-        return offsets_dict
-
     #
 
     def subscribe(self, group, topics, offsets=None, config={}, key_type="str", value_type="str"):
@@ -272,7 +256,7 @@ class Consumer:
             offsets_topicPartition_list = [TopicPartition(topic_str, partition_int, offset_int) for topic_str, offsets in offsets_dict.items() for partition_int, offset_int in offsets.items()]
             commit_topicPartition_list = self.consumer.commit(offsets=offsets_topicPartition_list, asynchronous=asynchronous)
         #
-        offsets_dict = self.topicPartition_list_to_offsets_dict(commit_topicPartition_list)
+        offsets_dict = topicPartition_list_to_offsets_dict(commit_topicPartition_list)
         #
         return offsets_dict
 
@@ -282,7 +266,7 @@ class Consumer:
         assignment_topicPartition_list = self.consumer.assignment()
         committed_topicPartition_list = self.consumer.committed(assignment_topicPartition_list, timeout=timeout_float)
         #
-        offsets_dict = self.topicPartition_list_to_offsets_dict(committed_topicPartition_list)
+        offsets_dict = topicPartition_list_to_offsets_dict(committed_topicPartition_list)
         #
         return offsets_dict
 
@@ -290,3 +274,21 @@ class Consumer:
         member_id_str = self.consumer.memberid()
         #
         return member_id_str 
+
+#
+
+def topicPartition_list_to_offsets_dict(topicPartition_list):
+    offsets_dict = {}
+    for topicPartition in topicPartition_list:
+        topic_str = topicPartition.topic
+        partition_int = topicPartition.partition
+        offset_int = topicPartition.offset
+        #
+        if topic_str in offsets_dict:
+            offsets = offsets_dict[topic_str]
+        else:
+            offsets = {}
+        offsets[partition_int] = offset_int
+        offsets_dict[topic_str] = offsets
+    #
+    return offsets_dict

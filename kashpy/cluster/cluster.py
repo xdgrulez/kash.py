@@ -5,6 +5,11 @@ from kashpy.cluster.producer import Producer
 from kashpy.schemaregistry import SchemaRegistry
 from kashpy.helpers import is_interactive
 
+# Constants
+
+RD_KAFKA_PARTITION_UA = -1
+CURRENT_TIME = 0
+
 # Cluster class
 
 class Cluster(Kafka):
@@ -226,3 +231,39 @@ class Cluster(Kafka):
     
     def delete_acl(self, restype="any", name=None, resource_pattern_type="any", principal=None, host=None, operation="any", permission_type="any"):
         return self.admin.delete_acl(restype, name, resource_pattern_type, principal, host, operation, permission_type)
+
+    #
+    # Producer
+    #
+
+    def produce(self, topic, value, key=None, key_type="str", value_type="str", key_schema=None, value_schema=None, partition=RD_KAFKA_PARTITION_UA, timestamp=CURRENT_TIME, headers=None, on_delivery=None):
+        return self.producer.produce(topic, value, key, key_type, value_type, key_schema, value_schema, partition, timestamp, headers, on_delivery)
+
+    def flush(self):
+        return self.producer.flush()
+
+    #
+    # Consumer
+    #
+
+    def subscribe(self, group, topics, offsets=None, config={}, key_type="str", value_type="str"):
+        return self.consumer.subscribe(group, topics, offsets, config, key_type, value_type)
+
+    def unsubscribe(self):
+        return self.consumer.unsubscribe()
+
+    def close(self):
+        return self.consumer.close()
+
+    def consume(self, n=1):
+        return self.consumer.consume(n)
+
+    def commit(self, offsets=None, asynchronous=False):
+        return self.consumer.commit(offsets, asynchronous)
+
+    def offsets(self, timeout=-1.0):
+        return self.consumer.offsets(timeout)
+
+    def memberid(self):
+        return self.consumer.memberid()
+
