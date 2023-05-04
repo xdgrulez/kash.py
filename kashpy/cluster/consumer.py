@@ -2,27 +2,31 @@ import json
 
 import confluent_kafka
 from confluent_kafka import TopicPartition
-from confluent_kafka.schema_registry import SchemaRegistryClient
 from confluent_kafka.schema_registry.avro import AvroDeserializer
 from confluent_kafka.schema_registry.json_schema import JSONDeserializer
 from confluent_kafka.schema_registry.protobuf import ProtobufDeserializer
 from google.protobuf.json_format import MessageToDict
+import importlib
+import os
+import sys
+import tempfile
 
 from kashpy.helpers import get_millis
+from kashpy.schemaregistry import SchemaRegistry
 
 class Consumer:
-    def __init__(self, config_dict):
+    def __init__(self, kafka_config_dict, schema_registry_config_dict, kash_config_dict):
+        self.kafka_config_dict = kafka_config_dict
+        self.schema_registry_config_dict = schema_registry_config_dict
+        self.kash_config_dict = kash_config_dict
+        #
         self.group_str = None
         self.topic_str_list = None
         self.key_type_dict = None
         self.value_type_dict = None
         #
         self.consumer = None
-        #
-        if "schema_registry" in config_dict:
-            self.schemaRegistryClient = self.get_schemaRegistryClient(config_dict["schema_registry"])
-        else:
-            self.schemaRegistryClient = None
+        self.schema_registry = SchemaRegistry()
         #
         self.schema_id_int_generalizedProtocolMessageType_protobuf_schema_str_tuple_dict = {}
 
@@ -78,14 +82,31 @@ class Consumer:
         message_dict = {"headers": message.headers(), "topic": message.topic(), "partition": message.partition(), "offset": message.offset(), "timestamp": message.timestamp(), "key": decode_key(message.key()), "value": decode_value(message.value())}
         return message_dict
 
-    def schema_id_int_to_schema_str(self, schema_id_int):
-        # No additional caching necessary here:
-        # get_schema(schema_id)[source]
-        # Fetches the schema associated with schema_id from the Schema Registry. The result is cached so subsequent attempts will not require an additional round-trip to the Schema Registry.
-        schema = self.schemaRegistryClient.get_schema(schema_id_int)
-        schema_str = schema.schema_str
+    def schema_id_int_to_generalizedProtocolMessageType_protobuf_schema_str_tuple(self, schema_id_int):
+        schema_dict = self.schemaRegistry.get_schema(schema_id_int)
+        schema_id_int = schema_dict["schema_id"]
+        schema_str = schema_dict["schema_str"]
         #
-        return schema_str
+        generalizedProtocolMessageType = self.schema_id_int_and_schema_str_to_generalizedProtocolMessageType(schema_id_int, schema_str)
+        #
+        return generalizedProtocolMessageType, schema_str
+
+    def schema_id_int_and_schema_str_to_generalizedProtocolMessageType(self, schema_id_int, schema_str):
+        path_str = f"/{tempfile.gettempdir()}/kash.py/clusters/{self.cluster_str}"
+        os.makedirs(path_str, exist_ok=True)
+        file_str = f"schema_{schema_id_int}.proto"
+        file_path_str = f"{path_str}/{file_str}"
+        with open(file_path_str, "w") as textIOWrapper:
+            textIOWrapper.write(schema_str)
+        #
+        import grpc_tools.protoc
+        grpc_tools.protoc.main(["protoc", f"-I{path_str}", f"--python_out={path_str}", f"{file_str}"])
+        #
+        sys.path.insert(1, path_str)
+        schema_module = importlib.import_module(f"schema_{schema_id_int}_pb2")
+        schema_name_str = list(schema_module.DESCRIPTOR.message_types_by_name.keys())[0]
+        generalizedProtocolMessageType = getattr(schema_module, schema_name_str)
+        return generalizedProtocolMessageType
 
     def bytes_protobuf_to_dict(self, bytes, key_bool):
         schema_id_int = int.from_bytes(bytes[1:5], "big")
@@ -107,27 +128,29 @@ class Consumer:
 
     def bytes_avro_to_dict(self, bytes, key_bool):
         schema_id_int = int.from_bytes(bytes[1:5], "big")
-        avro_schema_str = self.schema_id_int_to_schema_str(schema_id_int)
+        schema_dict = self.schemaRegistry.get_schema(schema_id_int)
+        schema_str = schema_dict["schema_str"]
         #
         if key_bool:
-            self.last_consumed_message_key_schema_str = avro_schema_str
+            self.last_consumed_message_key_schema_str = schema_str
         else:
-            self.last_consumed_message_value_schema_str = avro_schema_str
+            self.last_consumed_message_value_schema_str = schema_str
         #
-        avroDeserializer = AvroDeserializer(self.schemaRegistryClient, avro_schema_str)
+        avroDeserializer = AvroDeserializer(self.schemaRegistry.schemaRegistryClient, schema_str)
         dict = avroDeserializer(bytes, None)
         return dict
 
     def bytes_jsonschema_to_dict(self, bytes, key_bool):
         schema_id_int = int.from_bytes(bytes[1:5], "big")
-        jsonschema_str = self.schema_id_int_to_schema_str(schema_id_int)
+        schema_dict = self.schemaRegistry.get_schema(schema_id_int)
+        schema_str = schema_dict["schema_str"]
         #
         if key_bool:
-            self.last_consumed_message_key_schema_str = jsonschema_str
+            self.last_consumed_message_key_schema_str = schema_str
         else:
-            self.last_consumed_message_value_schema_str = jsonschema_str
+            self.last_consumed_message_value_schema_str = schema_str
         #
-        jsonDeserializer = JSONDeserializer(jsonschema_str)
+        jsonDeserializer = JSONDeserializer(schema_str)
         dict = jsonDeserializer(bytes, None)
         return dict
 
@@ -146,16 +169,6 @@ class Consumer:
             offsets_dict[topic_str] = offsets
         #
         return offsets_dict
-
-    def get_schemaRegistryClient(self, config_dict):
-        dict = {}
-        #
-        dict["url"] = config_dict["schema.registry.url"]
-        if "basic.auth.user.info" in config_dict:
-            dict["basic.auth.user.info"] = config_dict["basic.auth.user.info"]
-        #
-        schemaRegistryClient = SchemaRegistryClient(dict)
-        return schemaRegistryClient
 
     #
 
@@ -196,7 +209,7 @@ class Consumer:
         self.config_dict["group.id"] = self.group_str
         for key_str, value in config.items():
             self.config_dict[key_str] = value
-        self.consumer = confluent_kafka.Consumer(self.config_dict)
+        self.consumer = confluent_kafka.Consumer(self.kafka_config_dict)
         #
         def on_assign(consumer, partitions):
             def set_offset(topicPartition):

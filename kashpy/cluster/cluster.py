@@ -2,7 +2,7 @@ from kashpy.kafka import Kafka
 from kashpy.cluster.admin import Admin
 from kashpy.cluster.consumer import Consumer
 from kashpy.cluster.producer import Producer
-from kashpy.cluster.schemaregistry import SchemaRegistry
+from kashpy.schemaregistry import SchemaRegistry
 from kashpy.helpers import is_interactive
 
 # Cluster class
@@ -73,11 +73,29 @@ class Cluster(Kafka):
         #
         self.verbose_int = 1 if is_interactive() else 0
         #
-        self.schemaRegistry = SchemaRegistry(self.schema_registry_config_dict, self.kash_config_dict)
+        self.schemaRegistry = self.get_schemaRegistry()
         #
-        self.admin = Admin(self.kafka_config_dict, self.kash_config_dict)
+        self.admin = self.get_admin()
         #
-        self.producer = Producer(self.kafka_config_dict, self.kash_config_dict)
+        self.producer = self.get_producer()
+        #
+        self.consumer = self.get_consumer()
+
+    #
+
+    def get_schemaRegistry(self):
+        return SchemaRegistry(self.schema_registry_config_dict, self.kash_config_dict)
+
+    def get_admin(self):
+        return Admin(self.kafka_config_dict, self.kash_config_dict)
+
+    def get_producer(self):
+        return Producer(self.kafka_config_dict, self.schema_registry_config_dict, self.kash_config_dict)
+
+    def get_consumer(self):
+        return Consumer(self.kafka_config_dict, self.schema_registry_config_dict, self.kash_config_dict)
+
+    #
 
     def get_set_config(self, config_key_str, new_value=None):
         if new_value is not None:
@@ -155,7 +173,7 @@ class Cluster(Kafka):
 
     def delete(self, pattern, block=True):
         return self.admin.delete(pattern, block)
-    
+
     rm = delete
 
     def offsets_for_times(self, pattern, partitions_timestamps, timeout=-1.0):
@@ -185,7 +203,7 @@ class Cluster(Kafka):
         return self.admin.group_offsets(pattern, state_pattern)
 
     def set_group_offsets(self, group_offsets):
-        return self.admin.alter_group_offsets(group_offsets)
+        return self.admin.set_group_offsets(group_offsets)
 
     # Brokers
 
