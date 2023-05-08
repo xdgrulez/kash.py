@@ -15,20 +15,146 @@ from kashpy.helpers import get_millis
 from kashpy.schemaregistry import SchemaRegistry
 
 class Consumer:
-    def __init__(self, kafka_config_dict, schema_registry_config_dict, kash_config_dict):
+    def __init__(self, kafka_config_dict, schema_registry_config_dict, kash_config_dict, topics, group=None, offsets=None, config={}, key_type="str", value_type="str"):
         self.kafka_config_dict = kafka_config_dict
         self.schema_registry_config_dict = schema_registry_config_dict
         self.kash_config_dict = kash_config_dict
         #
-        self.group_str = None
+        self.topic_str_list = topics
+        self.group_str = group
+        self.offsets_dict = offsets
+        self.config_dict = config
+        self.key_type_dict = key_type
+        self.value_type_dict = value_type
+        #
+        self.consumer = self.subscribe()
+        self.schema_registry = SchemaRegistry(schema_registry_config_dict, kash_config_dict)
+        #
+        self.schema_id_int_generalizedProtocolMessageType_protobuf_schema_str_tuple_dict = {}
+
+    #
+
+    def close(self):
+        self.commit()
+        #
+        del self.consumer
+        self.consumer = None
+        #
+        return self.topic_str_list, self.group_str
+
+    #
+
+    def subscribe(self):
+        if self.group_str is None:
+            self.group_str = str(get_millis())
+        #
+        topic_str_list = self.topic_str_list if isinstance(topic_str_list, list) else [topic_str_list]
+        if not topic_str_list:
+            raise Exception("No topic to subscribe to.")
+        self.topic_str_list = topic_str_list
+        #
+        if self.offsets_dict is None:
+            self.offsets_dict = None
+        else:
+            str_or_int = list(self.offsets_dict.keys())[0]
+            if isinstance(str_or_int, int):
+                self.offsets_dict = {topic_str: self.offsets for topic_str in topic_str_list}
+        #        
+        self.config_dict = self.kafka_config_dict
+        self.config_dict["group.id"] = self.group_str
+        for key_str, value in config.items():
+            self.config_dict[key_str] = value
+        if isinstance(key_type, dict):
+            self.key_type_dict = key_type
+        else:
+            self.key_type_dict = {topic_str: key_type for topic_str in topic_str_list}
+        #
+        if isinstance(value_type, dict):
+            self.value_type_dict = value_type
+        else:
+            self.value_type_dict = {topic_str: value_type for topic_str in topic_str_list}
+        #
+        self.consumer = confluent_kafka.Consumer(self.config_dict)
+        #
+        def on_assign(consumer, partitions):
+            def set_offset(topicPartition):
+                if topicPartition.topic in self.offsets_dict:
+                    offsets = self.offsets_dict[topicPartition.topic]
+                    if topicPartition.partition in offsets:
+                        offset_int = offsets[topicPartition.partition]
+                        topicPartition.offset = offset_int
+                return topicPartition
+            #
+            if self.offsets_dict is not None:
+                topicPartition_list = [set_offset(topicPartition) for topicPartition in partitions]
+                consumer.assign(topicPartition_list)
+        self.consumer.subscribe(topic_str_list, on_assign=on_assign)
+        #
+        return self
+    
+    def unsubscribe(self):
+        self.consumer.unsubscribe()
+        #
+        topic_str_list = self.topic_str_list
+        #
         self.topic_str_list = None
         self.key_type_dict = None
         self.value_type_dict = None
         #
-        self.consumer = None
-        self.schema_registry = SchemaRegistry()
+        return topic_str_list
+
+    def close(self):
+        topic_str_list = self.unsubscribe()
         #
-        self.schema_id_int_generalizedProtocolMessageType_protobuf_schema_str_tuple_dict = {}
+        self.consumer.close()
+        #
+        group_str = self.group_str
+        #
+        self.group_str = None
+        #
+        return topic_str_list, group_str
+
+    def consume(self, n=1):
+        n_int = n
+        #
+        message_list = self.consumer.consume(n_int, self.kash_config_dict["consume.timeout"])
+        #
+        message_dict_list = [self.message_to_message_dict(message, key_type=self.key_type_dict[message.topic()], value_type=self.value_type_dict[message.topic()]) for message in message_list]
+        #
+        return message_dict_list
+
+    def commit(self, offsets=None, asynchronous=False):
+        if offsets is None:
+            offsets_topicPartition_list = None
+            commit_topicPartition_list = self.consumer.commit(asynchronous=asynchronous)
+        else:
+            str_or_int = list(offsets.keys())[0]
+            if isinstance(str_or_int, str):
+                offsets_dict = offsets
+            elif isinstance(str_or_int, int):
+                offsets_dict = {topic_str: offsets for topic_str in self.topic_str_list}
+            #
+            offsets_topicPartition_list = [TopicPartition(topic_str, partition_int, offset_int) for topic_str, offsets in offsets_dict.items() for partition_int, offset_int in offsets.items()]
+            commit_topicPartition_list = self.consumer.commit(offsets=offsets_topicPartition_list, asynchronous=asynchronous)
+        #
+        offsets_dict = topicPartition_list_to_offsets_dict(commit_topicPartition_list)
+        #
+        return offsets_dict
+
+    def offsets(self, timeout=-1.0):
+        timeout_float = timeout
+        #
+        assignment_topicPartition_list = self.consumer.assignment()
+        committed_topicPartition_list = self.consumer.committed(assignment_topicPartition_list, timeout=timeout_float)
+        #
+        offsets_dict = topicPartition_list_to_offsets_dict(committed_topicPartition_list)
+        #
+        return offsets_dict
+
+    def memberid(self):
+        member_id_str = self.consumer.memberid()
+        #
+        return member_id_str 
 
     #
 
@@ -153,127 +279,6 @@ class Consumer:
         jsonDeserializer = JSONDeserializer(schema_str)
         dict = jsonDeserializer(bytes, None)
         return dict
-
-    #
-
-    def subscribe(self, group, topics, offsets=None, config={}, key_type="str", value_type="str"):
-        if group is None:
-            self.group_str = str(get_millis())
-        else:
-            self.group_str = group
-        #
-        topic_str_list = topics if isinstance(topics, list) else [topics]
-        if not topic_str_list:
-            raise Exception("No topic to subscribe to.")
-        self.topic_str_list = topic_str_list
-        #
-        if offsets is None:
-            offsets_dict = None
-        else:
-            str_or_int = list(offsets.keys())[0]
-            if isinstance(str_or_int, str):
-                offsets_dict = offsets
-            elif isinstance(str_or_int, int):
-                offsets_dict = {topic_str: offsets for topic_str in topic_str_list}
-        #        
-        self.config_dict = {}
-        self.config_dict["group.id"] = self.group_str
-        for key_str, value in config.items():
-            self.config_dict[key_str] = value
-        if isinstance(key_type, dict):
-            self.key_type_dict = key_type
-        else:
-            self.key_type_dict = {topic_str: key_type for topic_str in topic_str_list}
-        #
-        if isinstance(value_type, dict):
-            self.value_type_dict = value_type
-        else:
-            self.value_type_dict = {topic_str: value_type for topic_str in topic_str_list}
-        #
-        self.config_dict["group.id"] = self.group_str
-        for key_str, value in config.items():
-            self.config_dict[key_str] = value
-        self.consumer = confluent_kafka.Consumer(self.kafka_config_dict)
-        #
-        def on_assign(consumer, partitions):
-            def set_offset(topicPartition):
-                if topicPartition.topic in offsets_dict:
-                    offsets = offsets_dict[topicPartition.topic]
-                    if topicPartition.partition in offsets:
-                        offset_int = offsets[topicPartition.partition]
-                        topicPartition.offset = offset_int
-                return topicPartition
-            #
-            if offsets_dict is not None:
-                topicPartition_list = [set_offset(topicPartition) for topicPartition in partitions]
-                consumer.assign(topicPartition_list)
-        self.consumer.subscribe(topic_str_list, on_assign=on_assign)
-        #
-        return self.topic_str_list, self.group_str
-    
-    def unsubscribe(self):
-        self.consumer.unsubscribe()
-        #
-        topic_str_list = self.topic_str_list
-        #
-        self.topic_str_list = None
-        self.key_type_dict = None
-        self.value_type_dict = None
-        #
-        return topic_str_list
-
-    def close(self):
-        topic_str_list = self.unsubscribe()
-        #
-        self.consumer.close()
-        #
-        group_str = self.group_str
-        #
-        self.group_str = None
-        #
-        return topic_str_list, group_str
-
-    def consume(self, n=1):
-        n_int = n
-        #
-        message_list = self.consumer.consume(n_int, self.cluster.kash_dict["consume.timeout"])
-        #
-        message_dict_list = [self.message_to_message_dict(message, key_type=self.key_type_dict[message.topic()], value_type=self.value_type_dict[message.topic()]) for message in message_list]
-        #
-        return message_dict_list
-
-    def commit(self, offsets=None, asynchronous=False):
-        if offsets is None:
-            offsets_topicPartition_list = None
-            commit_topicPartition_list = self.consumer.commit(asynchronous=asynchronous)
-        else:
-            str_or_int = list(offsets.keys())[0]
-            if isinstance(str_or_int, str):
-                offsets_dict = offsets
-            elif isinstance(str_or_int, int):
-                offsets_dict = {topic_str: offsets for topic_str in self.topic_str_list}
-            #
-            offsets_topicPartition_list = [TopicPartition(topic_str, partition_int, offset_int) for topic_str, offsets in offsets_dict.items() for partition_int, offset_int in offsets.items()]
-            commit_topicPartition_list = self.consumer.commit(offsets=offsets_topicPartition_list, asynchronous=asynchronous)
-        #
-        offsets_dict = topicPartition_list_to_offsets_dict(commit_topicPartition_list)
-        #
-        return offsets_dict
-
-    def offsets(self, timeout=-1.0):
-        timeout_float = timeout
-        #
-        assignment_topicPartition_list = self.consumer.assignment()
-        committed_topicPartition_list = self.consumer.committed(assignment_topicPartition_list, timeout=timeout_float)
-        #
-        offsets_dict = topicPartition_list_to_offsets_dict(committed_topicPartition_list)
-        #
-        return offsets_dict
-
-    def memberid(self):
-        member_id_str = self.consumer.memberid()
-        #
-        return member_id_str 
 
 #
 

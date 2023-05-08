@@ -18,64 +18,52 @@ CURRENT_TIME = 0
 RD_KAFKA_PARTITION_UA = -1
 
 class Producer:
-    def __init__(self, kafka_config_dict, schema_registry_config_dict, kash_config_dict, cluster_str):
+    def __init__(self, kafka_config_dict, schema_registry_config_dict, kash_config_dict, config_str, key_type="str", value_type="str", key_schema=None, value_schema=None, on_delivery=None):
         self.kafka_config_dict = kafka_config_dict
         self.schema_registry_config_dict = schema_registry_config_dict
         self.kash_config_dict = kash_config_dict
-        self.cluster_str = cluster_str
+        self.config_str = config_str
+        #
+        self.key_type_str = key_type
+        self.value_type_str = value_type
+        self.key_schema_str = key_schema
+        self.value_schema_str = value_schema
+        self.on_delivery_function = on_delivery
         #
         self.producer = confluent_kafka.Producer(self.kafka_config_dict)
-        self.schema_registry = SchemaRegistry()
+        self.schema_registry = SchemaRegistry(schema_registry_config_dict, kash_config_dict)
         #
         self.produced_messages_counter_int = 0
 
     #
 
-    def schema_str_to_generalizedProtocolMessageType(self, schema_str, topic_str, key_bool, normalize_schemas=False):
-        subject_name_str = self.schemaRegistry.create_subject_name_str(topic_str, key_bool)
-        schema_dict = self.schemaRegistry.create_schema_dict(schema_str, "PROTOBUF")
-        schema_dict = self.schemaRegistry.register_schema(subject_name_str, schema_dict, normalize_schemas)
+    def close(self):
+        self.flush()
         #
-        generalizedProtocolMessageType = self.schema_id_int_and_schema_str_to_generalizedProtocolMessageType(schema_dict["schema_id"], schema_str)
-        return generalizedProtocolMessageType
-
-    def schema_id_int_and_schema_str_to_generalizedProtocolMessageType(self, schema_id_int, schema_str):
-        path_str = f"/{tempfile.gettempdir()}/kash.py/clusters/{self.cluster_str}"
-        os.makedirs(path_str, exist_ok=True)
-        file_str = f"schema_{schema_id_int}.proto"
-        file_path_str = f"{path_str}/{file_str}"
-        with open(file_path_str, "w") as textIOWrapper:
-            textIOWrapper.write(schema_str)
+        del self.producer
+        self.producer = None
         #
-        import grpc_tools.protoc
-        grpc_tools.protoc.main(["protoc", f"-I{path_str}", f"--python_out={path_str}", f"{file_str}"])
-        #
-        sys.path.insert(1, path_str)
-        schema_module = importlib.import_module(f"schema_{schema_id_int}_pb2")
-        schema_name_str = list(schema_module.DESCRIPTOR.message_types_by_name.keys())[0]
-        generalizedProtocolMessageType = getattr(schema_module, schema_name_str)
-        return generalizedProtocolMessageType
+        self.key_type_str = None
+        self.value_type_str = None
+        self.key_schema_str = None
+        self.value_schema_str = None
+        self.on_delivery_function = None
 
     #
 
-    def write(self, value, key=None, key_type="str", value_type="str", key_schema=None, value_schema=None, partition=RD_KAFKA_PARTITION_UA, timestamp=CURRENT_TIME, headers=None, on_delivery=None):
-        return self.produce(self.topic_str, value, key, key_type, value_type, key_schema, value_schema, partition, timestamp, headers, on_delivery)
+    def flush(self):
+        self.producer.flush(self.kash_dict["flush.timeout"])
+        return self.topic_str
 
-    #
-
-    def produce(self, topic_str, value, key=None, key_type="str", value_type="str", key_schema=None, value_schema=None, partition=RD_KAFKA_PARTITION_UA, timestamp=CURRENT_TIME, headers=None, on_delivery=None):
-        key_type_str = key_type
-        value_type_str = value_type
-        key_schema_str = key_schema
-        value_schema_str = value_schema
+    def produce(self, topic_str, value, key=None, partition=RD_KAFKA_PARTITION_UA, timestamp=CURRENT_TIME, headers=None):
         partition_int = partition
         timestamp_int = timestamp
         headers_dict_or_list = headers
         #
 
         def serialize(key_bool, normalize_schemas=False):
-            type_str = key_type_str if key_bool else value_type_str
-            schema_str = key_schema_str if key_bool else value_schema_str
+            type_str = self.key_type_str if key_bool else self.value_type_str
+            schema_str = self.key_schema_str if key_bool else self.value_schema_str
             payload = key if key_bool else value
             messageField = MessageField.KEY if key_bool else MessageField.VALUE
             #
@@ -114,12 +102,36 @@ class Producer:
         key_str_or_bytes = serialize(key_bool=True)
         value_str_or_bytes = serialize(key_bool=False)
         #
-        self.producer.produce(topic_str, value_str_or_bytes, key_str_or_bytes, partition=partition_int, timestamp=timestamp_int, headers=headers_dict_or_list, on_delivery=on_delivery)
+        self.producer.produce(topic_str, value_str_or_bytes, key_str_or_bytes, partition=partition_int, timestamp=timestamp_int, headers=headers_dict_or_list, on_delivery=self.on_delivery)
         #
         self.produced_messages_counter_int += 1
         #
         return key_str_or_bytes, value_str_or_bytes
 
-    def flush(self):
-        self.producer.flush(self.kash_dict["flush.timeout"])
-        return self.topic_str
+    # helpers
+
+    def schema_str_to_generalizedProtocolMessageType(self, schema_str, topic_str, key_bool, normalize_schemas=False):
+        subject_name_str = self.schemaRegistry.create_subject_name_str(topic_str, key_bool)
+        schema_dict = self.schemaRegistry.create_schema_dict(schema_str, "PROTOBUF")
+        schema_dict = self.schemaRegistry.register_schema(subject_name_str, schema_dict, normalize_schemas)
+        #
+        generalizedProtocolMessageType = self.schema_id_int_and_schema_str_to_generalizedProtocolMessageType(schema_dict["schema_id"], schema_str)
+        return generalizedProtocolMessageType
+
+    def schema_id_int_and_schema_str_to_generalizedProtocolMessageType(self, schema_id_int, schema_str):
+        path_str = f"/{tempfile.gettempdir()}/kash.py/clusters/{self.config_str}"
+        os.makedirs(path_str, exist_ok=True)
+        file_str = f"schema_{schema_id_int}.proto"
+        file_path_str = f"{path_str}/{file_str}"
+        with open(file_path_str, "w") as textIOWrapper:
+            textIOWrapper.write(schema_str)
+        #
+        import grpc_tools.protoc
+        grpc_tools.protoc.main(["protoc", f"-I{path_str}", f"--python_out={path_str}", f"{file_str}"])
+        #
+        sys.path.insert(1, path_str)
+        schema_module = importlib.import_module(f"schema_{schema_id_int}_pb2")
+        schema_name_str = list(schema_module.DESCRIPTOR.message_types_by_name.keys())[0]
+        generalizedProtocolMessageType = getattr(schema_module, schema_name_str)
+        return generalizedProtocolMessageType
+

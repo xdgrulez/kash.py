@@ -1,9 +1,4 @@
 from kashpy.kafka import Kafka
-from kashpy.cluster.admin import Admin
-from kashpy.cluster.consumer import Consumer
-from kashpy.cluster.producer import Producer
-from kashpy.schemaregistry import SchemaRegistry
-from kashpy.helpers import is_interactive
 
 # Constants
 
@@ -16,15 +11,7 @@ class Cluster(Kafka):
     def __init__(self, cluster_str):
         super().__init__("clusters", cluster_str, ["kafka"], ["schema_registry", "kash"])
         #
-        self.kafka_config_dict = self.config_dict["kafka"]
-        self.schema_registry_config_dict = self.config_dict["schema_registry"]
-        self.kash_config_dict = self.config_dict["kash"]
-        #
-        self.schemaRegistry = None
-        #
-        self.admin = None
-        #
-        self.producer = None
+        self.cluster_str = cluster_str
         #
         if "flush.num.messages" not in self.kash_config_dict:
             self.flush_num_messages(10000)
@@ -75,30 +62,6 @@ class Cluster(Kafka):
             self.block_interval(0.1)
         else:
             self.block_interval(float(self.kash_config_dict["block.interval"]))
-        #
-        self.verbose_int = 1 if is_interactive() else 0
-        #
-        self.schemaRegistry = self.get_schemaRegistry()
-        #
-        self.admin = self.get_admin()
-        #
-        self.producer = self.get_producer()
-        #
-        self.consumer = self.get_consumer()
-
-    #
-
-    def get_schemaRegistry(self):
-        return SchemaRegistry(self.schema_registry_config_dict, self.kash_config_dict)
-
-    def get_admin(self):
-        return Admin(self.kafka_config_dict, self.kash_config_dict)
-
-    def get_producer(self):
-        return Producer(self.kafka_config_dict, self.schema_registry_config_dict, self.kash_config_dict)
-
-    def get_consumer(self):
-        return Consumer(self.kafka_config_dict, self.schema_registry_config_dict, self.kash_config_dict)
 
     #
 
@@ -190,8 +153,8 @@ class Cluster(Kafka):
     def set_partitions(self, pattern, num_partitions, test=False):
         return self.admin.set_partitions(pattern, num_partitions, test)
     
-    def list_topics(self):
-        return self.admin.list_topics()
+    def list_topics(self, pattern):
+        return self.admin.list_topics(pattern)
 
     # Groups
 
@@ -246,8 +209,8 @@ class Cluster(Kafka):
     # Consumer
     #
 
-    def subscribe(self, group, topics, offsets=None, config={}, key_type="str", value_type="str"):
-        return self.consumer.subscribe(group, topics, offsets, config, key_type, value_type)
+    def subscribe(self, topics, group=None, offsets=None, config={}, key_type="str", value_type="str"):
+        return self.consumer.subscribe(topics, group, offsets, config, key_type, value_type)
 
     def unsubscribe(self):
         return self.consumer.unsubscribe()
@@ -266,4 +229,3 @@ class Cluster(Kafka):
 
     def memberid(self):
         return self.consumer.memberid()
-
