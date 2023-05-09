@@ -23,8 +23,8 @@ def ppretty(dict):
 
 #
 
-def get(url_str, headers_dict):
-    response = requests.get(url_str, headers=headers_dict)
+def get(url_str, headers_dict, auth_str_tuple=None):
+    response = requests.get(url_str, headers=headers_dict, auth=auth_str_tuple)
     if response.text == "":
         response_dict = {}
     else:
@@ -35,8 +35,8 @@ def get(url_str, headers_dict):
     else:
         raise Exception(response_dict)
 
-def delete(url_str, headers_dict):
-    response = requests.delete(url_str, headers=headers_dict)
+def delete(url_str, headers_dict, auth_str_tuple=None):
+    response = requests.delete(url_str, headers=headers_dict, auth=auth_str_tuple)
     if response.text == "":
         response_dict = {}
     else:
@@ -47,8 +47,8 @@ def delete(url_str, headers_dict):
     else:
         raise Exception(response_dict)
 
-def post(url_str, headers_dict, payload_dict):
-    response = requests.post(url_str, headers=headers_dict, json=payload_dict)
+def post(url_str, headers_dict, payload_dict, auth_str_tuple=None):
+    response = requests.post(url_str, headers=headers_dict, json=payload_dict, auth=auth_str_tuple)
     if response.text == "":
         response_dict = {}
     else:
@@ -58,3 +58,12 @@ def post(url_str, headers_dict, payload_dict):
         return response_dict
     else:
         raise Exception(response_dict)
+
+
+def get_auth_str_tuple(basic_auth_user_info):
+    if basic_auth_user_info is None:
+        auth_str_tuple = None
+    else:
+        auth_str_tuple = tuple(basic_auth_user_info.split(":"))
+    #
+    return auth_str_tuple

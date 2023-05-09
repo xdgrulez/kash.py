@@ -26,6 +26,8 @@ class Kafka(Storage):
         self.schemaRegistry = None
         self.admin = None
         #
+        # cluster config kash section
+        #
         if "flush.num.messages" not in self.kash_config_dict:
             self.flush_num_messages(10000)
         else:
@@ -46,11 +48,6 @@ class Kafka(Storage):
         else:
             self.consume_timeout(float(self.kash_config_dict["consume.timeout"]))
         #
-        if "auto.offset.reset" not in self.kash_config_dict:
-            self.auto_offset_reset("earliest")
-        else:
-            self.auto_offset_reset(str(self.kash_config_dict["auto.offset.reset"]))
-        #
         if "enable.auto.commit" not in self.kash_config_dict:
             self.enable_auto_commit(True)
         else:
@@ -61,11 +58,6 @@ class Kafka(Storage):
         else:
             self.session_timeout_ms(int(self.kash_config_dict["session.timeout.ms"]))
         #
-        if "progress.num.messages" not in self.kash_config_dict:
-            self.progress_num_messages(1000)
-        else:
-            self.progress_num_messages(int(self.kash_config_dict["progress.num.messages"]))
-        #
         if "block.num.retries" not in self.kash_config_dict:
             self.block_num_retries(50)
         else:
@@ -75,6 +67,30 @@ class Kafka(Storage):
             self.block_interval(0.1)
         else:
             self.block_interval(float(self.kash_config_dict["block.interval"]))
+        #
+        # both cluster and restproxy kash section
+        #
+        if "auto.offset.reset" not in self.kash_config_dict:
+            self.auto_offset_reset("earliest")
+        else:
+            self.auto_offset_reset(str(self.kash_config_dict["auto.offset.reset"]))
+        #
+        # restproxy config kash section
+        #
+        if "auto.commit.enable" not in self.kash_config_dict:
+            self.auto_commit_enable(True)
+        else:
+            self.auto_commit_enable(bool(self.kash_config_dict["auto.commit.enable"]))
+        #
+        if "fetch.min.bytes" not in self.kash_config_dict:
+            self.fetch_min_bytes(-1)
+        else:
+            self.fetch_min_bytes(int(self.kash_config_dict["fetch.min.bytes"]))
+        #
+        if "consumer.request.timeout.ms" not in self.kash_config_dict:
+            self.consumer_request_timeout_ms(1000)
+        else:
+            self.consumer_request_timeout_ms(int(self.kash_config_dict["consumer.request.timeout.ms"]))
         #
         self.schemaRegistry = self.get_schemaRegistry()
         self.admin = self.get_admin()
@@ -107,17 +123,11 @@ class Kafka(Storage):
     def consume_timeout(self, new_value=None): # float
         return self.get_set_config("consume.timeout", new_value)
 
-    def auto_offset_reset(self, new_value=None): # str
-        return self.get_set_config("auto.offset.reset", new_value)
-
     def enable_auto_commit(self, new_value=None): # bool
         return self.get_set_config("enable.auto.commit", new_value)
 
     def session_timeout_ms(self, new_value=None): # int
         return self.get_set_config("session.timeout.ms", new_value)
-
-    def progress_num_messages(self, new_value=None): # int
-        return self.get_set_config("progress.num.messages", new_value)
 
     def block_num_retries(self, new_value=None): # int
         return self.get_set_config("block.num.retries", new_value)
@@ -127,10 +137,19 @@ class Kafka(Storage):
 
     #
 
-    def verbose(self, new_value=None): # int
-        if new_value is not None:
-            self.verbose_int = new_value
-        return self.verbose_int
+    def auto_offset_reset(self, new_value=None): # str
+        return self.get_set_config("auto.offset.reset", new_value)
+
+    #
+
+    def auto_commit_enable(self, new_value=None): # bool
+        return self.get_set_config("auto.commit.enable", new_value)
+
+    def fetch_min_bytes(self, new_value=None): # int
+        return self.get_set_config("fetch.min.bytes", new_value)
+
+    def consumer_request_timeout_ms(self, new_value=None): # int
+        return self.get_set_config("consumer.request.timeout.ms", new_value)
 
     #
 
@@ -272,7 +291,7 @@ class Kafka(Storage):
             print(f"{consumer.topic_str_list}, {consumer.group_str}")
             #
             return consumer
-        elif "a" in mode:
+        elif "a" in mode or "w" in mode:
             producer = self.get_producer(topics, key_type, value_type, key_schema, value_schema, on_delivery)
             #
             print(producer.topic_str)

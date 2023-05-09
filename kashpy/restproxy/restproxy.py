@@ -1,6 +1,6 @@
-from kashpy.restproxy.restproxyadmin import RestProxyAdmin
-from kashpy.restproxy.restproxyconsumer import RestProxyConsumer
-from kashpy.restproxy.restproxyproducer import RestProxyProducer
+from kashpy.restproxy.restproxy_admin import RestProxyAdmin
+from kashpy.restproxy.restproxy_consumer import RestProxyConsumer
+from kashpy.restproxy.restproxy_producer import RestProxyProducer
 from kashpy.kafka import Kafka
 from kashpy.helpers import get
 

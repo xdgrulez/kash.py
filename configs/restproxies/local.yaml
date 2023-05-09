@@ -1,17 +1,12 @@
 rest_proxy:
-  rest.proxy.url: localhost:9092
+  rest.proxy.url: http://localhost:8082
+#  basic.auth.user.info: 
 
 schema_registry:
   schema.registry.url: http://localhost:8081
 
 kash:
-  flush.num.messages: 10000
-  flush.timeout: -1.0
-  retention.ms: -1
-  consume.timeout: 1.0
   auto.offset.reset: earliest
   enable.auto.commit: true
-  session.timeout.ms: 10000
-  progress.num.messages: 1000
-  block.num.retries.int: 50
-  block.interval: 0.1
+  fetch.min.bytes: -1
+  consumer.request.timeout.ms: 1000

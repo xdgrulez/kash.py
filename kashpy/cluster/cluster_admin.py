@@ -4,9 +4,9 @@ import time
 from confluent_kafka import Consumer, TopicPartition
 from confluent_kafka.admin import AclBinding, AclBindingFilter, AclOperation, AclPermissionType, AdminClient, ConfigResource, _ConsumerGroupState, _ConsumerGroupTopicPartitions, NewPartitions, NewTopic, ResourcePatternType, ResourceType
 
-from kashpy.abstractadmin import AbstractAdmin
+from kashpy.kafka_admin import KafkaAdmin
 
-class Admin(AbstractAdmin):
+class ClusterAdmin(KafkaAdmin):
     def __init__(self, kafka_config_dict, kash_config_dict):
         self.kafka_config_dict = kafka_config_dict
         self.kash_config_dict = kash_config_dict

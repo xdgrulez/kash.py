@@ -18,6 +18,5 @@ kash:
   auto.offset.reset: earliest
   enable.auto.commit: true
   session.timeout.ms: 10000
-  progress.num.messages: 1000
   block.num.retries.int: 50
   block.interval: 0.1

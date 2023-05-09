@@ -10,11 +10,11 @@ import os
 import sys
 import tempfile
 
-from kashpy.abstractconsumer import AbstractConsumer
+from kashpy.kafka_consumer import KafkaConsumer
 from kashpy.helpers import get_millis
 from kashpy.schemaregistry import SchemaRegistry
 
-class Consumer(AbstractConsumer):
+class ClusterConsumer(KafkaConsumer):
     def __init__(self, kafka_config_dict, schema_registry_config_dict, kash_config_dict, topics, group=None, offsets=None, config={}, key_type="str", value_type="str"):
         self.kafka_config_dict = kafka_config_dict
         self.schema_registry_config_dict = schema_registry_config_dict
@@ -65,11 +65,6 @@ class Consumer(AbstractConsumer):
 
     def __del__(self):
         self.close()
-
-    #
-
-    def read(self, n=1):
-        return self.consume(n)
 
     #
 
