@@ -1,12 +1,12 @@
 from fnmatch import fnmatch
 import time
 
-import confluent_kafka # Consumer
-from confluent_kafka import TopicPartition
+from confluent_kafka import Consumer, TopicPartition
 from confluent_kafka.admin import AclBinding, AclBindingFilter, AclOperation, AclPermissionType, AdminClient, ConfigResource, _ConsumerGroupState, _ConsumerGroupTopicPartitions, NewPartitions, NewTopic, ResourcePatternType, ResourceType
 
+from kashpy.abstractadmin import AbstractAdmin
 
-class Admin:
+class Admin(AbstractAdmin):
     def __init__(self, kafka_config_dict, kash_config_dict):
         self.kafka_config_dict = kafka_config_dict
         self.kash_config_dict = kash_config_dict
@@ -305,7 +305,7 @@ class Admin:
             if topicPartition_list:
                 config_dict = self.kafka_config_dict
                 config_dict["group.id"] = "dummy_group_id"
-                consumer = confluent_kafka.Consumer(config_dict)
+                consumer = Consumer(config_dict)
                 topicPartition_list1 = consumer.offsets_for_times(topicPartition_list, timeout=timeout)
                 #
                 for topicPartition in topicPartition_list1:

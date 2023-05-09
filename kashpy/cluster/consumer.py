@@ -1,7 +1,6 @@
 import json
 
-import confluent_kafka
-from confluent_kafka import TopicPartition
+from confluent_kafka import Consumer, TopicPartition
 from confluent_kafka.schema_registry.avro import AvroDeserializer
 from confluent_kafka.schema_registry.json_schema import JSONDeserializer
 from confluent_kafka.schema_registry.protobuf import ProtobufDeserializer
@@ -11,10 +10,11 @@ import os
 import sys
 import tempfile
 
+from kashpy.abstractconsumer import AbstractConsumer
 from kashpy.helpers import get_millis
 from kashpy.schemaregistry import SchemaRegistry
 
-class Consumer:
+class Consumer(AbstractConsumer):
     def __init__(self, kafka_config_dict, schema_registry_config_dict, kash_config_dict, topics, group=None, offsets=None, config={}, key_type="str", value_type="str"):
         self.kafka_config_dict = kafka_config_dict
         self.schema_registry_config_dict = schema_registry_config_dict
@@ -59,7 +59,7 @@ class Consumer:
         #
         self.schema_id_int_generalizedProtocolMessageType_protobuf_schema_str_tuple_dict = {}
         #
-        self.consumer = confluent_kafka.Consumer(self.config_dict)
+        self.consumer = Consumer(self.config_dict)
         #
         self.subscribe()
 

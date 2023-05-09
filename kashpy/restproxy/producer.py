@@ -1,3 +1,4 @@
+from kashpy.abstractproducer import AbstractProducer
 from kashpy.helpers import post
 
 # Constants
@@ -6,7 +7,7 @@ RD_KAFKA_PARTITION_UA = -1
 
 #
 
-class Producer():
+class RestProxyProducer(AbstractProducer):
     def __init__(self, rest_proxy_config_dict, schema_registry_config_dict, kash_config_dict, cluster_id_str, topic_str, key_type_str="str", value_type_str="str", key_schema_str=None, value_schema_str=None):
         self.rest_proxy_config_dict = rest_proxy_config_dict
         self.schema_registry_config_dict = schema_registry_config_dict

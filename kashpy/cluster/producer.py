@@ -6,12 +6,13 @@ import tempfile
 
 from google.protobuf.json_format import ParseDict
 
-import confluent_kafka
+from confluent_kafka import Producer
 from confluent_kafka.schema_registry.avro import AvroSerializer
 from confluent_kafka.schema_registry.json_schema import JSONSerializer
 from confluent_kafka.schema_registry.protobuf import ProtobufSerializer
 from confluent_kafka.serialization import MessageField, SerializationContext
 
+from kashpy.abstractproducer import AbstractProducer
 from kashpy.schemaregistry import SchemaRegistry
 
 # Constants
@@ -21,7 +22,7 @@ RD_KAFKA_PARTITION_UA = -1
 
 #
 
-class Producer:
+class Producer(AbstractProducer):
     def __init__(self, kafka_config_dict, schema_registry_config_dict, kash_config_dict, config_str, topic_str, key_type_str="str", value_type_str="str", key_schema_str=None, value_schema_str=None, on_delivery_function=None):
         self.kafka_config_dict = kafka_config_dict
         self.schema_registry_config_dict = schema_registry_config_dict
@@ -38,7 +39,7 @@ class Producer:
         #
         self.schema_registry = SchemaRegistry(schema_registry_config_dict, kash_config_dict)
         #
-        self.producer = confluent_kafka.Producer(self.kafka_config_dict)
+        self.producer = Producer(self.kafka_config_dict)
         #
         self.produced_messages_counter_int = 0
 

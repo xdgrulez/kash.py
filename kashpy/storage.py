@@ -1,9 +1,10 @@
-from abc import abstractmethod
 import glob
 import os
 import re
 
 from piny import YamlLoader
+
+from kashpy.helpers import is_interactive
 
 
 class Storage:
@@ -14,6 +15,8 @@ class Storage:
         self.optional_section_str_list = optional_section_str_list
         #
         self.config_dict = self.get_config_dict()
+        #
+        self.verbose_int = 1 if is_interactive() else 0
         
     def get_config_dict(self):
         home_str = os.environ.get("KASHPY_HOME")
@@ -62,14 +65,9 @@ class Storage:
             config_str_list.sort()
             return config_str_list
 
-    # Read
+    #
 
-    @abstractmethod
-    def read():
-        pass
-
-    # Write
-
-    @abstractmethod
-    def write():
-        pass
+    def verbose(self, new_value=None): # int
+        if new_value is not None:
+            self.verbose_int = new_value
+        return self.verbose_int

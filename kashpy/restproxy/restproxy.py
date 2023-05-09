@@ -1,6 +1,6 @@
-from kashpy.restproxy.admin import Admin
-from kashpy.restproxy.consumer import Consumer
-from kashpy.restproxy.producer import Producer
+from kashpy.restproxy.restproxyadmin import RestProxyAdmin
+from kashpy.restproxy.restproxyconsumer import RestProxyConsumer
+from kashpy.restproxy.restproxyproducer import RestProxyProducer
 from kashpy.kafka import Kafka
 from kashpy.helpers import get
 
@@ -15,21 +15,21 @@ class RestProxy(Kafka):
     #
 
     def get_admin(self):
-        admin = Admin(self.rest_proxy_config_dict, self.kash_config_dict, self.cluster_id_str)
+        admin = RestProxyAdmin(self.rest_proxy_config_dict, self.kash_config_dict, self.cluster_id_str)
         #
         return admin
 
     #
 
     def get_consumer(self, topics, group, offsets, config, key_type, value_type):
-        consumer = Consumer(self.rest_proxy_config_dict, self.schema_registry_config_dict, self.kash_config_dict, self.cluster_id_str, topics, group, offsets, config, key_type, value_type)
+        consumer = RestProxyConsumer(self.rest_proxy_config_dict, self.schema_registry_config_dict, self.kash_config_dict, self.cluster_id_str, topics, group, offsets, config, key_type, value_type)
         #
         return consumer
 
     #
 
     def get_producer(self, topics, key_type, value_type, key_schema, value_schema, on_delivery):
-        producer = Producer(self.rest_proxy_config_dict, self.schema_registry_config_dict, self.kash_config_dict, self.cluster_id_str, topics, key_type, value_type, key_schema, value_schema)
+        producer = RestProxyProducer(self.rest_proxy_config_dict, self.schema_registry_config_dict, self.kash_config_dict, self.cluster_id_str, topics, key_type, value_type, key_schema, value_schema)
         #
         return producer
     

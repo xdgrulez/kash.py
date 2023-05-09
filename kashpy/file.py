@@ -10,18 +10,16 @@ class Kafka(Storage):
         self.dir_str = dir_str
         self.config_str = config_str
         #
-        if "kafka" in mandatory_section_str_list:
-            self.kafka_config_dict = self.config_dict["kafka"]
+        if "local" in mandatory_section_str_list:
+            self.local_config_dict = self.config_dict["local"]
         else:
-            self.kafka_config_dict = None
+            self.local_config_dict = None
         #
-        if "rest_proxy" in mandatory_section_str_list:
-            self.rest_proxy_config_dict = self.config_dict["rest_proxy"]
+        if "s3" in mandatory_section_str_list:
+            self.s3_config_dict = self.config_dict["s3"]
         else:
-            self.rest_proxy_config_dict = None
+            self.s3_config_dict = None
         #
-        self.schema_registry_config_dict = self.config_dict["schema_registry"]
-        self.kash_config_dict = self.config_dict["kash"]
         #
         self.schemaRegistry = None
         self.admin = None
@@ -124,13 +122,6 @@ class Kafka(Storage):
 
     def block_interval(self, new_value=None): # float
         return self.get_set_config("block.interval", new_value)
-
-    #
-
-    def verbose(self, new_value=None): # int
-        if new_value is not None:
-            self.verbose_int = new_value
-        return self.verbose_int
 
     #
 

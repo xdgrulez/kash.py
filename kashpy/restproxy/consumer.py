@@ -1,8 +1,9 @@
+from kashpy.abstractconsumer import AbstractConsumer
 from kashpy.helpers import get, delete, post, get_millis
 
 #
 
-class Consumer():
+class RestProxyConsumer(AbstractConsumer):
     def __init__(self, rest_proxy_config_dict, schema_registry_config_dict, kash_config_dict, cluster_id_str, topics, group=None, offsets=None, config={}, key_type="str", value_type="str"):
         self.rest_proxy_config_dict = rest_proxy_config_dict
         self.schema_registry_config_dict = schema_registry_config_dict
