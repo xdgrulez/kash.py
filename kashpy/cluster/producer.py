@@ -14,48 +14,54 @@ from confluent_kafka.serialization import MessageField, SerializationContext
 
 from kashpy.schemaregistry import SchemaRegistry
 
+# Constants
+
 CURRENT_TIME = 0
 RD_KAFKA_PARTITION_UA = -1
 
+#
+
 class Producer:
-    def __init__(self, kafka_config_dict, schema_registry_config_dict, kash_config_dict, config_str, key_type="str", value_type="str", key_schema=None, value_schema=None, on_delivery=None):
+    def __init__(self, kafka_config_dict, schema_registry_config_dict, kash_config_dict, config_str, topic_str, key_type_str="str", value_type_str="str", key_schema_str=None, value_schema_str=None, on_delivery_function=None):
         self.kafka_config_dict = kafka_config_dict
         self.schema_registry_config_dict = schema_registry_config_dict
         self.kash_config_dict = kash_config_dict
+        #
         self.config_str = config_str
         #
-        self.key_type_str = key_type
-        self.value_type_str = value_type
-        self.key_schema_str = key_schema
-        self.value_schema_str = value_schema
-        self.on_delivery_function = on_delivery
+        self.topic_str = topic_str
+        self.key_type_str = key_type_str
+        self.value_type_str = value_type_str
+        self.key_schema_str = key_schema_str
+        self.value_schema_str = value_schema_str
+        self.on_delivery_function = on_delivery_function
+        #
+        self.schema_registry = SchemaRegistry(schema_registry_config_dict, kash_config_dict)
         #
         self.producer = confluent_kafka.Producer(self.kafka_config_dict)
-        self.schema_registry = SchemaRegistry(schema_registry_config_dict, kash_config_dict)
         #
         self.produced_messages_counter_int = 0
 
+    def __del__(self):
+        self.flush()
+
     #
+
+    def write(self, value, key=None, partition=RD_KAFKA_PARTITION_UA, timestamp=CURRENT_TIME, headers=None):
+        return self.produce(value, key, partition, timestamp, headers)
 
     def close(self):
         self.flush()
-        #
-        del self.producer
-        self.producer = None
-        #
-        self.key_type_str = None
-        self.value_type_str = None
-        self.key_schema_str = None
-        self.value_schema_str = None
-        self.on_delivery_function = None
+        return self.topic_str
 
     #
 
     def flush(self):
-        self.producer.flush(self.kash_dict["flush.timeout"])
+        self.producer.flush(self.kash_config_dict["flush.timeout"])
+        #
         return self.topic_str
 
-    def produce(self, topic_str, value, key=None, partition=RD_KAFKA_PARTITION_UA, timestamp=CURRENT_TIME, headers=None):
+    def produce(self, value, key=None, partition=RD_KAFKA_PARTITION_UA, timestamp=CURRENT_TIME, headers=None):
         partition_int = partition
         timestamp_int = timestamp
         headers_dict_or_list = headers
@@ -81,20 +87,20 @@ class Producer:
                 else:
                     payload_str_or_bytes = payload
             elif type_str.lower() in ["pb", "protobuf"]:
-                generalizedProtocolMessageType = self.schema_str_to_generalizedProtocolMessageType(schema_str, topic_str, key_bool, normalize_schemas)
+                generalizedProtocolMessageType = self.schema_str_to_generalizedProtocolMessageType(schema_str, self.topic_str, key_bool, normalize_schemas)
                 protobufSerializer = ProtobufSerializer(generalizedProtocolMessageType, self.schemaRegistry.schemaRegistryClient, {"use.deprecated.format": False})
                 payload_dict = payload_to_payload_dict(payload)
                 protobuf_message = generalizedProtocolMessageType()
                 ParseDict(payload_dict, protobuf_message)
-                payload_str_or_bytes = protobufSerializer(protobuf_message, SerializationContext(topic_str, messageField))
+                payload_str_or_bytes = protobufSerializer(protobuf_message, SerializationContext(self.topic_str, messageField))
             elif type_str.lower() == "avro":
                 avroSerializer = AvroSerializer(self.schemaRegistryClient.schemaRegistryClient, schema_str)
                 payload_dict = payload_to_payload_dict(payload)
-                payload_str_or_bytes = avroSerializer(payload_dict, SerializationContext(topic_str, messageField))
+                payload_str_or_bytes = avroSerializer(payload_dict, SerializationContext(self.topic_str, messageField))
             elif type_str.lower() == "jsonschema":
                 jSONSerializer = JSONSerializer(schema_str, self.schemaRegistryClient.schemaRegistryClient)
                 payload_dict = payload_to_payload_dict(payload)
-                payload_str_or_bytes = jSONSerializer(payload_dict, SerializationContext(topic_str, messageField))
+                payload_str_or_bytes = jSONSerializer(payload_dict, SerializationContext(self.topic_str, messageField))
             else:
                 payload_str_or_bytes = payload
             return payload_str_or_bytes
@@ -102,7 +108,7 @@ class Producer:
         key_str_or_bytes = serialize(key_bool=True)
         value_str_or_bytes = serialize(key_bool=False)
         #
-        self.producer.produce(topic_str, value_str_or_bytes, key_str_or_bytes, partition=partition_int, timestamp=timestamp_int, headers=headers_dict_or_list, on_delivery=self.on_delivery)
+        self.producer.produce(self.topic_str, value_str_or_bytes, key_str_or_bytes, partition=partition_int, timestamp=timestamp_int, headers=headers_dict_or_list, on_delivery=self.on_delivery_function)
         #
         self.produced_messages_counter_int += 1
         #
@@ -134,4 +140,3 @@ class Producer:
         schema_name_str = list(schema_module.DESCRIPTOR.message_types_by_name.keys())[0]
         generalizedProtocolMessageType = getattr(schema_module, schema_name_str)
         return generalizedProtocolMessageType
-
