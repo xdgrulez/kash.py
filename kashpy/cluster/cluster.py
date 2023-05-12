@@ -1,6 +1,6 @@
-from kashpy.cluster.clusteradmin import ClusterAdmin
-from kashpy.cluster.clusterconsumer import ClusterConsumer
-from kashpy.cluster.clusterproducer import ClusterProducer
+from kashpy.cluster.cluster_admin import ClusterAdmin
+from kashpy.cluster.cluster_consumer import ClusterConsumer
+from kashpy.cluster.cluster_producer import ClusterProducer
 from kashpy.kafka import Kafka
 
 # Cluster class

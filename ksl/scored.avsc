@@ -1,0 +1,52 @@
+{
+    "type": "record",
+    "name": "scoredRecord",
+    "fields": [
+        {
+            "name": "datetime",
+            "type": "string"
+        },
+        {
+            "name": "text",
+            "type": "string"
+        },
+        {
+            "name": "source",
+            "type": {
+                "type": "record", 
+                "name": "sourceRecord",
+                "fields": [
+                    {
+                        "name": "name",
+                        "type": "string"
+                    },
+                    {
+                        "name": "id",
+                        "type": "string"
+                    },
+                    {
+                        "name": "user",
+                        "type": "string"
+                    }
+                ]
+            }
+        },
+        {
+            "name": "sentiment",
+            "type": {
+                "type": "record", 
+                "name": "sentimentRecord",
+                "fields": [
+                    {
+                        "name": "model",
+                        "type": "string"
+                    },
+                    {
+                        "name": "score",
+                        "type": "int"
+                    }
+                ]
+            }
+        }
+    ]
+}

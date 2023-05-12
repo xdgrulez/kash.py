@@ -4,10 +4,10 @@ import re
 
 from piny import YamlLoader
 
+from kashpy.shell import Shell
 from kashpy.helpers import is_interactive
 
-
-class Storage:
+class Storage(Shell):
     def __init__(self, dir_str, config_str, mandatory_section_str_list, optional_section_str_list):
         self.dir_str = dir_str
         self.config_str = config_str
@@ -71,3 +71,4 @@ class Storage:
         if new_value is not None:
             self.verbose_int = new_value
         return self.verbose_int
+

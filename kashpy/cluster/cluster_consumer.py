@@ -10,19 +10,16 @@ import os
 import sys
 import tempfile
 
-from kashpy.kafka_consumer import KafkaConsumer
 from kashpy.helpers import get_millis
 from kashpy.schemaregistry import SchemaRegistry
 
-class ClusterConsumer(KafkaConsumer):
+class ClusterConsumer():
     def __init__(self, kafka_config_dict, schema_registry_config_dict, kash_config_dict, topics, group=None, offsets=None, config={}, key_type="str", value_type="str"):
         self.kafka_config_dict = kafka_config_dict
         self.schema_registry_config_dict = schema_registry_config_dict
         self.kash_config_dict = kash_config_dict
         #
         self.topic_str_list = topics if isinstance(topics, list) else [topics]
-        if not self.topic_str_list:
-            raise Exception("No topic to subscribe to.")
         #
         if group is None:
             self.group_str = str(get_millis())
@@ -65,6 +62,11 @@ class ClusterConsumer(KafkaConsumer):
 
     def __del__(self):
         self.close()
+
+    #
+
+    def read(self, n=1):
+        return self.consume(n)
 
     #
 

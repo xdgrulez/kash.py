@@ -75,6 +75,11 @@ class Kafka(Storage):
         else:
             self.auto_offset_reset(str(self.kash_config_dict["auto.offset.reset"]))
         #
+        if "progress.num.messages" not in self.kash_config_dict:
+            self.progress_num_messages(1000)
+        else:
+            self.progress_num_messages(int(self.kash_config_dict["progress.num.messages"]))
+        #
         # restproxy config kash section
         #
         if "auto.commit.enable" not in self.kash_config_dict:
@@ -140,6 +145,8 @@ class Kafka(Storage):
     def auto_offset_reset(self, new_value=None): # str
         return self.get_set_config("auto.offset.reset", new_value)
 
+    def progress_num_messages(self, new_value=None): # int
+        return self.get_set_config("progress.num.messages", new_value)
     #
 
     def auto_commit_enable(self, new_value=None): # bool
@@ -284,16 +291,16 @@ class Kafka(Storage):
 
     # Open
 
-    def open(self, topics, mode, group=None, offsets=None, config={}, key_type="str", value_type="str", key_schema=None, value_schema=None, on_delivery=None):
-        if "r" in mode:
-            consumer = self.get_consumer(topics, group, offsets, config, key_type, value_type)
-            #
-            print(f"{consumer.topic_str_list}, {consumer.group_str}")
-            #
-            return consumer
-        elif "a" in mode or "w" in mode:
-            producer = self.get_producer(topics, key_type, value_type, key_schema, value_schema, on_delivery)
-            #
-            print(producer.topic_str)
-            #
-            return producer
+    def openr(self, topics, group=None, offsets=None, config={}, key_type="str", value_type="str"):
+        consumer = self.get_consumer(topics, group, offsets, config, key_type, value_type)
+        #
+        print(f"{consumer.topic_str_list}, {consumer.group_str}")
+        #
+        return consumer
+        
+    def openw(self, topic, key_type="str", value_type="str", key_schema=None, value_schema=None, on_delivery=None)
+        producer = self.get_producer(topic, key_type, value_type, key_schema, value_schema, on_delivery)
+        #
+        print(producer.topic_str)
+        #
+        return producer

@@ -1,9 +1,8 @@
-from kashpy.kafka_consumer import KafkaConsumer
 from kashpy.helpers import get, delete, post, get_auth_str_tuple, get_millis
 
 #
 
-class RestProxyConsumer(KafkaConsumer):
+class RestProxyConsumer:
     def __init__(self, rest_proxy_config_dict, schema_registry_config_dict, kash_config_dict, cluster_id_str, topics, group=None, offsets=None, config={}, key_type="str", value_type="str"):
         self.rest_proxy_config_dict = rest_proxy_config_dict
         self.schema_registry_config_dict = schema_registry_config_dict
@@ -52,6 +51,11 @@ class RestProxyConsumer(KafkaConsumer):
         self.schema_id_int_generalizedProtocolMessageType_protobuf_schema_str_tuple_dict = {}
         #
         self.subscribe()
+
+    #
+
+    def read(self, n=1):
+        return self.consume(n)
 
     #
 
