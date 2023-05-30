@@ -1,4 +1,5 @@
 from kashpy.storage import Storage
+from kashpy.helpers import is_interactive
 
 #
 
@@ -20,7 +21,12 @@ class FileSystem(Storage):
             self.read_buffer_size(10000)
         else:
             self.read_buffer_size(int(self.kash_config_dict["read.buffer.size"]))
-
+        #
+        if "verbose" not in self.kash_config_dict:
+            verbose_int = 1 if is_interactive() else 0
+            self.verbose(verbose_int)
+        else:
+            self.verbose(int(self.kash_config_dict["verbose"]))
 
     #
 
@@ -35,15 +41,21 @@ class FileSystem(Storage):
 
     def read_buffer_size(self, new_value=None): # int
         return self.get_set_config("read.buffer.size", new_value)
+    
+    def verbose(self, new_value=None): # int
+        return self.get_set_config("verbose", new_value)
 
     # Open
-
-    def openr(self, file, key_type="str", value_type="str", key_value_separator=None, message_separator=b"\n"):
-        reader = self.get_reader(file, key_type, value_type, key_value_separator, message_separator)
+    def openr(self, file, **kwargs):
+        reader = self.get_reader(file, **kwargs)
+        #
+        print(file)
         #
         return reader
     
-    def openw(self, file, key_type="str", value_type="str", key_value_separator=None, message_separator=b"\n", overwrite=True):
-        writer = self.get_writer(file, key_type, value_type, key_value_separator, message_separator, overwrite)
+    def openw(self, file, **kwargs):
+        writer = self.get_writer(file, **kwargs)
+        #
+        print(file)
         #
         return writer

@@ -10,14 +10,14 @@ class Local(FileSystem):
     
     #
 
-    def get_reader(self, file, key_type="str", value_type="str", key_value_separator=None, message_separator=b"\n"):
-        reader = LocalReader(self.kash_config_dict, self.verbose_int, file, key_type, value_type, key_value_separator, message_separator)
+    def get_reader(self, file, **kwargs):
+        reader = LocalReader(self.kash_config_dict, file, **kwargs)
         #
         return reader
 
     #
 
-    def get_writer(self, file, key_type="str", value_type="str", key_value_separator=None, message_separator=b"\n", overwrite=True):
-        writer = LocalWriter(self.kash_config_dict, self.verbose_int, file, key_type, value_type, key_value_separator, message_separator, overwrite)
+    def get_writer(self, file, **kwargs):
+        writer = LocalWriter(self.kash_config_dict, file, **kwargs)
         #
         return writer

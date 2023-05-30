@@ -13,40 +13,56 @@ import tempfile
 from kashpy.helpers import get_millis
 from kashpy.schemaregistry import SchemaRegistry
 
+# Constants
+
+ALL_MESSAGES = -1
+
+#
+
 class ClusterConsumer():
-    def __init__(self, kafka_config_dict, schema_registry_config_dict, kash_config_dict, topics, group=None, offsets=None, config={}, key_type="str", value_type="str"):
+    def __init__(self, kafka_config_dict, schema_registry_config_dict, kash_config_dict, *topics, **kwargs):
         self.kafka_config_dict = kafka_config_dict
         self.schema_registry_config_dict = schema_registry_config_dict
         self.kash_config_dict = kash_config_dict
         #
-        self.topic_str_list = topics if isinstance(topics, list) else [topics]
+        # Topics
         #
-        if group is None:
+        self.topic_str_list = list(topics)
+        #
+        # Group
+        #
+        if "group" in kwargs and isinstance(kwargs["group"], str):
+            self.group_str = kwargs["group"]
+        else:
             self.group_str = str(get_millis())
-        else:
-            self.group_str = group
         #
-        if offsets is None:
-            self.offsets_dict = None
-        else:
-            str_or_int = list(offsets.keys())[0]
+        # Offsets
+        #
+        self.offsets_dict = None
+        if "offsets" in kwargs:
+            str_or_int = list(kwargs["offsets"].keys())[0]
             if isinstance(str_or_int, int):
-                self.offsets_dict = {topic_str: self.offsets for topic_str in self.topic_str_list}
+                self.offsets_dict = {topic_str: kwargs["offsets"] for topic_str in self.topic_str_list}
+            else:
+                self.offsets_dict = kwargs["offsets"]
         #
-        self.config_dict = self.kafka_config_dict.copy()
-        self.config_dict["group.id"] = self.group_str
-        self.config_dict["auto.offset.reset"] = self.kash_config_dict["auto.offset.reset"]
-        self.config_dict["enable.auto.commit"] = self.kash_config_dict["enable.auto.commit"]
-        self.config_dict["session.timeout.ms"] = self.kash_config_dict["session.timeout.ms"]
-        for key_str, value in config.items():
-            self.config_dict[key_str] = value
+        # Key and Value Types
+        #
+        if "key_type" in kwargs:
+            key_type = kwargs["key_type"]
+        else:
+            key_type = "str"
         #
         if isinstance(key_type, dict):
             self.key_type_dict = key_type
         else:
             self.key_type_dict = {topic_str: key_type for topic_str in self.topic_str_list}
         #
-        self.value_type_dict = value_type
+        if "value_type" in kwargs:
+            value_type = kwargs["value_type"]
+        else:
+            value_type = "str"
+        #
         if isinstance(value_type, dict):
             self.value_type_dict = value_type
         else:
@@ -56,7 +72,18 @@ class ClusterConsumer():
         #
         self.schema_id_int_generalizedProtocolMessageType_protobuf_schema_str_tuple_dict = {}
         #
-        self.consumer = Consumer(self.config_dict)
+        # Consumer Config
+        #
+        self.consumer_config_dict = self.kafka_config_dict.copy()
+        self.consumer_config_dict["group.id"] = self.group_str
+        self.consumer_config_dict["auto.offset.reset"] = self.kash_config_dict["auto.offset.reset"]
+        self.consumer_config_dict["enable.auto.commit"] = self.kash_config_dict["enable.auto.commit"]
+        self.consumer_config_dict["session.timeout.ms"] = self.kash_config_dict["session.timeout.ms"]
+        if "config" in kwargs:
+            for key_str, value in kwargs["config"].items():
+                self.consumer_config_dict[key_str] = value
+        #
+        self.consumer = Consumer(self.consumer_config_dict)
         #
         self.subscribe()
 
@@ -65,8 +92,50 @@ class ClusterConsumer():
 
     #
 
-    def read(self, n=1):
-        return self.consume(n)
+    def read(self, n=ALL_MESSAGES, **kwargs):
+        def foldl_function(message_dict_list, message_dict):
+            message_dict_list.append(message_dict)
+            #
+            return message_dict_list
+        #
+        return self.foldl(foldl_function, [], n, **kwargs)
+
+    #
+
+    def foldl(self, foldl_function, initial_acc, n=ALL_MESSAGES, **kwargs):
+        n_int = n
+        #
+        break_function = kwargs["break_function"] if "break_function" in kwargs else lambda _, _1: False
+        #
+        acc = initial_acc
+        message_counter_int = 0
+        break_bool = False
+        verbose_int = self.kash_config_dict["verbose"]
+        # Consume batch size should not be higher than n_int (otherwise would skip messages when called multiple times).
+        consume_num_messages_int = n_int if self.kash_config_dict["consume.num.messages"] > n_int else self.kash_config_dict["consume.num.messages"]
+        while True:
+            message_dict_list = self.consume(n=consume_num_messages_int, **kwargs)
+            if not message_dict_list:
+                break
+            #
+            for message_dict in message_dict_list:
+                if break_function(acc, message_dict):
+                    break_bool = True
+                    break
+                acc = foldl_function(acc, message_dict)
+            #
+            message_counter_int += len(message_dict_list)
+            #
+            if break_bool:
+                break
+            #
+            if verbose_int > 0 and message_counter_int % self.kash_config_dict["progress.num.messages"] == 0:
+                print(f"Consumed: {message_counter_int}")
+            if n_int != ALL_MESSAGES:
+                if message_counter_int >= n_int:
+                    break
+        #
+        return (acc, message_counter_int)
 
     #
 
@@ -99,8 +168,8 @@ class ClusterConsumer():
 
     #
 
-    def consume(self, n=1):
-        n_int = n
+    def consume(self, **kwargs):
+        n_int = kwargs["n"] if "n" in kwargs else 1
         #
         message_list = self.consumer.consume(n_int, self.kash_config_dict["consume.timeout"])
         #
@@ -145,7 +214,7 @@ class ClusterConsumer():
 
     #
 
-    def message_to_message_dict(self, message, key_type="str", value_type="str"):
+    def message_to_message_dict(self, message, key_type, value_type):
         key_type_str = key_type
         value_type_str = value_type
         #

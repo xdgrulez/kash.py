@@ -1,3 +1,7 @@
+* next talk: keywords on slides, no (almost) full sentences
+* screenshots: use Jupyter Notebook instead of Terminal
+* 
+
 * intra-cluster map: support source/target-key/value types + schemas
 * Pretty print JSON etc. (as default output?)
 * kash.py layering:

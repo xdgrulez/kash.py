@@ -1,5 +1,6 @@
 from kashpy.schemaregistry import SchemaRegistry
 from kashpy.storage import Storage
+from kashpy.helpers import is_interactive
 
 #
 
@@ -48,6 +49,11 @@ class Kafka(Storage):
         else:
             self.consume_timeout(float(self.kash_config_dict["consume.timeout"]))
         #
+        if "consume.num.messages" not in self.kash_config_dict:
+            self.consume_num_messages(1)
+        else:
+            self.consume_num_messages(int(self.kash_config_dict["consume.num.messages"]))
+        #
         if "enable.auto.commit" not in self.kash_config_dict:
             self.enable_auto_commit(True)
         else:
@@ -79,6 +85,12 @@ class Kafka(Storage):
             self.progress_num_messages(1000)
         else:
             self.progress_num_messages(int(self.kash_config_dict["progress.num.messages"]))
+        #
+        if "verbose" not in self.kash_config_dict:
+            verbose_int = 1 if is_interactive() else 0
+            self.verbose(verbose_int)
+        else:
+            self.verbose(int(self.kash_config_dict["verbose"]))
         #
         # restproxy config kash section
         #
@@ -128,6 +140,9 @@ class Kafka(Storage):
     def consume_timeout(self, new_value=None): # float
         return self.get_set_config("consume.timeout", new_value)
 
+    def consume_num_messages(self, new_value=None): # int
+        return self.get_set_config("consume.num.messages", new_value)
+
     def enable_auto_commit(self, new_value=None): # bool
         return self.get_set_config("enable.auto.commit", new_value)
 
@@ -147,6 +162,10 @@ class Kafka(Storage):
 
     def progress_num_messages(self, new_value=None): # int
         return self.get_set_config("progress.num.messages", new_value)
+    
+    def verbose(self, new_value=None): # int
+        return self.get_set_config("verbose", new_value)
+
     #
 
     def auto_commit_enable(self, new_value=None): # bool
@@ -290,16 +309,15 @@ class Kafka(Storage):
         return self.admin.delete_acl(restype, name, resource_pattern_type, principal, host, operation, permission_type)
 
     # Open
-
-    def openr(self, topics, group=None, offsets=None, config={}, key_type="str", value_type="str"):
-        consumer = self.get_consumer(topics, group, offsets, config, key_type, value_type)
+    def openr(self, topics, **kwargs):
+        consumer = self.get_consumer(topics, **kwargs)
         #
         print(f"{consumer.topic_str_list}, {consumer.group_str}")
         #
         return consumer
         
-    def openw(self, topic, key_type="str", value_type="str", key_schema=None, value_schema=None, on_delivery=None)
-        producer = self.get_producer(topic, key_type, value_type, key_schema, value_schema, on_delivery)
+    def openw(self, topic, **kwargs):
+        producer = self.get_producer(topic, **kwargs)
         #
         print(producer.topic_str)
         #

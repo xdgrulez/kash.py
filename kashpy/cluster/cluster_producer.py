@@ -22,73 +22,59 @@ RD_KAFKA_PARTITION_UA = -1
 #
 
 class ClusterProducer:
-    def __init__(self, kafka_config_dict, schema_registry_config_dict, kash_config_dict, config_str, topics, key_type="str", value_type="str", key_schema=None, value_schema=None, on_delivery=None):
+    def __init__(self, kafka_config_dict, schema_registry_config_dict, kash_config_dict, config_str, topic, **kwargs):
         self.kafka_config_dict = kafka_config_dict
         self.schema_registry_config_dict = schema_registry_config_dict
         self.kash_config_dict = kash_config_dict
-        #
         self.config_str = config_str
         #
-        self.topic_str_list = topics if isinstance(topics, list) else [topics]
+        self.topic_str = topic
         #
-        if isinstance(key_type, dict):
-            self.key_type_dict = key_type
-        else:
-            self.key_type_dict = {topic_str: key_type for topic_str in self.topic_str_list}
+        self.key_type_str = kwargs["key_type"] if "key_type" in kwargs else "str"
+        self.value_type_str = kwargs["value_type"] if "value_type" in kwargs else "str"
         #
-        if isinstance(value_type, dict):
-            self.value_type_dict = value_type
-        else:
-            self.value_type_dict = {topic_str: value_type for topic_str in self.topic_str_list}
+        self.key_schema_str = kwargs["key_schema"] if "key_schema" in kwargs else None
+        self.value_schema_str = kwargs["value_schema"] if "value_schema" in kwargs else None
         #
-        if isinstance(key_schema, dict):
-            self.key_schema_dict = key_schema
-        else:
-            self.key_schema_dict = {topic_str: key_schema for topic_str in self.topic_str_list}
+        self.on_delivery_function = kwargs["on_delivery"] if "on_delivery" in kwargs else None
         #
-        if isinstance(value_schema, dict):
-            self.value_schema_dict = value_schema
-        else:
-            self.value_schema_dict = {topic_str: value_schema for topic_str in self.topic_str_list}
-        #
-        self.on_delivery_function = on_delivery
+        self.produced_counter_int = 0
         #
         self.schema_registry = SchemaRegistry(schema_registry_config_dict, kash_config_dict)
         #
         self.producer = Producer(self.kafka_config_dict)
-        #
-        self.topic_str_counter_int_dict = {topic_str: 0 for topic_str in self.topic_str_list}
 
     def __del__(self):
         self.flush()
 
     #
 
-    def write(self, value, key=None, partition=RD_KAFKA_PARTITION_UA, timestamp=CURRENT_TIME, headers=None):
-        return self.produce(value, key, partition, timestamp, headers)
+    def write(self, value, **kwargs):
+        return self.produce(value, **kwargs)
 
     #
 
     def close(self):
         self.flush()
-        return self.topic_str_list
+        return self.topic_str
 
     #
 
     def flush(self):
         self.producer.flush(self.kash_config_dict["flush.timeout"])
         #
-        return self.topic_str_list
+        return self.topic_str
 
-    def produce(self, value, key=None, partition=RD_KAFKA_PARTITION_UA, timestamp=CURRENT_TIME, headers=None):
-        partition_int = partition
-        timestamp_int = timestamp
-        headers_dict_or_list = headers
+    def produce(self, value, **kwargs):
+        key = kwargs["key"] if "key" in kwargs else None
+        partition_int = kwargs["partition"] if "partition" in kwargs else RD_KAFKA_PARTITION_UA
+        timestamp_int = kwargs["timestamp"] if "timestamp" in kwargs else CURRENT_TIME
+        headers_dict_or_list = kwargs["headers"] if "headers" in kwargs else None
         #
 
-        def serialize(topic_str, key_bool, normalize_schemas=False):
-            type_str = self.key_type_dict[topic_str] if key_bool else self.value_type_dict[topic_str]
-            schema_str = self.key_schema_dict[topic_str] if key_bool else self.value_schema_dict[topic_str]
+        def serialize(key_bool, normalize_schemas=False):
+            type_str = self.key_type_str if key_bool else self.value_type_str
+            schema_str = self.key_schema_str if key_bool else self.value_schema_str
             payload = key if key_bool else value
             messageField = MessageField.KEY if key_bool else MessageField.VALUE
             #
@@ -106,20 +92,20 @@ class ClusterProducer:
                 else:
                     payload_str_or_bytes = payload
             elif type_str.lower() in ["pb", "protobuf"]:
-                generalizedProtocolMessageType = self.schema_str_to_generalizedProtocolMessageType(schema_str, topic_str, key_bool, normalize_schemas)
+                generalizedProtocolMessageType = self.schema_str_to_generalizedProtocolMessageType(schema_str, self.topic_str, key_bool, normalize_schemas)
                 protobufSerializer = ProtobufSerializer(generalizedProtocolMessageType, self.schemaRegistry.schemaRegistryClient, {"use.deprecated.format": False})
                 payload_dict = payload_to_payload_dict(payload)
                 protobuf_message = generalizedProtocolMessageType()
                 ParseDict(payload_dict, protobuf_message)
-                payload_str_or_bytes = protobufSerializer(protobuf_message, SerializationContext(topic_str, messageField))
+                payload_str_or_bytes = protobufSerializer(protobuf_message, SerializationContext(self.topic_str, messageField))
             elif type_str.lower() == "avro":
                 avroSerializer = AvroSerializer(self.schemaRegistryClient.schemaRegistryClient, schema_str)
                 payload_dict = payload_to_payload_dict(payload)
-                payload_str_or_bytes = avroSerializer(payload_dict, SerializationContext(topic_str, messageField))
+                payload_str_or_bytes = avroSerializer(payload_dict, SerializationContext(self.topic_str, messageField))
             elif type_str.lower() == "jsonschema":
                 jSONSerializer = JSONSerializer(schema_str, self.schemaRegistryClient.schemaRegistryClient)
                 payload_dict = payload_to_payload_dict(payload)
-                payload_str_or_bytes = jSONSerializer(payload_dict, SerializationContext(topic_str, messageField))
+                payload_str_or_bytes = jSONSerializer(payload_dict, SerializationContext(self.topic_str, messageField))
             else:
                 payload_str_or_bytes = payload
             return payload_str_or_bytes
@@ -127,10 +113,9 @@ class ClusterProducer:
         key_str_or_bytes = serialize(key_bool=True)
         value_str_or_bytes = serialize(key_bool=False)
         #
-        for topic_str in self.topic_str_list:
-            self.producer.produce(topic_str, value_str_or_bytes, key_str_or_bytes, partition=partition_int, timestamp=timestamp_int, headers=headers_dict_or_list, on_delivery=self.on_delivery_function)
-            #
-            self.topic_str_counter_int_dict[topic_str] += 1
+        self.producer.produce(self.topic_str, value_str_or_bytes, key_str_or_bytes, partition=partition_int, timestamp=timestamp_int, headers=headers_dict_or_list, on_delivery=self.on_delivery_function)
+        #
+        self.produced_counter_int += 1
         #
         return key_str_or_bytes, value_str_or_bytes
 

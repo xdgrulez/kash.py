@@ -9,6 +9,7 @@ kash:
   flush.timeout: -1.0
   retention.ms: -1
   consume.timeout: 1.0
+  consume.num.messages: 1 
   enable.auto.commit: true
   session.timeout.ms: 10000
   block.num.retries.int: 50

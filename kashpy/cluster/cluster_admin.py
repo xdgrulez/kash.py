@@ -4,9 +4,7 @@ import time
 from confluent_kafka import Consumer, TopicPartition
 from confluent_kafka.admin import AclBinding, AclBindingFilter, AclOperation, AclPermissionType, AdminClient, ConfigResource, _ConsumerGroupState, _ConsumerGroupTopicPartitions, NewPartitions, NewTopic, ResourcePatternType, ResourceType
 
-from kashpy.kafka_admin import KafkaAdmin
-
-class ClusterAdmin(KafkaAdmin):
+class ClusterAdmin():
     def __init__(self, kafka_config_dict, kash_config_dict):
         self.kafka_config_dict = kafka_config_dict
         self.kash_config_dict = kash_config_dict
@@ -356,7 +354,7 @@ class ClusterAdmin(KafkaAdmin):
         #
         config_dict = self.kafka_config_dict
         config_dict["group.id"] = "dummy_group_id"
-        consumer = confluent_kafka.Consumer(config_dict)
+        consumer = Consumer(config_dict)
         #
         topic_str_list = self.list_topics(pattern_str_or_str_list)
         topic_str_partition_int_offsets_tuple_dict_dict = {}

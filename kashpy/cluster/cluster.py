@@ -17,15 +17,14 @@ class Cluster(Kafka):
         return admin
 
     #
-
-    def get_consumer(self, topics, group, offsets, config, key_type, value_type):
-        consumer = ClusterConsumer(self.kafka_config_dict, self.schema_registry_config_dict, self.kash_config_dict, topics, group, offsets, config, key_type, value_type)
+    def get_consumer(self, topics, **kwargs):
+        consumer = ClusterConsumer(self.kafka_config_dict, self.schema_registry_config_dict, self.kash_config_dict, topics, **kwargs)
         #
         return consumer
 
     #
 
-    def get_producer(self, topics, key_type, value_type, key_schema, value_schema, on_delivery):
-        producer = ClusterProducer(self.kafka_config_dict, self.schema_registry_config_dict, self.kash_config_dict, self.config_str, topics, key_type, value_type, key_schema, value_schema, on_delivery)
+    def get_producer(self, topic, **kwargs):
+        producer = ClusterProducer(self.kafka_config_dict, self.schema_registry_config_dict, self.kash_config_dict, self.config_str, topic, **kwargs)
         #
         return producer

@@ -7,16 +7,15 @@ ALL_MESSAGES = -1
 #
 
 class LocalReader:
-    def __init__(self, kash_config_dict, verbose_int, file, key_type="str", value_type="str", key_value_separator=None, message_separator=b"\n"):
+    def __init__(self, kash_config_dict, file, **kwargs):
         self.kash_config_dict = kash_config_dict
-        self.verbose_int = verbose_int
         #
         self.file_str = file
         #
-        self.key_type_str = key_type
-        self.value_type_str = value_type
-        self.key_value_separator_bytes = key_value_separator
-        self.message_separator_bytes = message_separator
+        self.key_type_str = kwargs["key_type"] if "key_type" in kwargs else "str"
+        self.value_type_str = kwargs["value_type"] if "value_type" in kwargs else "str"
+        self.key_value_separator_bytes = kwargs["key_value_separator"] if "key_value_separator" in kwargs else None
+        self.message_separator_bytes = kwargs["message_separator"] if "message_separator" in kwargs else b"\n"
         #
         self.bufferedReader = open(file, "rb")
 
@@ -42,14 +41,17 @@ class LocalReader:
 
     #
 
-    def foldl(self, foldl_function, initial_acc, n=ALL_MESSAGES, break_function=lambda _, _1: False):
+    def foldl(self, foldl_function, initial_acc, n=ALL_MESSAGES, **kwargs):
         n_int = n
+        #
+        break_function = kwargs["break_function"] if "break_function" in kwargs else lambda _, _1: False
         #
         buf_bytes = b""
         message_counter_int = 0
         break_bool = False
         buffer_size_int = self.kash_config_dict["read.buffer.size"]
         progress_num_messages_int = self.kash_config_dict["progress.num.messages"]
+        verbose_int = self.kash_config_dict["verbose"]
         acc = initial_acc
         #
         while True:
@@ -72,7 +74,7 @@ class LocalReader:
                     acc = foldl_function(acc, message_dict)
                     #
                     message_counter_int += 1
-                    if self.verbose_int > 0 and message_counter_int % progress_num_messages_int == 0:
+                    if verbose_int > 0 and message_counter_int % progress_num_messages_int == 0:
                         print(f"Read: {message_counter_int}")
                 break
             buf_bytes += newbuf_bytes
@@ -91,7 +93,7 @@ class LocalReader:
                 acc = foldl_function(acc, message_dict)
                 #
                 message_counter_int += 1
-                if self.verbose_int > 0 and message_counter_int % progress_num_messages_int == 0:
+                if verbose_int > 0 and message_counter_int % progress_num_messages_int == 0:
                     print(f"Read: {message_counter_int}")
                 #
                 if n_int != ALL_MESSAGES:
@@ -104,7 +106,7 @@ class LocalReader:
             #
             buf_bytes = message_bytes_list[-1]
         #
-        return acc
+        return (acc, message_counter_int)
 
 #
 

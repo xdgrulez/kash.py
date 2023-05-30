@@ -1,11 +1,10 @@
 from fnmatch import fnmatch
 
-from kashpy.kafka_admin import KafkaAdmin
 from kashpy.helpers import get, delete, post, get_auth_str_tuple
 
 #
 
-class RestProxyAdmin(KafkaAdmin):
+class RestProxyAdmin:
     def __init__(self, rest_proxy_config_dict, kash_config_dict, cluster_id_str):
         self.rest_proxy_config_dict = rest_proxy_config_dict
         self.kash_config_dict = kash_config_dict
