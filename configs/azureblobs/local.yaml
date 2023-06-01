@@ -1,0 +1,3 @@
+kash:
+  progress.num.lines: 1000
+  read.buffer.size: 10000

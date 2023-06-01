@@ -1,3 +1,5 @@
+import re
+
 from kashpy.functional import Functional
 
 # Constants
@@ -79,3 +81,29 @@ class Shell(Functional):
         def diff_function(message_dict1, message_dict2):
             return message_dict1["key"] != message_dict2["key"] or message_dict1["value"] != message_dict2["value"]
         return self.diff_fun(resource1, storage2, resource2, diff_function, n=n)
+
+    #
+
+    def grep_fun(self, topic_str, match_function, n=ALL_MESSAGES, **kwargs):
+        def flatmap_function(message_dict):
+            if match_function(message_dict):
+                if self.verbose_int > 0:
+                    partition_int = message_dict["partition"]
+                    offset_int = message_dict["offset"]
+                    print(f"Found matching message on partition {partition_int}, offset {offset_int}.")
+                return [message_dict]
+            else:
+                return []
+        #
+        (matching_message_dict_list, message_counter_int) = self.flatmap(topic_str, flatmap_function, n=n, **kwargs)
+        #
+        return matching_message_dict_list, len(matching_message_dict_list), message_counter_int
+
+    def grep(self, topic_str, re_pattern_str, n=ALL_MESSAGES):
+        def match_function(message_dict):
+            pattern = re.compile(re_pattern_str)
+            key_str = str(message_dict["key"])
+            value_str = str(message_dict["value"])
+            return pattern.match(key_str) is not None or pattern.match(value_str) is not None
+        #
+        return self.grep_fun(topic_str, match_function, n=n)

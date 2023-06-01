@@ -1,6 +1,6 @@
 * next talk: keywords on slides, no (almost) full sentences
 * screenshots: use Jupyter Notebook instead of Terminal
-* 
+
 
 * intra-cluster map: support source/target-key/value types + schemas
 * Pretty print JSON etc. (as default output?)
@@ -10,7 +10,7 @@
   - functional layer
   - table layer?
   - versioning layer?
-  - pandas?
+  - pandas/Bytewax/River?
 * all arguments (also obligatory ones) without "hungarian" type annotations
 * tests: create consumer groups explicitly and clean them up
 * schema registry functionality?
