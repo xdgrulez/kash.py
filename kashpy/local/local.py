@@ -1,4 +1,5 @@
 from kashpy.filesystem import FileSystem
+from kashpy.local.local_admin import LocalAdmin
 from kashpy.local.local_reader import LocalReader
 from kashpy.local.local_writer import LocalWriter
 
@@ -8,6 +9,13 @@ class Local(FileSystem):
     def __init__(self, config_str):
         super().__init__("locals", config_str, [], ["kash"])
     
+    #
+
+    def get_admin(self):
+        reader = LocalAdmin(self.kash_config_dict)
+        #
+        return reader
+
     #
 
     def get_reader(self, file, **kwargs):

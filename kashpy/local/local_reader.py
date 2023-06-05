@@ -112,7 +112,7 @@ class LocalReader:
 
 def split_key_value(message_bytes, key_value_separator_bytes):
     key_bytes = None
-    value_bytes = None
+    value_bytes = b""
     #
     if message_bytes:
         if key_value_separator_bytes is not None:
