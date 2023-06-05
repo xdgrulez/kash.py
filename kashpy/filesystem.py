@@ -27,6 +27,8 @@ class FileSystem(Storage):
             self.verbose(verbose_int)
         else:
             self.verbose(int(self.kash_config_dict["verbose"]))
+        #
+        self.admin = self.get_admin()
 
     #
 
@@ -44,6 +46,30 @@ class FileSystem(Storage):
     
     def verbose(self, new_value=None): # int
         return self.get_set_config("verbose", new_value)
+
+    #
+
+    def ls(self, pattern=None):
+        return self.list(pattern, size=False)
+    
+    def l(self, pattern=None):
+        return self.list(pattern, size=True)
+
+    ll = l
+
+    def list(self, pattern, size):
+        return self.admin.list(pattern, size)
+
+    def exists(self, file):
+        file_str = file
+        #
+        return self.list(file_str) != []
+    #
+
+    def delete(self, pattern):
+        return self.admin.delete(pattern)
+
+    rm = delete
 
     # Open
     def openr(self, file, **kwargs):
