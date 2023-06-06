@@ -10,6 +10,21 @@ class FileSystem(Storage):
         self.dir_str = dir_str
         self.config_str = config_str
         #
+        if "azure_blob" in mandatory_section_str_list:
+            self.azure_blob_config_dict = self.config_dict["azure_blob"]
+        else:
+            self.azure_blob_config_dict = None
+        #
+        if "local" in mandatory_section_str_list:
+            self.local_config_dict = self.config_dict["local"]
+        else:
+            self.local_config_dict = None
+        #
+        if "s3" in mandatory_section_str_list:
+            self.s3_config_dict = self.config_dict["s3"]
+        else:
+            self.s3_config_dict = None
+        #
         self.kash_config_dict = self.config_dict["kash"]
         #
         if "progress.num.messages" not in self.kash_config_dict:

@@ -9,7 +9,8 @@ ALL_MESSAGES = -1
 #
 
 class S3Reader:
-    def __init__(self, kash_config_dict, file, **kwargs):
+    def __init__(self, s3_config_dict, kash_config_dict, file, **kwargs):
+        self.s3_config_dict = s3_config_dict
         self.kash_config_dict = kash_config_dict
         #
         self.file_str = file
@@ -19,7 +20,7 @@ class S3Reader:
         self.key_value_separator_bytes = kwargs["key_value_separator"] if "key_value_separator" in kwargs else None
         self.message_separator_bytes = kwargs["message_separator"] if "message_separator" in kwargs else b"\n"
         #
-        self.minio = Minio("localhost:9000", access_key="admin", secret_key="password", secure=False)
+        self.minio = Minio(self.s3_config_dict["endpoint"], access_key=self.s3_config_dict["access.key"], secret_key=self.s3_config_dict["secret.key"], secure=False)
 
     #
 
@@ -52,13 +53,13 @@ class S3Reader:
         acc = initial_acc
         offset_int = 0
         #
-        object = self.minio.stat_object("minio-test-bucket", "README.md")
+        object = self.minio.stat_object(self.s3_config_dict["bucket.name"], self.file_str)
         size_int = object.size
         while True:
             if offset_int > size_int:
                 newbuf_bytes = None
             else:
-                response = self.minio.get_object("minio-test-bucket", "README.md", offset=offset_int, length=buffer_size_int)
+                response = self.minio.get_object(self.s3_config_dict["bucket.name"], self.file_str, offset=offset_int, length=buffer_size_int)
                 newbuf_bytes = response.data
                 offset_int += buffer_size_int
             if newbuf_bytes is None:

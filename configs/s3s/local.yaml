@@ -1,3 +1,9 @@
+s3:
+  endpoint: "localhost:9000"
+  access.key: "admin"
+  secret.key: "password"
+  bucket.name: "minio-test-bucket"
+
 kash:
   progress.num.lines: 1000
   read.buffer.size: 10000

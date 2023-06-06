@@ -9,7 +9,8 @@ ALL_MESSAGES = -1
 #
 
 class AzureBlobReader:
-    def __init__(self, kash_config_dict, file, **kwargs):
+    def __init__(self, azure_blob_config_dict, kash_config_dict, file, **kwargs):
+        self.azure_blob_config_dict = azure_blob_config_dict
         self.kash_config_dict = kash_config_dict
         #
         self.file_str = file
@@ -19,7 +20,7 @@ class AzureBlobReader:
         self.key_value_separator_bytes = kwargs["key_value_separator"] if "key_value_separator" in kwargs else None
         self.message_separator_bytes = kwargs["message_separator"] if "message_separator" in kwargs else b"\n"
         #
-        self.blobClient = BlobClient.from_connection_string(conn_str="DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://127.0.0.1:10000/devstoreaccount1;", container_name="test", blob_name=self.file_str)
+        self.blobClient = BlobClient.from_connection_string(conn_str=self.azure_blob_config_dict["connection.string"], container_name=self.azure_blob_config_dict["container.name"], blob_name=self.file_str)
 
     #
 

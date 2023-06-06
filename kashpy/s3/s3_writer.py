@@ -4,7 +4,8 @@ import tempfile
 from minio import Minio
 
 class S3Writer:
-    def __init__(self, kash_config_dict, file, **kwargs):
+    def __init__(self, s3_config_dict, kash_config_dict, file, **kwargs):
+        self.s3_config_dict = s3_config_dict
         self.kash_config_dict = kash_config_dict
         #
         self.file_str = file
@@ -20,7 +21,7 @@ class S3Writer:
         self.temp_file_str = f"{temp_path_str}/{self.file_str}"
         self.bufferedWriter = open(self.temp_file_str, "wb")
         #
-        self.minio = Minio("localhost:9000", access_key="admin", secret_key="password", secure=False)
+        self.minio = Minio(self.s3_config_dict["endpoint"], access_key=self.s3_config_dict["access.key"], secret_key=self.s3_config_dict["secret.key"], secure=False)
 
     def __del__(self):
         self.close()
@@ -34,7 +35,7 @@ class S3Writer:
     #
 
     def flush(self):
-        self.minio.fput_object("minio-test-bucket", self.file_str, self.temp_file_str)
+        self.minio.fput_object(self.s3_config_dict["bucket.name"], self.file_str, self.temp_file_str)
         #
         return self.file_str
 

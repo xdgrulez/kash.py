@@ -5,11 +5,12 @@ from azure.storage.blob import BlobServiceClient
 #
 
 class AzureBlobAdmin:
-    def __init__(self, kash_config_dict):
+    def __init__(self, azure_blob_config_dict, kash_config_dict):
+        self.azure_blob_config_dict = azure_blob_config_dict
         self.kash_config_dict = kash_config_dict
         #
-        blobServiceClient = BlobServiceClient.from_connection_string("DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://127.0.0.1:10000/devstoreaccount1;")
-        self.containerClient = blobServiceClient.get_container_client("test")
+        blobServiceClient = BlobServiceClient.from_connection_string(self.azure_blob_config_dict["connection.string"])
+        self.containerClient = blobServiceClient.get_container_client(self.azure_blob_config_dict["container.name"])
 
     #
 

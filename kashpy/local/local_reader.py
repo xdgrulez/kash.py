@@ -7,7 +7,8 @@ ALL_MESSAGES = -1
 #
 
 class LocalReader:
-    def __init__(self, kash_config_dict, file, **kwargs):
+    def __init__(self, local_config_dict, kash_config_dict, file, **kwargs):
+        self.local_config_dict = local_config_dict
         self.kash_config_dict = kash_config_dict
         #
         self.file_str = file
