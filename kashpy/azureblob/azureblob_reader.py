@@ -78,7 +78,7 @@ class AzureBlobReader:
             #
 
             if offset_int > size_int:
-                batch_bytes = None
+                batch_bytes = b""
             else:
                 storageStreamDownloader = self.blobClient.download_blob(offset=offset_int, length=buffer_size_int)
                 batch_bytes = storageStreamDownloader.read()

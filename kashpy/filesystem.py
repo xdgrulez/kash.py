@@ -33,10 +33,10 @@ class FileSystem(Storage):
         if "s3" in mandatory_section_str_list:
             self.s3_config_dict = self.config_dict["s3"]
             #
-            if "bucket.name" not in self.azure_blob_config_dict:
+            if "bucket.name" not in self.s3_config_dict:
                 self.bucket_name("minio-test-bucket")
             else:
-                self.bucket_name(str(self.azure_blob_config_dict["bucket.name"]))
+                self.bucket_name(str(self.s3_config_dict["bucket.name"]))
         else:
             self.s3_config_dict = None
         #
@@ -82,7 +82,7 @@ class FileSystem(Storage):
     # s3
     
     def bucket_name(self, new_value=None): # str
-        return self.get_set_config("bucket.name", new_value, dict=self.local_config_dict)
+        return self.get_set_config("bucket.name", new_value, dict=self.s3_config_dict)
 
     # kash
 
@@ -123,13 +123,9 @@ class FileSystem(Storage):
     def openr(self, file, **kwargs):
         reader = self.get_reader(file, **kwargs)
         #
-        print(file)
-        #
         return reader
     
     def openw(self, file, **kwargs):
         writer = self.get_writer(file, **kwargs)
-        #
-        print(file)
         #
         return writer

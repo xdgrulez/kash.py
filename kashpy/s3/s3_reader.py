@@ -78,7 +78,7 @@ class S3Reader:
             #
 
             if offset_int > size_int:
-                batch_bytes = None
+                batch_bytes = b""
             else:
                 response = self.minio.get_object(self.s3_config_dict["bucket.name"], self.file_str, offset=offset_int, length=buffer_size_int)
                 batch_bytes = response.data

@@ -312,13 +312,9 @@ class Kafka(Storage):
     def openr(self, topics, **kwargs):
         consumer = self.get_consumer(topics, **kwargs)
         #
-        print(f"{consumer.topic_str_list}, {consumer.group_str}")
-        #
         return consumer
         
     def openw(self, topic, **kwargs):
         producer = self.get_producer(topic, **kwargs)
-        #
-        print(producer.topic_str)
         #
         return producer
