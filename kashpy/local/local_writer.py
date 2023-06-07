@@ -1,3 +1,6 @@
+from kashpy.helpers import payload_to_bytes
+
+
 class LocalWriter:
     def __init__(self, local_config_dict, kash_config_dict, file, **kwargs):
         self.local_config_dict = local_config_dict
@@ -26,8 +29,8 @@ class LocalWriter:
     #
 
     def write(self, value, key=None):
-        key_bytes = key_or_value_to_bytes(key)
-        value_bytes = key_or_value_to_bytes(value)
+        key_bytes = payload_to_bytes(key)
+        value_bytes = payload_to_bytes(value)
         #
         if key_bytes is None:
             message_bytes = value_bytes + self.message_separator_bytes
@@ -35,32 +38,3 @@ class LocalWriter:
             message_bytes = key_bytes + self.key_value_separator_bytes + value_bytes + self.message_separator_bytes
         #
         self.bufferedWriter.write(message_bytes)
-
-#
-
-def str_to_bytes(str):
-    if str is None:
-        bytes = None
-    else:
-        bytes = str.encode("utf-8")
-    #
-    return bytes
-
-
-def dict_to_bytes(dict):
-    if dict is None:
-        bytes = None
-    else:
-        bytes = str(dict).encode("utf-8")
-    #
-    return bytes
-
-def key_or_value_to_bytes(key_or_value, type_str):
-    if type_str == "bytes":
-        bytes = key_or_value
-    elif type_str == "str":
-        bytes = str_to_bytes(key_or_value)
-    elif type_str == "json" or type_str == "dict":
-        bytes = dict_to_bytes(key_or_value)
-    #
-    return bytes

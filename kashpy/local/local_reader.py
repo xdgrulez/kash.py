@@ -1,4 +1,4 @@
-from json import loads
+from kashpy.helpers import split_key_value, bytes_to_payload
 
 # Constants
 
@@ -47,7 +47,7 @@ class LocalReader:
         #
         break_function = kwargs["break_function"] if "break_function" in kwargs else lambda _, _1: False
         #
-        buf_bytes = b""
+        buffer_bytes = b""
         message_counter_int = 0
         break_bool = False
         buffer_size_int = self.kash_config_dict["read.buffer.size"]
@@ -56,46 +56,39 @@ class LocalReader:
         acc = initial_acc
         #
         while True:
-            newbuf_bytes = self.bufferedReader.read(buffer_size_int)
-            if not newbuf_bytes:
-                if buf_bytes:
-                    last_message_bytes = buf_bytes
-                    #
-                    key_bytes_value_bytes_tuple = split_key_value(last_message_bytes, self.key_value_separator_bytes)
-                    #
-                    key = bytes_to_key_or_value(key_bytes_value_bytes_tuple[0], self.key_type_str)
-                    value = bytes_to_key_or_value(key_bytes_value_bytes_tuple[1], self.value_type_str)
-                    #
-                    message_dict = {"headers": None, "partition": 0, "offset": message_counter_int, "timestamp": None, "key": key, "value": value}
-                    #
-                    if break_function(acc, message_dict):
-                        break_bool = True
-                        break
-                    #
-                    acc = foldl_function(acc, message_dict)
-                    #
-                    message_counter_int += 1
-                    if verbose_int > 0 and message_counter_int % progress_num_messages_int == 0:
-                        print(f"Read: {message_counter_int}")
-                break
-            buf_bytes += newbuf_bytes
-            message_bytes_list = buf_bytes.split(self.message_separator_bytes)
-            for message_bytes in message_bytes_list[:-1]:
-                key_bytes_value_bytes_tuple = split_key_value(message_bytes, self.key_value_separator_bytes)
+            def acc_bytes_to_acc(acc, bytes, break_bool, message_counter_int):
+                key_bytes_value_bytes_tuple = split_key_value(bytes, self.key_value_separator_bytes)
                 #
-                key = bytes_to_key_or_value(key_bytes_value_bytes_tuple[0], self.key_type_str)
-                value = bytes_to_key_or_value(key_bytes_value_bytes_tuple[1], self.value_type_str)
+                key = bytes_to_payload(key_bytes_value_bytes_tuple[0], self.key_type_str)
+                value = bytes_to_payload(key_bytes_value_bytes_tuple[1], self.value_type_str)
+                #
                 message_dict = {"headers": None, "partition": 0, "offset": message_counter_int, "timestamp": None, "key": key, "value": value}
                 #
                 if break_function(acc, message_dict):
                     break_bool = True
-                    break
+                    return (acc, break_bool)
                 #
                 acc = foldl_function(acc, message_dict)
                 #
                 message_counter_int += 1
                 if verbose_int > 0 and message_counter_int % progress_num_messages_int == 0:
                     print(f"Read: {message_counter_int}")
+                #
+                return (acc, break_bool, message_counter_int)
+            #
+
+            batch_bytes = self.bufferedReader.read(buffer_size_int)
+            if batch_bytes == b"":
+                if buffer_bytes != b"":
+                    (acc, break_bool, message_counter_int) = acc_bytes_to_acc(acc, buffer_bytes, break_bool, message_counter_int)
+                break
+            #
+            buffer_bytes += batch_bytes
+            message_bytes_list = buffer_bytes.split(self.message_separator_bytes)
+            for message_bytes in message_bytes_list[:-1]:
+                (acc, break_bool, message_counter_int) = acc_bytes_to_acc(acc, message_bytes, break_bool, message_counter_int)
+                if break_bool:
+                    break
                 #
                 if n_int != ALL_MESSAGES:
                     if message_counter_int >= n_int:
@@ -105,52 +98,6 @@ class LocalReader:
             if break_bool:
                 break
             #
-            buf_bytes = message_bytes_list[-1]
+            buffer_bytes = message_bytes_list[-1]
         #
         return (acc, message_counter_int)
-
-#
-
-def split_key_value(message_bytes, key_value_separator_bytes):
-    key_bytes = None
-    value_bytes = b""
-    #
-    if message_bytes:
-        if key_value_separator_bytes is not None:
-            split_bytes_list = message_bytes.split(key_value_separator_bytes)
-            if len(split_bytes_list) == 2:
-                key_bytes = split_bytes_list[0]
-                value_bytes = split_bytes_list[1]
-            else:
-                value_bytes = message_bytes
-        else:
-            value_bytes = message_bytes
-    #
-    return key_bytes, value_bytes 
-
-
-def bytes_to_str(bytes):
-    if bytes is None:
-        str = None
-    else:
-        str = bytes.decode("utf-8")
-    #
-    return str
-
-def bytes_to_dict(bytes):
-    if bytes is None:
-        dict = None
-    else:
-        dict = loads(bytes.decode("utf-8"))
-    #
-    return dict
-
-def bytes_to_key_or_value(key_or_value_bytes, type_str):
-    if type_str == "bytes":
-        key_or_value = key_or_value_bytes
-    elif type_str == "str":
-        key_or_value = bytes_to_str(key_or_value_bytes)
-    elif type_str == "json" or type_str == "dict":
-        key_or_value = bytes_to_dict(key_or_value_bytes)
-    #
-    return key_or_value
