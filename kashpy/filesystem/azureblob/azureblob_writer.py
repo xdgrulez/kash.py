@@ -3,7 +3,7 @@ import tempfile
 
 from azure.storage.blob import BlobClient
 
-from kashpy.filesystem_writer import FileSystemWriter
+from kashpy.filesystem.filesystem_writer import FileSystemWriter
 
 
 class AzureBlobWriter(FileSystemWriter):

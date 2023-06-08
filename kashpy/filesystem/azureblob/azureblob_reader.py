@@ -1,6 +1,6 @@
 from azure.storage.blob import BlobClient
 
-from kashpy.filesystem_reader import FileSystemReader
+from kashpy.filesystem.filesystem_reader import FileSystemReader
 
 # Constants
 

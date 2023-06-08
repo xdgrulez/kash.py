@@ -1,4 +1,4 @@
-from kashpy.filesystem_reader import FileSystemReader
+from kashpy.filesystem.filesystem_reader import FileSystemReader
 
 from minio import Minio
 

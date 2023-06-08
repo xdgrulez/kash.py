@@ -12,7 +12,7 @@ from confluent_kafka.schema_registry.json_schema import JSONSerializer
 from confluent_kafka.schema_registry.protobuf import ProtobufSerializer
 from confluent_kafka.serialization import MessageField, SerializationContext
 
-from kashpy.schemaregistry import SchemaRegistry
+from kashpy.kafka.schemaregistry import SchemaRegistry
 
 # Constants
 

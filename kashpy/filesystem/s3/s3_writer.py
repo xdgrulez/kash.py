@@ -3,7 +3,7 @@ import tempfile
 
 from minio import Minio
 
-from kashpy.filesystem_writer import FileSystemWriter
+from kashpy.filesystem.filesystem_writer import FileSystemWriter
 
 class S3Writer(FileSystemWriter):
     def __init__(self, s3_config_dict, kash_config_dict, file, **kwargs):

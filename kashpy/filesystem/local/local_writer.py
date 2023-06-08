@@ -1,4 +1,4 @@
-from kashpy.filesystem_writer import FileSystemWriter
+from kashpy.filesystem.filesystem_writer import FileSystemWriter
 
 
 class LocalWriter(FileSystemWriter):

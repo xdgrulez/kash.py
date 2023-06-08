@@ -11,7 +11,7 @@ import sys
 import tempfile
 
 from kashpy.helpers import get_millis
-from kashpy.schemaregistry import SchemaRegistry
+from kashpy.kafka.schemaregistry import SchemaRegistry
 
 # Constants
 

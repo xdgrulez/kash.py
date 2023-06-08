@@ -1,4 +1,4 @@
-from kashpy.schemaregistry import SchemaRegistry
+from kashpy.kafka.schemaregistry import SchemaRegistry
 from kashpy.storage import Storage
 from kashpy.helpers import is_interactive
 
