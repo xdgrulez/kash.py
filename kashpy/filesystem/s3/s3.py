@@ -1,7 +1,7 @@
-from kashpy.filesystem import FileSystem
-from kashpy.s3.s3_admin import S3Admin
-from kashpy.s3.s3_reader import S3Reader
-from kashpy.s3.s3_writer import S3Writer
+from kashpy.filesystem.filesystem import FileSystem
+from kashpy.filesystem.s3.s3_admin import S3Admin
+from kashpy.filesystem.s3.s3_reader import S3Reader
+from kashpy.filesystem.s3.s3_writer import S3Writer
 
 #
 

@@ -3,9 +3,9 @@ import tempfile
 
 from minio import Minio
 
-from kashpy.helpers import payload_to_bytes
+from kashpy.filesystem_writer import FileSystemWriter
 
-class S3Writer:
+class S3Writer(FileSystemWriter):
     def __init__(self, s3_config_dict, kash_config_dict, file, **kwargs):
         self.s3_config_dict = s3_config_dict
         self.kash_config_dict = kash_config_dict
@@ -43,13 +43,5 @@ class S3Writer:
 
     #
 
-    def write(self, value, key=None):
-        key_bytes = payload_to_bytes(key, self.key_type_str)
-        value_bytes = payload_to_bytes(value, self.value_type_str)
-        #
-        if key_bytes is None:
-            message_bytes = value_bytes + self.message_separator_bytes
-        else:
-            message_bytes = key_bytes + self.key_value_separator_bytes + value_bytes + self.message_separator_bytes
-        #
-        self.bufferedWriter.write(message_bytes)
+    def write_bytes(self, bytes):
+        self.bufferedWriter.write(bytes)

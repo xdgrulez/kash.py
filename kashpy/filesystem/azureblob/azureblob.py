@@ -1,7 +1,7 @@
-from kashpy.filesystem import FileSystem
-from kashpy.azureblob.azureblob_admin import AzureBlobAdmin
-from kashpy.azureblob.azureblob_reader import AzureBlobReader
-from kashpy.azureblob.azureblob_writer import AzureBlobWriter
+from kashpy.filesystem.filesystem import FileSystem
+from kashpy.filesystem.azureblob.azureblob_admin import AzureBlobAdmin
+from kashpy.filesystem.azureblob.azureblob_reader import AzureBlobReader
+from kashpy.filesystem.azureblob.azureblob_writer import AzureBlobWriter
 
 #
 

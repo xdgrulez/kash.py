@@ -1,7 +1,7 @@
-from kashpy.filesystem import FileSystem
-from kashpy.local.local_admin import LocalAdmin
-from kashpy.local.local_reader import LocalReader
-from kashpy.local.local_writer import LocalWriter
+from kashpy.filesystem.filesystem import FileSystem
+from kashpy.filesystem.local.local_admin import LocalAdmin
+from kashpy.filesystem.local.local_reader import LocalReader
+from kashpy.filesystem.local.local_writer import LocalWriter
 
 #
 
