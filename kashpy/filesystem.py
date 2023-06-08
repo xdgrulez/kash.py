@@ -1,5 +1,11 @@
+import json
+
 from kashpy.storage import Storage
 from kashpy.helpers import is_interactive
+
+# Constants
+
+ALL_MESSAGES = -1
 
 #
 

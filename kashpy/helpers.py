@@ -68,53 +68,6 @@ def get_auth_str_tuple(basic_auth_user_info):
     #
     return auth_str_tuple
 
-# filesystem -> *reader
-
-def bytes_to_str(bytes):
-    if bytes is None:
-        str = None
-    else:
-        str = bytes.decode("utf-8")
-    #
-    return str
-
-def bytes_to_dict(bytes):
-    if bytes is None:
-        dict = None
-    else:
-        dict = json.loads(bytes.decode("utf-8"))
-    #
-    return dict
-
-def bytes_to_payload(key_or_value_bytes, type_str):
-    if type_str == "bytes":
-        key_or_value = key_or_value_bytes
-    elif type_str == "str":
-        key_or_value = bytes_to_str(key_or_value_bytes)
-    elif type_str == "json" or type_str == "dict":
-        key_or_value = bytes_to_dict(key_or_value_bytes)
-    #
-    return key_or_value
-
-#
-
-def split_key_value(message_bytes, key_value_separator_bytes):
-    key_bytes = None
-    value_bytes = b""
-    #
-    if message_bytes:
-        if key_value_separator_bytes is not None:
-            split_bytes_list = message_bytes.split(key_value_separator_bytes)
-            if len(split_bytes_list) == 2:
-                key_bytes = split_bytes_list[0]
-                value_bytes = split_bytes_list[1]
-            else:
-                value_bytes = message_bytes
-        else:
-            value_bytes = message_bytes
-    #
-    return key_bytes, value_bytes 
-
 # filesystem -> *writer
 
 def str_to_bytes(str):
