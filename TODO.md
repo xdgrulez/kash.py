@@ -1,3 +1,7 @@
+* wc, grep, diff (shell.py)/zip (functional.py)
+* local S3 - dann s3/s3_reader, s3/s3_writer s3/s3
+* functional -> shell -> storage -> filesystem -> local, s3
+                                    kafka -> cluster, restproxy
 * next talk: keywords on slides, no (almost) full sentences
 * screenshots: use Jupyter Notebook instead of Terminal
 
