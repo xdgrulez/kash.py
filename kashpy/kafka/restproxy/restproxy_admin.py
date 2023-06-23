@@ -277,7 +277,7 @@ class RestProxyAdmin:
         rest_proxy_url_str = self.rest_proxy_config_dict["rest.proxy.url"]
         auth_str_tuple = self.get_auth_str_tuple()
         #
-        topic_str_list = self.topics(pattern_str_or_str_list)
+        topic_str_list = self.list_topics(pattern_str_or_str_list)
         #
         if topic_str_list:
             for topic_str in topic_str_list:
@@ -397,11 +397,9 @@ class RestProxyAdmin:
 
     def get_auth_str_tuple(self):
         if "basic.auth.user.info" in self.rest_proxy_config_dict:
-            auth_str_tuple = get_auth_str_tuple(self.rest_proxy_config_dict["basic.auth.user.info"])
+            return tuple(self.rest_proxy_config_dict["basic.auth.user.info"].split(":"))
         else:
-            auth_str_tuple = None
-        #
-        return auth_str_tuple
+            return None
 
 #
 

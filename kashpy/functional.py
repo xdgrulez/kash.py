@@ -58,9 +58,37 @@ class Functional:
                 key = item["key"] 
                 target_writer.write(value, key=key)
 
-        target_writer = target_storage.openw(target_resource, **kwargs)        
+        source_kwargs = kwargs.copy()
+        if "source_key_type" in kwargs:
+            source_kwargs["key_type"] = kwargs["source_key_type"]
+        if "source_value_type" in kwargs:
+            source_kwargs["value_type"] = kwargs["source_value_type"]
+        if "source_key_schema" in kwargs:
+            source_kwargs["key_schema"] = kwargs["source_key_schema"]
+        if "source_value_schema" in kwargs:
+            source_kwargs["value_schema"] = kwargs["source_value_schema"]
+        if "source_key_schema_id" in kwargs:
+            source_kwargs["key_schema_id"] = kwargs["source_key_schema_id"]
+        if "source_value_schema_id" in kwargs:
+            source_kwargs["value_schema_id"] = kwargs["source_value_schema_id"]
         #
-        self.foldl(resource, foldl_function, [], n, **kwargs)
+        target_kwargs = kwargs.copy()
+        if "target_key_type" in kwargs:
+            target_kwargs["key_type"] = kwargs["target_key_type"]
+        if "target_value_type" in kwargs:
+            target_kwargs["value_type"] = kwargs["target_value_type"]
+        if "target_key_schema" in kwargs:
+            target_kwargs["key_schema"] = kwargs["target_key_schema"]
+        if "target_value_schema" in kwargs:
+            target_kwargs["value_schema"] = kwargs["target_value_schema"]
+        if "target_key_schema_id" in kwargs:
+            target_kwargs["key_schema_id"] = kwargs["target_key_schema_id"]
+        if "target_value_schema_id" in kwargs:
+            target_kwargs["value_schema_id"] = kwargs["target_value_schema_id"]
+        #
+        target_writer = target_storage.openw(target_resource, **target_kwargs)
+        #
+        self.foldl(resource, foldl_function, [], n, **source_kwargs)
         #
         target_writer.close()
 

@@ -110,7 +110,6 @@ class Kafka(Storage):
             self.consumer_request_timeout_ms(int(self.kash_config_dict["consumer.request.timeout.ms"]))
         #
         self.schemaRegistry = self.get_schemaRegistry()
-        self.admin = self.get_admin()
 
     #
 

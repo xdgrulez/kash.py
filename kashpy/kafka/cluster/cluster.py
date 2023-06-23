@@ -1,6 +1,6 @@
-from kashpy.cluster.cluster_admin import ClusterAdmin
-from kashpy.cluster.cluster_consumer import ClusterConsumer
-from kashpy.cluster.cluster_producer import ClusterProducer
+from kashpy.kafka.cluster.cluster_admin import ClusterAdmin
+from kashpy.kafka.cluster.cluster_consumer import ClusterConsumer
+from kashpy.kafka.cluster.cluster_producer import ClusterProducer
 from kashpy.kafka import Kafka
 
 # Cluster class
@@ -8,6 +8,8 @@ from kashpy.kafka import Kafka
 class Cluster(Kafka):
     def __init__(self, config_str):
         super().__init__("clusters", config_str, ["kafka"], ["schema_registry", "kash"])
+        #
+        self.admin = self.get_admin()
 
     #
 

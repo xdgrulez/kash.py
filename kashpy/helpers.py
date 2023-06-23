@@ -35,6 +35,7 @@ def get(url_str, headers_dict, auth_str_tuple=None):
     else:
         raise Exception(response_dict)
 
+
 def delete(url_str, headers_dict, auth_str_tuple=None):
     response = requests.delete(url_str, headers=headers_dict, auth=auth_str_tuple)
     if response.text == "":
@@ -46,6 +47,7 @@ def delete(url_str, headers_dict, auth_str_tuple=None):
         return response_dict
     else:
         raise Exception(response_dict)
+
 
 def post(url_str, headers_dict, payload_dict, auth_str_tuple=None):
     response = requests.post(url_str, headers=headers_dict, json=payload_dict, auth=auth_str_tuple)
