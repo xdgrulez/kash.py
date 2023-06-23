@@ -49,16 +49,20 @@ class RestProxyProducer:
         headers_dict = {"Content-Type": "application/json"}
         if self.value_type_str.lower() == "json":
             type_str = "JSON"
-            value = json.loads(value)
+            if not isinstance(value, dict):
+                value = json.loads(value)
         elif self.value_type_str.lower() == "avro":
             type_str = "AVRO"
-            value = json.loads(value)
+            if not isinstance(value, dict):
+                value = json.loads(value)
         elif self.value_type_str.lower() in ["pb", "protobuf"]:
             type_str = "PROTOBUF"
-            value = json.loads(value)
+            if not isinstance(value, dict):
+                value = json.loads(value)
         elif self.value_type_str.lower() == "jsonschema":
             type_str = "JSONSCHEMA"
-            value = json.loads(value)
+            if not isinstance(value, dict):
+                value = json.loads(value)
         else:
             type_str = "BINARY"
         #
@@ -72,16 +76,20 @@ class RestProxyProducer:
         if key is not None:
             if self.key_type_str.lower() == "json":
                 type_str = "JSON"
-                key = json.loads(key)
+                if not isinstance(key, dict):
+                    key = json.loads(key)
             elif self.key_type_str.lower() == "avro":
                 type_str = "AVRO"
-                key = json.loads(key)
+                if not isinstance(key, dict):
+                    key = json.loads(key)
             elif self.key_type_str.lower() in ["pb", "protobuf"]:
                 type_str = "PROTOBUF"
-                key = json.loads(key)
+                if not isinstance(key, dict):
+                    key = json.loads(key)
             elif self.key_type_str.lower() == "jsonschema":
                 type_str = "JSONSCHEMA"
-                key = json.loads(key)
+                if not isinstance(key, dict):
+                    key = json.loads(key)
             else:
                 type_str = "BINARY"
             #
@@ -95,7 +103,7 @@ class RestProxyProducer:
         if partition_int != RD_KAFKA_PARTITION_UA:
             payload_dict["partition_id"] = partition_int
         #
-        post(url_str, headers_dict, payload_dict, auth_str_tuple=auth_str_tuple)
+        post(url_str, headers_dict, payload_dict, auth_str_tuple=auth_str_tuple, retries=self.kash_config_dict["requests.num.retries"])
         #
         self.produced_counter_int += 1
         #

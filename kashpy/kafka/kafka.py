@@ -109,6 +109,11 @@ class Kafka(Storage):
         else:
             self.consumer_request_timeout_ms(int(self.kash_config_dict["consumer.request.timeout.ms"]))
         #
+        if "requests.num.retries" not in self.kash_config_dict:
+            self.requests_num_retries(10)
+        else:
+            self.requests_num_retries(int(self.kash_config_dict["requests.num.retries"]))
+        #
         self.schemaRegistry = self.get_schemaRegistry()
 
     #
@@ -175,6 +180,9 @@ class Kafka(Storage):
 
     def consumer_request_timeout_ms(self, new_value=None): # int
         return self.get_set_config("consumer.request.timeout.ms", new_value)
+
+    def requests_num_retries(self, new_value=None): # int
+        return self.get_set_config("requests.num.retries", new_value)
 
     #
 

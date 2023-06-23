@@ -43,7 +43,7 @@ class RestProxy(Kafka):
         url_str = f"{rest_proxy_url_str}/v3/clusters"
         headers_dict = {"Content-Type": "application/json"}
         auth_str_tuple = self.get_auth_str_tuple()
-        response_dict = get(url_str, headers_dict, auth_str_tuple=auth_str_tuple)
+        response_dict = get(url_str, headers_dict, auth_str_tuple=auth_str_tuple, retries=self.kash_config_dict["requests.num.retries"])
         #
         cluster_id_str = response_dict["data"][0]["cluster_id"]
         return cluster_id_str
