@@ -138,7 +138,6 @@ class RestProxyConsumer:
         headers_dict2 = {"Content-Type": "application/vnd.kafka.v2+json"}
         payload_dict2 = {"topics": self.topic_str_list}
         response_dict = post(url_str2, headers_dict2, payload_dict2, auth_str_tuple=auth_str_tuple, retries=self.kash_config_dict["requests.num.retries"])
-        print(response_dict)
         #
         return self.topic_str_list, self.group_str
     

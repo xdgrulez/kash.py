@@ -10,3 +10,4 @@ kash:
   enable.auto.commit: true
   fetch.min.bytes: -1
   consumer.request.timeout.ms: 1000
+#  write.batch.size: 1000

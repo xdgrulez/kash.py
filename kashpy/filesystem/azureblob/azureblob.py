@@ -7,7 +7,7 @@ from kashpy.filesystem.azureblob.azureblob_writer import AzureBlobWriter
 
 class AzureBlob(FileSystem):
     def __init__(self, config_str):
-        super().__init__("azureblobs", config_str, ["azure_blob"], ["kash"])
+        super().__init__("azureblobs", config_str, ["azure_blob"], [])
     
     #
 

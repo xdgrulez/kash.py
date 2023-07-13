@@ -15,7 +15,7 @@ class FileSystemReader():
         buffer_bytes = b""
         message_counter_int = 0
         break_bool = False
-        buffer_size_int = self.kash_config_dict["read.buffer.size"]
+        read_batch_size_int = self.kash_config_dict["read.batch.size"]
         progress_num_messages_int = self.kash_config_dict["progress.num.messages"]
         verbose_int = self.kash_config_dict["verbose"]
         acc = initial_acc
@@ -47,8 +47,8 @@ class FileSystemReader():
             if offset_int > size_int:
                 batch_bytes = b""
             else:
-                batch_bytes = self.read_bytes(offset_int, buffer_size_int)
-                offset_int += buffer_size_int
+                batch_bytes = self.read_bytes(offset_int, read_batch_size_int)
+                offset_int += read_batch_size_int
             #
             if batch_bytes == b"":
                 if buffer_bytes != b"":

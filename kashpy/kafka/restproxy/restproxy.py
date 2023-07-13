@@ -8,7 +8,7 @@ from kashpy.helpers import get
 
 class RestProxy(Kafka):
     def __init__(self, config_str):
-        super().__init__("restproxies", config_str, ["rest_proxy"], ["schema_registry", "kash"])
+        super().__init__("restproxies", config_str, ["rest_proxy"], ["schema_registry"])
         #
         self.cluster_id_str = self.get_cluster_id()
         #

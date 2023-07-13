@@ -39,10 +39,10 @@ def create_session(retries_int):
 def get(url_str, headers_dict, auth_str_tuple=None, retries=10):
     session = create_session(retries)
     response = session.get(url_str, headers=headers_dict, auth=auth_str_tuple)
-    if response.text == "":
-        response_dict = {}
-    else:
+    if is_json(response.text):
         response_dict = response.json()
+    else:
+        response_dict = {"response": response.text}
     #
     if response.ok:
         return response_dict
@@ -53,10 +53,10 @@ def get(url_str, headers_dict, auth_str_tuple=None, retries=10):
 def delete(url_str, headers_dict, auth_str_tuple=None, retries=10):
     session = create_session(retries)
     response = session.delete(url_str, headers=headers_dict, auth=auth_str_tuple)
-    if response.text == "":
-        response_dict = {}
-    else:
+    if is_json(response.text):
         response_dict = response.json()
+    else:
+        response_dict = {"response": response.text}
     #
     if response.ok:
         return response_dict
@@ -64,15 +64,19 @@ def delete(url_str, headers_dict, auth_str_tuple=None, retries=10):
         raise Exception(response_dict)
 
 
-def post(url_str, headers_dict, payload_dict, auth_str_tuple=None, retries=10):
+def post(url_str, headers_dict, payload_dict_or_generator, auth_str_tuple=None, retries=10):
     session = create_session(retries)
-    response = session.post(url_str, headers=headers_dict, json=payload_dict, auth=auth_str_tuple)
-    if response.text == "":
-        response_dict = {}
+    if isinstance(payload_dict_or_generator, dict):
+        response = session.post(url_str, headers=headers_dict, json=payload_dict_or_generator, auth=auth_str_tuple)
     else:
-        response_dict = response.json()
+        response = session.post(url_str, headers=headers_dict, data=payload_dict_or_generator, auth=auth_str_tuple)
     #
-    print(response_dict)
+    if is_json(response.text):
+        response_dict = response.json()
+    else:
+        response_text_list = "[" + response.text[:-2].replace("\r\n", ",") + "]"
+        response_dict = json.loads(response_text_list)
+    #
     if response.ok:
         return response_dict
     else:
@@ -86,3 +90,11 @@ def get_auth_str_tuple(basic_auth_user_info):
         auth_str_tuple = tuple(basic_auth_user_info.split(":"))
     #
     return auth_str_tuple
+
+
+def is_json(str):
+    try:
+        json.loads(str)
+    except ValueError as e:
+        return False
+    return True

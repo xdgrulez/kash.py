@@ -5,6 +5,8 @@ import re
 from piny import YamlLoader
 
 from kashpy.shell import Shell
+from kashpy.helpers import is_interactive
+
 
 class Storage(Shell):
     def __init__(self, dir_str, config_str, mandatory_section_str_list, optional_section_str_list):
@@ -14,7 +16,56 @@ class Storage(Shell):
         self.optional_section_str_list = optional_section_str_list
         #
         self.config_dict = self.get_config_dict()
+        #
+        self.kash_config_dict = self.config_dict["kash"] if "kash" in self.config_dict else {}
+        #
+        if "progress.num.messages" not in self.kash_config_dict:
+            self.progress_num_messages(1000)
+        else:
+            self.progress_num_messages(int(self.kash_config_dict["progress.num.messages"]))
+        #
+        if "read.batch.size" not in self.kash_config_dict:
+            self.read_batch_size(1000)
+        else:
+            self.read_batch_size(int(self.kash_config_dict["read.batch.size"]))
+        #
+        if "write.batch.size" not in self.kash_config_dict:
+            self.write_batch_size(1000)
+        else:
+            self.write_batch_size(int(self.kash_config_dict["write.batch.size"]))
+        #
+        if "verbose" not in self.kash_config_dict:
+            verbose_int = 1 if is_interactive() else 0
+            self.verbose(verbose_int)
+        else:
+            self.verbose(int(self.kash_config_dict["verbose"]))
         
+    #
+
+    def progress_num_messages(self, new_value=None): # int
+        return self.get_set_config("progress.num.messages", new_value)
+
+    def read_batch_size(self, new_value=None): # int
+        return self.get_set_config("read.batch.size", new_value)
+    
+    def write_batch_size(self, new_value=None): # int
+        return self.get_set_config("write.batch.size", new_value)
+
+    def verbose(self, new_value=None): # int
+        return self.get_set_config("verbose", new_value)
+
+    #
+
+    def get_set_config(self, config_key_str, new_value=None, dict=None):
+        dict = self.kash_config_dict if dict is None else dict
+        #
+        if new_value is not None:
+            dict[config_key_str] = new_value
+        #
+        return dict[config_key_str]
+
+    #
+
     def get_config_dict(self):
         home_str = os.environ.get("KASHPY_HOME")
         if not home_str:

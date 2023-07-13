@@ -7,7 +7,7 @@ from kashpy.filesystem.s3.s3_writer import S3Writer
 
 class S3(FileSystem):
     def __init__(self, config_str):
-        super().__init__("s3s", config_str, ["s3"], ["kash"])
+        super().__init__("s3s", config_str, ["s3"], [])
     
     #
 

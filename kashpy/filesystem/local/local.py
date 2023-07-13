@@ -7,7 +7,7 @@ from kashpy.filesystem.local.local_writer import LocalWriter
 
 class Local(FileSystem):
     def __init__(self, config_str):
-        super().__init__("locals", config_str, ["local"], ["kash"])
+        super().__init__("locals", config_str, ["local"], [])
     
     #
 

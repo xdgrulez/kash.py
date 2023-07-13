@@ -81,17 +81,6 @@ class Kafka(Storage):
         else:
             self.auto_offset_reset(str(self.kash_config_dict["auto.offset.reset"]))
         #
-        if "progress.num.messages" not in self.kash_config_dict:
-            self.progress_num_messages(1000)
-        else:
-            self.progress_num_messages(int(self.kash_config_dict["progress.num.messages"]))
-        #
-        if "verbose" not in self.kash_config_dict:
-            verbose_int = 1 if is_interactive() else 0
-            self.verbose(verbose_int)
-        else:
-            self.verbose(int(self.kash_config_dict["verbose"]))
-        #
         # restproxy config kash section
         #
         if "auto.commit.enable" not in self.kash_config_dict:
@@ -115,20 +104,6 @@ class Kafka(Storage):
             self.requests_num_retries(int(self.kash_config_dict["requests.num.retries"]))
         #
         self.schemaRegistry = self.get_schemaRegistry()
-
-    #
-
-    def get_set_config(self, config_key_str, new_value=None):
-        if new_value is not None:
-            self.kash_config_dict[config_key_str] = new_value
-        #
-        if self.schemaRegistry is not None:
-            self.schemaRegistry = self.get_schemaRegistry()
-        #
-        if self.admin is not None:
-            self.admin = self.get_admin()
-        #
-        return new_value
 
     #
 
@@ -163,12 +138,6 @@ class Kafka(Storage):
 
     def auto_offset_reset(self, new_value=None): # str
         return self.get_set_config("auto.offset.reset", new_value)
-
-    def progress_num_messages(self, new_value=None): # int
-        return self.get_set_config("progress.num.messages", new_value)
-    
-    def verbose(self, new_value=None): # int
-        return self.get_set_config("verbose", new_value)
 
     #
 

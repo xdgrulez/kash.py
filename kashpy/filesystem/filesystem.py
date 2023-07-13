@@ -1,5 +1,4 @@
 from kashpy.storage import Storage
-from kashpy.helpers import is_interactive
 
 #
 
@@ -40,34 +39,7 @@ class FileSystem(Storage):
         else:
             self.s3_config_dict = None
         #
-        self.kash_config_dict = self.config_dict["kash"]
-        #
-        if "progress.num.messages" not in self.kash_config_dict:
-            self.progress_num_messages(1000)
-        else:
-            self.progress_num_messages(int(self.kash_config_dict["progress.num.messages"]))
-        #
-        if "read.buffer.size" not in self.kash_config_dict:
-            self.read_buffer_size(10000)
-        else:
-            self.read_buffer_size(int(self.kash_config_dict["read.buffer.size"]))
-        #
-        if "verbose" not in self.kash_config_dict:
-            verbose_int = 1 if is_interactive() else 0
-            self.verbose(verbose_int)
-        else:
-            self.verbose(int(self.kash_config_dict["verbose"]))
-        #
         self.admin = self.get_admin()
-
-    #
-
-    def get_set_config(self, config_key_str, new_value=None, dict=None):
-        if new_value is not None:
-            dict = self.kash_config_dict if dict is None else dict
-            dict[config_key_str] = new_value
-        #
-        return new_value
 
     # azure_blob
 
@@ -83,17 +55,6 @@ class FileSystem(Storage):
     
     def bucket_name(self, new_value=None): # str
         return self.get_set_config("bucket.name", new_value, dict=self.s3_config_dict)
-
-    # kash
-
-    def progress_num_messages(self, new_value=None): # int
-        return self.get_set_config("progress.num.messages", new_value)
-
-    def read_buffer_size(self, new_value=None): # int
-        return self.get_set_config("read.buffer.size", new_value)
-    
-    def verbose(self, new_value=None): # int
-        return self.get_set_config("verbose", new_value)
 
     #
 

@@ -7,7 +7,7 @@ from kashpy.kafka import Kafka
 
 class Cluster(Kafka):
     def __init__(self, config_str):
-        super().__init__("clusters", config_str, ["kafka"], ["schema_registry", "kash"])
+        super().__init__("clusters", config_str, ["kafka"], ["schema_registry"])
         #
         self.admin = self.get_admin()
 

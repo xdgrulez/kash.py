@@ -50,13 +50,25 @@ class Functional:
     #
 
     def flatmap_to(self, resource, target_storage, target_resource, flatmap_function, n=ALL_MESSAGES, **kwargs):
-        def foldl_function(_, message_dict):
+        def foldl_function(counter_int_write_batch_size_int_batch_key_value_tuple_list_tuple, message_dict):
+            (counter_int, write_batch_size_int, batch_key_value_tuple_list) = counter_int_write_batch_size_int_batch_key_value_tuple_list_tuple
+            #
             list = flatmap_function(message_dict)
             #
             for item in list:
                 value = item["value"]
-                key = item["key"] 
-                target_writer.write(value, key=key)
+                key = item["key"]
+                #
+                batch_key_value_tuple_list.append((key, value))
+                counter_int += 1
+            #
+            if counter_int >= write_batch_size_int:
+                key_list = [key_value_tuple[0] for key_value_tuple in batch_key_value_tuple_list]
+                value_list = [key_value_tuple[1] for key_value_tuple in batch_key_value_tuple_list]
+                target_writer.write(value_list, key=key_list)
+                return (0, write_batch_size_int, [])
+            else:
+                return (counter_int, write_batch_size_int, batch_key_value_tuple_list)
 
         source_kwargs = kwargs.copy()
         if "source_key_type" in kwargs:
@@ -86,9 +98,17 @@ class Functional:
         if "target_value_schema_id" in kwargs:
             target_kwargs["value_schema_id"] = kwargs["target_value_schema_id"]
         #
+        write_batch_size_int = kwargs["write_batch_size"] if "write_batch_size" in kwargs else target_storage.write_batch_size()
+        #
         target_writer = target_storage.openw(target_resource, **target_kwargs)
         #
-        self.foldl(resource, foldl_function, [], n, **source_kwargs)
+        (counter_int_write_batch_size_int_batch_key_value_tuple_list_tuple, _) = self.foldl(resource, foldl_function, (0, write_batch_size_int, []), n, **source_kwargs)
+        (counter_int, _, batch_key_value_tuple_list) = counter_int_write_batch_size_int_batch_key_value_tuple_list_tuple
+        #
+        if counter_int > 0:
+            key_list = [key_value_tuple[0] for key_value_tuple in batch_key_value_tuple_list]
+            value_list = [key_value_tuple[1] for key_value_tuple in batch_key_value_tuple_list]
+            target_writer.write(value_list, key=key_list)
         #
         target_writer.close()
 
