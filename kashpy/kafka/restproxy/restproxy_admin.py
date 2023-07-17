@@ -1,6 +1,6 @@
 from fnmatch import fnmatch
 
-from kashpy.helpers import get, delete, post
+from kashpy.helpers import get, delete, post, is_pattern
 
 #
 
@@ -122,15 +122,12 @@ class RestProxyAdmin:
         pattern_str_list = [patterns] if isinstance(patterns, str) else patterns
         state_pattern_str_list = [state_patterns] if isinstance(patterns, str) else state_patterns
         #
-        rest_proxy_url_str = self.rest_proxy_config_dict["rest.proxy.url"]
-        auth_str_tuple = self.get_auth_str_tuple()
-        #
-        url_str = f"{rest_proxy_url_str}/v3/clusters/{self.cluster_id_str}/consumer-groups"
-        headers_dict = {"Content-Type": "application/json"}
-        response_dict = get(url_str, headers_dict, auth_str_tuple=auth_str_tuple, retries=self.kash_config_dict["requests.num.retries"])
-        kafkaConsumerGroup_dict_list = response_dict["data"]
+        kafkaConsumerGroup_dict_list = self.get_kafkaConsumerGroup_dict_list(pattern_str_list)
         #
         group_str_group_description_dict_dict = {kafkaConsumerGroup_dict["consumer_group_id"]: {"group_id": kafkaConsumerGroup_dict["consumer_group_id"], "is_simple_consumer_group": kafkaConsumerGroup_dict["is_simple"], "partition_assignor": kafkaConsumerGroup_dict["partition_assignor"], "state": kafkaConsumerGroup_dict["state"]} for kafkaConsumerGroup_dict in kafkaConsumerGroup_dict_list if any(fnmatch(kafkaConsumerGroup_dict["consumer_group_id"], pattern_str) for pattern_str in pattern_str_list) and any(fnmatch(kafkaConsumerGroup_dict["state"], state_pattern_str.upper()) for state_pattern_str in state_pattern_str_list)}
+        #
+        rest_proxy_url_str = self.rest_proxy_config_dict["rest.proxy.url"]
+        auth_str_tuple = self.get_auth_str_tuple()
         #
         for group_str, group_description_dict in group_str_group_description_dict_dict.items():
             url_str = f"{rest_proxy_url_str}/v3/clusters/{self.cluster_id_str}/consumer-groups/{group_str}/consumers"
@@ -157,13 +154,7 @@ class RestProxyAdmin:
         state_pattern_str_list = [state_patterns] if isinstance(patterns, str) else state_patterns
         state_bool = state
         #
-        rest_proxy_url_str = self.rest_proxy_config_dict["rest.proxy.url"]
-        auth_str_tuple = self.get_auth_str_tuple()
-        #
-        url_str = f"{rest_proxy_url_str}/v3/clusters/{self.cluster_id_str}/consumer-groups"
-        headers_dict = {"Content-Type": "application/json"}
-        response_dict = get(url_str, headers_dict, auth_str_tuple=auth_str_tuple, retries=self.kash_config_dict["requests.num.retries"])
-        kafkaConsumerGroup_dict_list = response_dict["data"]
+        kafkaConsumerGroup_dict_list = self.get_kafkaConsumerGroup_dict_list(pattern_str_list)
         #
         group_str_state_str_dict = {kafkaConsumerGroup_dict["consumer_group_id"]: kafkaConsumerGroup_dict["state"] for kafkaConsumerGroup_dict in kafkaConsumerGroup_dict_list if any(fnmatch(kafkaConsumerGroup_dict["consumer_group_id"], pattern_str) for pattern_str in pattern_str_list) and any(fnmatch(kafkaConsumerGroup_dict["state"], state_pattern_str.upper()) for state_pattern_str in state_pattern_str_list)}
         #
@@ -173,15 +164,12 @@ class RestProxyAdmin:
         pattern_str_list = [patterns] if isinstance(patterns, str) else patterns
         state_pattern_str_list = [state_patterns] if isinstance(patterns, str) else state_patterns
         #
-        rest_proxy_url_str = self.rest_proxy_config_dict["rest.proxy.url"]
-        auth_str_tuple = self.get_auth_str_tuple()
-        #
-        url_str = f"{rest_proxy_url_str}/v3/clusters/{self.cluster_id_str}/consumer-groups"
-        headers_dict = {"Content-Type": "application/json"}
-        response_dict = get(url_str, headers_dict, auth_str_tuple=auth_str_tuple, retries=self.kash_config_dict["requests.num.retries"])
-        kafkaConsumerGroup_dict_list = response_dict["data"]
+        kafkaConsumerGroup_dict_list = self.get_kafkaConsumerGroup_dict_list(pattern_str_list)
         #
         group_str_list = [kafkaConsumerGroup_dict["consumer_group_id"] for kafkaConsumerGroup_dict in kafkaConsumerGroup_dict_list if any(fnmatch(kafkaConsumerGroup_dict["consumer_group_id"], pattern_str) for pattern_str in pattern_str_list) and any(fnmatch(kafkaConsumerGroup_dict["state"], state_pattern_str.upper()) for state_pattern_str in state_pattern_str_list)]
+        #
+        rest_proxy_url_str = self.rest_proxy_config_dict["rest.proxy.url"]
+        auth_str_tuple = self.get_auth_str_tuple()
         #
         group_offsets = {}
         headers_dict = {"Content-Type": "application/json"}
@@ -400,6 +388,25 @@ class RestProxyAdmin:
             return tuple(self.rest_proxy_config_dict["basic.auth.user.info"].split(":"))
         else:
             return None
+
+    #
+
+    def get_kafkaConsumerGroup_dict_list(self, pattern_str_list):
+        rest_proxy_url_str = self.rest_proxy_config_dict["rest.proxy.url"]
+        auth_str_tuple = self.get_auth_str_tuple()
+        #
+        headers_dict = {"Content-Type": "application/json"}
+        #
+        if len(pattern_str_list) == 1 and not(is_pattern(pattern_str_list[0])):
+            url_str = f"{rest_proxy_url_str}/v3/clusters/{self.cluster_id_str}/consumer-groups/{pattern_str_list[0]}"
+            response_dict = get(url_str, headers_dict, auth_str_tuple=auth_str_tuple, retries=self.kash_config_dict["requests.num.retries"])
+            kafkaConsumerGroup_dict_list = [response_dict]
+        else:
+            url_str = f"{rest_proxy_url_str}/v3/clusters/{self.cluster_id_str}/consumer-groups"
+            response_dict = get(url_str, headers_dict, auth_str_tuple=auth_str_tuple, retries=self.kash_config_dict["requests.num.retries"])
+            kafkaConsumerGroup_dict_list = response_dict["data"]
+        #
+        return kafkaConsumerGroup_dict_list
 
 #
 

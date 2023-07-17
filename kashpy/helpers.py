@@ -98,3 +98,7 @@ def is_json(str):
     except ValueError as e:
         return False
     return True
+
+
+def is_pattern(str):
+    return "*" in str or "?" in str or ("[" in str and "]" in str) or ("[!" in str and "]" in str)
