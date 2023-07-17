@@ -36,7 +36,7 @@ def create_session(retries_int):
     return session
 
 
-def get(url_str, headers_dict, auth_str_tuple=None, retries=10):
+def get(url_str, headers_dict, auth_str_tuple=None, retries=0):
     session = create_session(retries)
     response = session.get(url_str, headers=headers_dict, auth=auth_str_tuple)
     if is_json(response.text):

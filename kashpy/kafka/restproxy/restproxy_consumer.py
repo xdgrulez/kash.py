@@ -42,7 +42,7 @@ class RestProxyConsumer:
         if "key_type" in kwargs:
             key_type = kwargs["key_type"]
         else:
-            key_type = "str"
+            key_type = "json"
         #
         if isinstance(key_type, dict):
             self.key_type_dict = key_type
@@ -52,12 +52,22 @@ class RestProxyConsumer:
         if "value_type" in kwargs:
             value_type = kwargs["value_type"]
         else:
-            value_type = "str"
+            value_type = "json"
         #
         if isinstance(value_type, dict):
             self.value_type_dict = value_type
         else:
             self.value_type_dict = {topic_str: value_type for topic_str in self.topic_str_list}
+        #
+        for topic_str in self.topic_str_list:
+            key_type_str = self.key_type_dict[topic_str]
+            value_type_str = self.value_type_dict[topic_str]
+            #
+            if key_type_str != value_type_str:
+                raise f"Cannot set up consumer for topic '{topic_str}': Confluent REST Proxy requires and key and value types to be the same."
+        #
+        if len(set(list(self.key_type_dict.values()) + list(self.value_type_dict.values()))) > 1:
+            raise f"Cannot set up consumer for topics '{self.topic_str_list}'. Confluent REST Proxy requires all key types and value types of all the topics to be the same."
         #
         # Consumer Config
         #
@@ -129,7 +139,20 @@ class RestProxyConsumer:
         #
         url_str1 = f"{rest_proxy_url_str}/consumers/{self.group_str}"
         headers_dict1 = {"Content-Type": "application/vnd.kafka.v2+json"}
-        payload_dict1 = {"format": "json"}
+        #
+        value_type_str = self.key_type_dict[self.topic_str_list[0]]
+        if value_type_str.lower() == "json":
+            type_str = "JSON"
+        elif value_type_str.lower() == "avro":
+            type_str = "AVRO"
+        elif value_type_str.lower() in ["pb", "protobuf"]:
+            type_str = "PROTOBUF"
+        elif value_type_str.lower() == "jsonschema":
+            type_str = "JSONSCHEMA"
+        else:
+            type_str = "BINARY"
+        #
+        payload_dict1 = {"format": type_str}
         payload_dict1.update(self.consumer_config_dict)
         response_dict = post(url_str1, headers_dict1, payload_dict1, auth_str_tuple=auth_str_tuple, retries=self.kash_config_dict["requests.num.retries"])
         self.instance_id_str = response_dict["instance_id"]
@@ -178,8 +201,20 @@ class RestProxyConsumer:
         if max_bytes_int is None:
             max_bytes_int = 67108864
         #
+        value_type_str = self.key_type_dict[self.topic_str_list[0]]
+        if value_type_str.lower() == "json":
+            type_str = "json"
+        elif value_type_str.lower() == "avro":
+            type_str = "avro"
+        elif value_type_str.lower() in ["pb", "protobuf"]:
+            type_str = "protobuf"
+        elif value_type_str.lower() == "jsonschema":
+            type_str = "jsonschema"
+        else:
+            type_str = "binary"
+        #
         url_str = f"{rest_proxy_url_str}/consumers/{self.group_str}/instances/{self.instance_id_str}/records?timeout={timeout_int}&max_bytes={max_bytes_int}"
-        headers_dict = {"Accept": "application/vnd.kafka.json.v2+json"}
+        headers_dict = {"Accept": f"application/vnd.kafka.{type_str}.v2+json"}
         response_dict = get(url_str, headers_dict, auth_str_tuple=auth_str_tuple, retries=self.kash_config_dict["requests.num.retries"])
         #
         message_dict_list = [{"headers": None, "topic": rest_message_dict["topic"], "partition": rest_message_dict["partition"], "offset": rest_message_dict["offset"], "timestamp": None, "key": rest_message_dict["key"], "value": rest_message_dict["value"]} for rest_message_dict in response_dict]
