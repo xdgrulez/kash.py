@@ -28,7 +28,7 @@ def ppretty(dict):
 def create_session(retries_int):
     #logging.basicConfig(level=logging.DEBUG)
     session = requests.Session()
-    retry = Retry(total=retries_int, backoff_factor=1, status_forcelist=[500, 502, 503, 504, 404], method_whitelist=None)
+    retry = Retry(total=retries_int, backoff_factor=1, status_forcelist=[500, 502, 503, 504, 404], allowed_methods=None)
     adapter = HTTPAdapter(max_retries=retry)
     session.mount('http://', adapter)
     session.mount('https://', adapter)
