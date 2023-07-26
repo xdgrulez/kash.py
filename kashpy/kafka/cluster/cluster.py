@@ -1,7 +1,7 @@
 from kashpy.kafka.cluster.cluster_admin import ClusterAdmin
 from kashpy.kafka.cluster.cluster_consumer import ClusterConsumer
 from kashpy.kafka.cluster.cluster_producer import ClusterProducer
-from kashpy.kafka import Kafka
+from kashpy.kafka.kafka import Kafka
 
 # Cluster class
 

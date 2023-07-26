@@ -71,6 +71,11 @@ class ClusterProducer:
         timestamp_int = kwargs["timestamp"] if "timestamp" in kwargs else CURRENT_TIME
         headers_dict_or_list = kwargs["headers"] if "headers" in kwargs else None
         #
+        keys = key if isinstance(key, list) else [key]
+        values = value if isinstance(value, list) else [value]
+        if keys == [None]:
+            keys = [None for _ in values]
+        #
 
         def serialize(key_bool, normalize_schemas=False):
             type_str = self.key_type_str if key_bool else self.value_type_str
@@ -110,12 +115,18 @@ class ClusterProducer:
                 payload_str_or_bytes = payload
             return payload_str_or_bytes
         #
-        key_str_or_bytes = serialize(key_bool=True)
-        value_str_or_bytes = serialize(key_bool=False)
-        #
-        self.producer.produce(self.topic_str, value_str_or_bytes, key_str_or_bytes, partition=partition_int, timestamp=timestamp_int, headers=headers_dict_or_list, on_delivery=self.on_delivery_function)
-        #
-        self.produced_counter_int += 1
+        key_str_or_bytes_list = []
+        value_str_or_bytes_list = []
+        for key, value in zip(keys, values):
+            key_str_or_bytes = serialize(key_bool=True)
+            value_str_or_bytes = serialize(key_bool=False)
+            #
+            self.producer.produce(self.topic_str, value_str_or_bytes, key_str_or_bytes, partition=partition_int, timestamp=timestamp_int, headers=headers_dict_or_list, on_delivery=self.on_delivery_function)
+            #
+            self.produced_counter_int += 1
+            #
+            key_str_or_bytes_list.append(key_str_or_bytes)
+            value_str_or_bytes_list.append(value_str_or_bytes)
         #
         return key_str_or_bytes, value_str_or_bytes
 

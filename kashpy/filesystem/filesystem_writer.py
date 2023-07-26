@@ -1,12 +1,19 @@
 class FileSystemWriter():
     def write(self, value, key=None):
-        key_bytes = payload_to_bytes(key, self.key_type_str)
-        value_bytes = payload_to_bytes(value, self.value_type_str)
+        keys = key if isinstance(key, list) else [key]
+        values = value if isinstance(value, list) else [value]
+        if keys == [None]:
+            keys = [None for _ in values]
         #
-        if key_bytes is None:
-            message_bytes = value_bytes + self.message_separator_bytes
-        else:
-            message_bytes = key_bytes + self.key_value_separator_bytes + value_bytes + self.message_separator_bytes
+        message_bytes = b""
+        for key, value in zip(keys, values):
+            key_bytes = payload_to_bytes(key, self.key_type_str)
+            value_bytes = payload_to_bytes(value, self.value_type_str)
+            #
+            if key_bytes is None:
+                message_bytes += value_bytes + self.message_separator_bytes
+            else:
+                message_bytes += key_bytes + self.key_value_separator_bytes + value_bytes + self.message_separator_bytes
         #
         self.write_bytes(message_bytes)
 
