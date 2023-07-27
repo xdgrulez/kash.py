@@ -22,6 +22,7 @@ class Kafka(Storage):
             self.rest_proxy_config_dict = None
         #
         self.schema_registry_config_dict = self.config_dict["schema_registry"]
+        #
         self.kash_config_dict = self.config_dict["kash"]
         #
         self.schemaRegistry = None
@@ -103,7 +104,10 @@ class Kafka(Storage):
         else:
             self.requests_num_retries(int(self.kash_config_dict["requests.num.retries"]))
         #
-        self.schemaRegistry = self.get_schemaRegistry()
+        if "schema.registry.url" in self.schema_registry_config_dict:
+            self.schemaRegistry = self.get_schemaRegistry()
+        else:
+            self.schemaRegistry = None
 
     #
 

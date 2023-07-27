@@ -1,3 +1,10 @@
+* type statt value_type und key_type falls beides ein Format hat
+* Disclaimer bei r.l() bei compacted topics...
+* ppretty zugänglich machen (ohne "from kashpy.helpers import *")
+* offsets mit REST Proxy?
+* key_type/value_type vorkonfigurieren (für head/tail...)
+* Präfix für generierte Consumer-Group-Namen (für Authorisierung)
+
 * produce n for all
 * recreate!
 * wc, grep, diff (shell.py)/zip (functional.py)

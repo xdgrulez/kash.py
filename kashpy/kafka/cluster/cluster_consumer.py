@@ -68,7 +68,10 @@ class ClusterConsumer():
         else:
             self.value_type_dict = {topic_str: value_type for topic_str in self.topic_str_list}
         #
-        self.schemaRegistry = SchemaRegistry(schema_registry_config_dict, kash_config_dict)
+        if "schema.registry.url" in self.schema_registry_config_dict:
+            self.schemaRegistry = SchemaRegistry(schema_registry_config_dict, kash_config_dict)
+        else:
+            self.schemaRegistry = None
         #
         self.schema_id_int_generalizedProtocolMessageType_protobuf_schema_str_tuple_dict = {}
         #
@@ -171,6 +174,7 @@ class ClusterConsumer():
     def consume(self, **kwargs):
         n_int = kwargs["batch_size"] if "batch_size" in kwargs else 1
         #
+        print(n_int)
         message_list = self.consumer.consume(n_int, self.kash_config_dict["consume.timeout"])
         #
         message_dict_list = [self.message_to_message_dict(message, key_type=self.key_type_dict[message.topic()], value_type=self.value_type_dict[message.topic()]) for message in message_list]
