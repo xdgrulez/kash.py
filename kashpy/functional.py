@@ -50,25 +50,34 @@ class Functional:
     #
 
     def flatmap_to(self, resource, target_storage, target_resource, flatmap_function, n=ALL_MESSAGES, **kwargs):
-        def foldl_function(counter_int_write_batch_size_int_batch_key_value_tuple_list_tuple, message_dict):
-            (counter_int, write_batch_size_int, batch_key_value_tuple_list) = counter_int_write_batch_size_int_batch_key_value_tuple_list_tuple
+        def write_batch(batch_message_dict_list):
+            value_list = [message_dict["value"] for message_dict in batch_message_dict_list]
             #
-            list = flatmap_function(message_dict)
-            #
-            for item in list:
-                value = item["value"]
-                key = item["key"]
-                #
-                batch_key_value_tuple_list.append((key, value))
-                counter_int += 1
-            #
-            if counter_int >= write_batch_size_int:
-                key_list = [key_value_tuple[0] for key_value_tuple in batch_key_value_tuple_list]
-                value_list = [key_value_tuple[1] for key_value_tuple in batch_key_value_tuple_list]
-                target_writer.write(value_list, key=key_list)
-                return (0, write_batch_size_int, [])
+            key_list = [message_dict["key"] for message_dict in batch_message_dict_list]
+            if "preserve_partition" in kwargs and kwargs["preserve_partition"] == True:
+                partition_list = [message_dict["partition"] for message_dict in batch_message_dict_list]
             else:
-                return (counter_int, write_batch_size_int, batch_key_value_tuple_list)
+                partition_list = None
+            if "preserve_timestamp" in kwargs and kwargs["preserve_timestamp"] == True:
+                timestamp_list = [message_dict["timestamp"][1] for message_dict in batch_message_dict_list]
+            else:
+                timestamp_list = None
+            headers_list = [message_dict["headers"] for message_dict in batch_message_dict_list]
+            target_writer.write(value_list, key=key_list, partition=partition_list, timestamp=timestamp_list, headers=headers_list)
+        #
+
+        def foldl_function(write_batch_size_int_batch_message_dict_list_tuple, message_dict):
+            (write_batch_size_int, batch_message_dict_list) = write_batch_size_int_batch_message_dict_list_tuple
+            #
+            message_dict_list = flatmap_function(message_dict)
+            #
+            batch_message_dict_list += message_dict_list
+            #
+            if len(batch_message_dict_list) >= write_batch_size_int:
+                write_batch(batch_message_dict_list)
+                return (write_batch_size_int, [])
+            else:
+                return (write_batch_size_int, batch_message_dict_list)
 
         source_kwargs = kwargs.copy()
         if "source_key_type" in kwargs:
@@ -102,13 +111,11 @@ class Functional:
         #
         target_writer = target_storage.openw(target_resource, **target_kwargs)
         #
-        (counter_int_write_batch_size_int_batch_key_value_tuple_list_tuple, _) = self.foldl(resource, foldl_function, (0, write_batch_size_int, []), n, **source_kwargs)
-        (counter_int, _, batch_key_value_tuple_list) = counter_int_write_batch_size_int_batch_key_value_tuple_list_tuple
+        (write_batch_size_int_batch_message_dict_list_tuple, _) = self.foldl(resource, foldl_function, (write_batch_size_int, []), n, **source_kwargs)
+        (_, batch_message_dict_list) = write_batch_size_int_batch_message_dict_list_tuple
         #
-        if counter_int > 0:
-            key_list = [key_value_tuple[0] for key_value_tuple in batch_key_value_tuple_list]
-            value_list = [key_value_tuple[1] for key_value_tuple in batch_key_value_tuple_list]
-            target_writer.write(value_list, key=key_list)
+        if len(batch_message_dict_list) > 0:
+            write_batch(batch_message_dict_list)
         #
         target_writer.close()
 

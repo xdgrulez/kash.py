@@ -174,7 +174,6 @@ class ClusterConsumer():
     def consume(self, **kwargs):
         n_int = kwargs["batch_size"] if "batch_size" in kwargs else 1
         #
-        print(n_int)
         message_list = self.consumer.consume(n_int, self.kash_config_dict["consume.timeout"])
         #
         message_dict_list = [self.message_to_message_dict(message, key_type=self.key_type_dict[message.topic()], value_type=self.value_type_dict[message.topic()]) for message in message_list]

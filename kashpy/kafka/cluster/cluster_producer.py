@@ -40,7 +40,11 @@ class ClusterProducer:
         #
         self.produced_counter_int = 0
         #
-        self.schema_registry = SchemaRegistry(schema_registry_config_dict, kash_config_dict)
+        #
+        if "schema.registry.url" in self.schema_registry_config_dict:
+            self.schemaRegistry = SchemaRegistry(schema_registry_config_dict, kash_config_dict)
+        else:
+            self.schemaRegistry = None
         #
         self.producer = Producer(self.kafka_config_dict)
 
@@ -67,14 +71,16 @@ class ClusterProducer:
 
     def produce(self, value, **kwargs):
         key = kwargs["key"] if "key" in kwargs else None
-        partition_int = kwargs["partition"] if "partition" in kwargs else RD_KAFKA_PARTITION_UA
-        timestamp_int = kwargs["timestamp"] if "timestamp" in kwargs else CURRENT_TIME
-        headers_dict_or_list = kwargs["headers"] if "headers" in kwargs else None
+        partition = kwargs["partition"] if "partition" in kwargs and kwargs["partition"] is not None else RD_KAFKA_PARTITION_UA
+        timestamp = kwargs["timestamp"] if "timestamp" in kwargs and kwargs["timestamp"] is not None else CURRENT_TIME
+        headers = kwargs["headers"] if "headers" in kwargs else None
         #
-        keys = key if isinstance(key, list) else [key]
-        values = value if isinstance(value, list) else [value]
-        if keys == [None]:
-            keys = [None for _ in values]
+        value_list = value if isinstance(value, list) else [value]
+        #
+        key_list = key if isinstance(key, list) else [key for _ in value_list]
+        partition_int_list = partition if isinstance(partition, list) else [partition for _ in value_list]
+        timestamp_int_list = timestamp if isinstance(timestamp, list) else [timestamp for _ in value_list]
+        headers_str_bytes_tuple_list_list = headers if isinstance(headers, list) else [headers for _ in value_list]
         #
 
         def serialize(key_bool, normalize_schemas=False):
@@ -117,18 +123,18 @@ class ClusterProducer:
         #
         key_str_or_bytes_list = []
         value_str_or_bytes_list = []
-        for key, value in zip(keys, values):
+        for value, key, partition_int, timestamp_int, headers_str_bytes_tuple_list in zip(value_list, key_list, partition_int_list, timestamp_int_list, headers_str_bytes_tuple_list_list):
             key_str_or_bytes = serialize(key_bool=True)
             value_str_or_bytes = serialize(key_bool=False)
             #
-            self.producer.produce(self.topic_str, value_str_or_bytes, key_str_or_bytes, partition=partition_int, timestamp=timestamp_int, headers=headers_dict_or_list, on_delivery=self.on_delivery_function)
+            self.producer.produce(self.topic_str, value_str_or_bytes, key_str_or_bytes, partition=partition_int, timestamp=timestamp_int, headers=headers_str_bytes_tuple_list, on_delivery=self.on_delivery_function)
             #
             self.produced_counter_int += 1
             #
             key_str_or_bytes_list.append(key_str_or_bytes)
             value_str_or_bytes_list.append(value_str_or_bytes)
         #
-        return key_str_or_bytes, value_str_or_bytes
+        return key_str_or_bytes_list, value_str_or_bytes_list
 
     # helpers
 
