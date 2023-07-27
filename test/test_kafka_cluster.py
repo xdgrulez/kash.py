@@ -5,33 +5,13 @@ import time
 import unittest
 import warnings
 sys.path.insert(1, "..")
-from kashpy.cluster.cluster import *
-from kashpy.helpers import get_millis
+from kashpy.kafka.cluster.cluster import *
+from kashpy.helpers import *
 
-#cluster_str = "rp-dev"
-#cluster_str_without_kash = "rp-dev_without_kash"
-#principal_str = "User:admin"
 cluster_str = "local"
-cluster_str_without_kash = "local_without_kash"
 principal_str = None
-#cluster_str = "ccloud"
-#cluster_str_without_kash = "ccloud_without_kash"
-#principal_str = "User:admin"
-
-
-def count_lines(path_str):
-    def count_generator(reader):
-        bytes = reader(1024 * 1024)
-        while bytes:
-            yield bytes
-            bytes = reader(1024 * 1024)
-    #
-    with open(path_str, "rb") as bufferedReader:
-        c_generator = count_generator(bufferedReader.raw.read)
-        # count each \n
-        count_int = sum(buffer.count(b'\n') for buffer in c_generator)
-    #
-    return count_int
+# cluster_str = "ccloud"
+# principal_str = "User:admin"
 
 
 def create_test_topic_name():
@@ -47,15 +27,40 @@ class Test(unittest.TestCase):
         #
         self.old_home_str = os.environ.get("KASHPY_HOME")
         os.environ["KASHPY_HOME"] = ".."
+        # https://simon-aubury.medium.com/kafka-with-avro-vs-kafka-with-protobuf-vs-kafka-with-json-schema-667494cbb2af
+        with open("./snacks_value.txt", "w") as textIOWrapper:
+            textIOWrapper.writelines(['{"name": "cookie", "calories": 500.0, "colour": "brown"}\n', '{"name": "cake", "calories": 260.0, "colour": "white"}\n', '{"name": "timtam", "calories": 80.0, "colour": "chocolate"}\n'])
+        with open("./snacks_value_no_newline.txt", "w") as textIOWrapper:
+            textIOWrapper.writelines(['{"name": "cookie", "calories": 500.0, "colour": "brown"}\n', '{"name": "cake", "calories": 260.0, "colour": "white"}\n', '{"name": "timtam", "calories": 80.0, "colour": "chocolate"}'])
+        with open("./snacks_key_value.txt", "w") as textIOWrapper:
+            textIOWrapper.writelines(['{"name": "cookie_key", "calories": 500.0, "colour": "brown"}/{"name": "cookie_value", "calories": 500.0, "colour": "brown"}\n', '{"name": "cake_key", "calories": 260.0, "colour": "white"}/{"name": "cake_value", "calories": 260.0, "colour": "white"}\n', '{"name": "timtam_key", "calories": 80.0, "colour": "chocolate"}/{"name": "timtam_value", "calories": 80.0, "colour": "chocolate"}\n'])
         #
         print("Test:", self._testMethodName)
 
     def tearDown(self):
         if self.old_home_str:
             os.environ["KASHPY_HOME"] = self.old_home_str
+        #
+        os.remove("./snacks_value.txt")
+        os.remove("./snacks_value_no_newline.txt")
+        os.remove("./snacks_key_value.txt")
     
-    def test_watermarks(self):
-        
+    ### ClusterAdmin
+    # ACLs
+
+    def test_acls(self):
+        if principal_str:
+            cluster = Cluster(cluster_str)
+            topic_str = create_test_topic_name()
+            cluster.create(topic_str)
+            cluster.create_acl(restype="topic", name=topic_str, resource_pattern_type="literal", principal=principal_str, host="*", operation="read", permission_type="allow")
+            acl_dict_list = cluster.acls()
+            self.assertIn({"restype": "topic", "name": topic_str, "resource_pattern_type": "literal", 'principal': principal_str, 'host': '*', 'operation': 'read', 'permission_type': 'ALLOW'}, acl_dict_list)
+            cluster.delete_acl(restype="topic", name=topic_str, resource_pattern_type="literal", principal=principal_str, host="*", operation="read", permission_type="allow")
+            self.assertIn({"restype": "topic", "name": topic_str, "resource_pattern_type": "literal", 'principal': principal_str, 'host': '*', 'operation': 'read', 'permission_type': 'ALLOW'}, acl_dict_list)
+            cluster.delete(topic_str)
+
+    # Topics
 
     def test_create(self):
         cluster = Cluster(cluster_str)
@@ -64,6 +69,8 @@ class Test(unittest.TestCase):
         topic_str_list = cluster.ls()
         self.assertIn(topic_str, topic_str_list)
         cluster.delete(topic_str)
+        topic_str_list = cluster.ls()
+        self.assertNotIn(topic_str, topic_str_list)
 
     def test_topics(self):
         cluster = Cluster(cluster_str)
@@ -287,18 +294,6 @@ class Test(unittest.TestCase):
             new_background_threads_str = cluster.broker_config(broker_int)[broker_int]["background.threads"]
             self.assertEqual(new_background_threads_str, "5")
             cluster.set_broker_config(broker_int, "background.threads", old_background_threads_str)
-
-    def test_acls(self):
-        if principal_str:
-            cluster = Cluster(cluster_str)
-            topic_str = create_test_topic_name()
-            cluster.create(topic_str)
-            cluster.create_acl(restype="topic", name=topic_str, resource_pattern_type="literal", principal=principal_str, host="*", operation="read", permission_type="allow")
-            acl_dict_list = cluster.acls()
-            self.assertIn({"restype": "topic", "name": topic_str, "resource_pattern_type": "literal", 'principal': principal_str, 'host': '*', 'operation': 'read', 'permission_type': 'allow'}, acl_dict_list)
-            cluster.delete_acl(restype="topic", name=topic_str, resource_pattern_type="literal", principal=principal_str, host="*", operation="read", permission_type="allow")
-            self.assertIn({"restype": "topic", "name": topic_str, "resource_pattern_type": "literal", 'principal': principal_str, 'host': '*', 'operation': 'read', 'permission_type': 'allow'}, acl_dict_list)
-            cluster.delete(topic_str)
     
     def test_produce_consume_bytes(self):
         cluster = Cluster(cluster_str)
