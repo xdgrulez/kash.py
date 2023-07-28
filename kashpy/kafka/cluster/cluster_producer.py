@@ -46,6 +46,8 @@ class ClusterProducer:
         else:
             self.schemaRegistry = None
         #
+        self.kafka_config_dict.pop("group.id", None)
+        #
         self.producer = Producer(self.kafka_config_dict)
 
     def __del__(self):
