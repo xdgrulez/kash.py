@@ -1,33 +1,12 @@
-* type statt value_type und key_type falls beides ein Format hat
-* Disclaimer bei r.l() bei compacted topics...
-* ppretty zugänglich machen (ohne "from kashpy.helpers import *")
-* offsets mit REST Proxy?
-* key_type/value_type vorkonfigurieren (für head/tail...)
-* Präfix für generierte Consumer-Group-Namen (für Authorisierung)
-
-* produce n for all
-* recreate!
-* wc, grep, diff (shell.py)/zip (functional.py)
-* local S3 - dann s3/s3_reader, s3/s3_writer s3/s3
-* tests: functional -> shell -> storage -> filesystem -> local, s3
-                                    kafka -> cluster, restproxy
-* next talk: keywords on slides, no (almost) full sentences
-* screenshots: use Jupyter Notebook instead of Terminal
-
-
-* intra-cluster map: support source/target-key/value types + schemas
-* Pretty print JSON etc. (as default output?)
-* kash.py layering:
-  - connection -> kafka -> cluster/restproxy etc.
-  - connection -> file -> local/blob
-  - functional layer
-  - table layer?
-  - versioning layer?
-  - pandas/Bytewax/River?
-* all arguments (also obligatory ones) without "hungarian" type annotations
+* type = (key_type, value_type) for topics where both is the same
+* Disclaimer for r.l() if cleanup.policy = compacted
+* offsets with REST Proxy?
+* set default value for key_type/value_type etc. in kash-section
+* set prefix for generated consumer group names (kash-section)
+* bring back recreate
+* next talk: keywords on slides, no (almost) full sentences, use Jupyter notebook instead of shell
+* Pretty print JSON etc. (as default output?), easily accessible ppretty in kash.py 0.1
 * tests: create consumer groups explicitly and clean them up
-* schema registry functionality?
-* set default value for value_type in kash-section
 
 # Methods
 
