@@ -10,7 +10,7 @@ class FileSystemWriter():
             key_bytes = payload_to_bytes(key)
             value_bytes = payload_to_bytes(value)
             #
-            if key_bytes == b"":
+            if key_bytes == None:
                 message_bytes += value_bytes + self.message_separator_bytes
             else:
                 message_bytes += key_bytes + self.key_value_separator_bytes + value_bytes + self.message_separator_bytes

@@ -11,7 +11,7 @@ class LocalWriter(FileSystemWriter):
         self.key_type_str = kwargs["key_type"] if "key_type" in kwargs else "str"
         self.value_type_str = kwargs["value_type"] if "value_type" in kwargs else "str"
         #
-        self.key_value_separator_bytes = kwargs["key_value_separator"] if "key_value_separator" in kwargs else None
+        self.key_value_separator_bytes = kwargs["key_value_separator"] if "key_value_separator" in kwargs else b"::"
         self.message_separator_bytes = kwargs["message_separator"] if "message_separator" in kwargs else b"\n"
         self.overwrite_bool = kwargs["overwrite"] if "overwrite" in kwargs else True
         #
