@@ -7,8 +7,8 @@ class FileSystemWriter():
         #
         message_bytes = b""
         for key, value in zip(keys, values):
-            key_bytes = payload_to_bytes(key, self.key_type_str)
-            value_bytes = payload_to_bytes(value, self.value_type_str)
+            key_bytes = payload_to_bytes(key)
+            value_bytes = payload_to_bytes(value)
             #
             if key_bytes is None:
                 message_bytes += value_bytes + self.message_separator_bytes
@@ -36,12 +36,12 @@ def dict_to_bytes(dict):
     #
     return bytes
 
-def payload_to_bytes(key_or_value, type_str):
-    if type_str == "bytes":
+def payload_to_bytes(key_or_value):
+    if isinstance(key_or_value, bytes):
         bytes = key_or_value
-    elif type_str == "str":
+    elif isinstance(key_or_value, str):
         bytes = str_to_bytes(key_or_value)
-    elif type_str == "json" or type_str == "dict":
+    elif isinstance(key_or_value, dict):
         bytes = dict_to_bytes(key_or_value)
     #
     return bytes
