@@ -30,7 +30,7 @@ class ClusterProducer:
         #
         self.topic_str = topic
         #
-        if "type" in kwargs["type"]:
+        if "type" in kwargs:
             self.key_type_str = kwargs["type"]
             self.value_type_str = self.key_type_str
         else:
@@ -110,7 +110,7 @@ class ClusterProducer:
             def get_schema(schema_str):
                 if schema_str is None:
                     if schema_id_int is None:
-                        raise "Please provide a schema or schema ID for the " + "key" if key_bool else "value" + "."
+                        raise Exception("Please provide a schema or schema ID for the " + "key" if key_bool else "value" + ".")
                     schema = self.schemaRegistry.schemaRegistryClient.get_schema(schema_id_int)
                 else:
                     schema = schema_str
@@ -131,12 +131,12 @@ class ClusterProducer:
                 payload_str_or_bytes = protobufSerializer(protobuf_message, SerializationContext(self.topic_str, messageField))
             elif type_str.lower() == "avro":
                 schema = get_schema(schema_str)
-                avroSerializer = AvroSerializer(self.schemaRegistryClient.schemaRegistryClient, schema)
+                avroSerializer = AvroSerializer(self.schemaRegistry.schemaRegistryClient, schema)
                 payload_dict = payload_to_payload_dict(payload)
                 payload_str_or_bytes = avroSerializer(payload_dict, SerializationContext(self.topic_str, messageField))
             elif type_str.lower() == "jsonschema":
                 schema = get_schema(schema_str)
-                jSONSerializer = JSONSerializer(schema, self.schemaRegistryClient.schemaRegistryClient)
+                jSONSerializer = JSONSerializer(schema, self.schemaRegistry.schemaRegistryClient)
                 payload_dict = payload_to_payload_dict(payload)
                 payload_str_or_bytes = jSONSerializer(payload_dict, SerializationContext(self.topic_str, messageField))
             else:
