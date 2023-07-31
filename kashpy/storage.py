@@ -39,7 +39,7 @@ class Storage(Shell):
             self.verbose(verbose_int)
         else:
             self.verbose(int(self.kash_config_dict["verbose"]))
-        
+
     #
 
     def progress_num_messages(self, new_value=None): # int

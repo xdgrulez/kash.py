@@ -169,7 +169,7 @@ class Functional:
                 break
             num_messages_int1 = len(message_dict_list1)
             message_counter_int1 += num_messages_int1
-            if self.verbose_int > 0 and message_counter_int1 % self.kash_config_dict["progress.num.messages"] == 0:
+            if self.verbose() > 0 and message_counter_int1 % self.kash_config_dict["progress.num.messages"] == 0:
                 print(f"Read (storage 1): {message_counter_int1}")
             #
             batch_size_int2 = num_messages_int1 if num_messages_int1 < batch_size_int else batch_size_int
@@ -182,7 +182,7 @@ class Functional:
                 break
             num_messages_int2 = len(message_dict_list2)
             message_counter_int2 += num_messages_int2
-            if self.verbose_int > 0 and message_counter_int2 % self.kash_config_dict["progress.num.messages"] == 0:
+            if self.verbose() > 0 and message_counter_int2 % self.kash_config_dict["progress.num.messages"] == 0:
                 print(f"Read (storage 2): {message_counter_int2}")
             #
             if num_messages_int1 != num_messages_int2:

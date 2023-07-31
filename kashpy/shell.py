@@ -66,7 +66,7 @@ class Shell(Functional):
             if diff_function(message_dict1, message_dict2):
                 acc += [(message_dict1, message_dict2)]
                 #
-                if self.verbose_int > 0:
+                if self.verbose() > 0:
                     partition_int1 = message_dict1["partition"]
                     offset_int1 = message_dict1["offset"]
                     partition_int2 = message_dict2["partition"]
@@ -87,7 +87,7 @@ class Shell(Functional):
     def grep_fun(self, topic_str, match_function, n=ALL_MESSAGES, **kwargs):
         def flatmap_function(message_dict):
             if match_function(message_dict):
-                if self.verbose_int > 0:
+                if self.verbose() > 0:
                     partition_int = message_dict["partition"]
                     offset_int = message_dict["offset"]
                     print(f"Found matching message on partition {partition_int}, offset {offset_int}.")
