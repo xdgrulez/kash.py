@@ -1,5 +1,5 @@
 class FileSystemWriter():
-    def write(self, value, key=None):
+    def write(self, value, key=None, **kwargs):
         keys = key if isinstance(key, list) else [key]
         values = value if isinstance(value, list) else [value]
         if keys == [None]:
