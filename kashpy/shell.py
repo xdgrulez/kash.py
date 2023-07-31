@@ -99,11 +99,11 @@ class Shell(Functional):
         #
         return matching_message_dict_list, len(matching_message_dict_list), message_counter_int
 
-    def grep(self, topic_str, re_pattern_str, n=ALL_MESSAGES):
+    def grep(self, topic_str, re_pattern_str, n=ALL_MESSAGES, **kwargs):
         def match_function(message_dict):
             pattern = re.compile(re_pattern_str)
             key_str = str(message_dict["key"])
             value_str = str(message_dict["value"])
             return pattern.match(key_str) is not None or pattern.match(value_str) is not None
         #
-        return self.grep_fun(topic_str, match_function, n=n)
+        return self.grep_fun(topic_str, match_function, n=n, **kwargs)
