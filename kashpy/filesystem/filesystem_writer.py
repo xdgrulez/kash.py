@@ -38,10 +38,10 @@ def dict_to_bytes(dict):
 
 def payload_to_bytes(key_or_value):
     if isinstance(key_or_value, bytes):
-        bytes = key_or_value
+        return_bytes = key_or_value
     elif isinstance(key_or_value, str):
-        bytes = str_to_bytes(key_or_value)
+        return_bytes = str_to_bytes(key_or_value)
     elif isinstance(key_or_value, dict):
-        bytes = dict_to_bytes(key_or_value)
+        return_bytes = dict_to_bytes(key_or_value)
     #
-    return bytes
+    return return_bytes
