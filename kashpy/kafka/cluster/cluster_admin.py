@@ -58,37 +58,29 @@ class ClusterAdmin():
     # Brokers
 
     def brokers(self, pattern=None):
-        pattern_int_or_str_or_int_or_str_list = pattern
+        pattern_int_or_str_list = pattern if isinstance(pattern, list) else [pattern]
         #
-        if pattern_int_or_str_or_int_or_str_list is None:
-            pattern_int_or_str_or_int_or_str_list = ["*"]
+        if pattern_int_or_str_list is None:
+            pattern_str_list = ["*"]
         else:
-            if isinstance(pattern_int_or_str_or_int_or_str_list, int):
-                pattern_int_or_str_or_int_or_str_list = [str(pattern_int_or_str_or_int_or_str_list)]
-            elif isinstance(pattern_int_or_str_or_int_or_str_list, str):
-                pattern_int_or_str_or_int_or_str_list = [pattern_int_or_str_or_int_or_str_list]
-            elif isinstance(pattern_int_or_str_or_int_or_str_list, list):
-                pattern_int_or_str_or_int_or_str_list = [str(pattern_int_or_str) for pattern_int_or_str in pattern_int_or_str_or_int_or_str_list]
+            pattern_str_list = [str(pattern_int_or_str) for pattern_int_or_str in pattern_int_or_str_list]
         #
-        broker_dict = {broker_int: brokerMetadata.host + ":" + str(brokerMetadata.port) for broker_int, brokerMetadata in self.adminClient.list_topics().brokers.items() if any(fnmatch(str(broker_int), pattern_int_or_str) for pattern_int_or_str in pattern_int_or_str_or_int_or_str_list)}
+        broker_dict = {broker_int: brokerMetadata.host + ":" + str(brokerMetadata.port) for broker_int, brokerMetadata in self.adminClient.list_topics().brokers.items() if any(fnmatch(str(broker_int), pattern_str) for pattern_str in pattern_str_list)}
         #
         return broker_dict
 
     def broker_config(self, pattern):
-        pattern_int_or_str_or_int_or_str_list = pattern
-        #
-        broker_dict = self.brokers(pattern_int_or_str_or_int_or_str_list)
+        broker_dict = self.brokers(pattern)
         #
         broker_int_broker_config_dict = {broker_int: self.get_resource_config_dict(ResourceType.BROKER, str(broker_int)) for broker_int in broker_dict}
         #
         return broker_int_broker_config_dict
 
     def set_broker_config(self, pattern, config, test=False):
-        pattern_int_or_str_or_int_or_str_list = pattern
         config_dict = config
         test_bool = test
         #
-        broker_dict = self.brokers(pattern_int_or_str_or_int_or_str_list)
+        broker_dict = self.brokers(pattern)
         #
         for broker_int in broker_dict:
             self.set_resource_config_dict(ResourceType.BROKER, str(broker_int), config_dict, test_bool)

@@ -48,21 +48,24 @@ class ClusterConsumer():
         #
         # Key and Value Types
         #
-        if "key_type" in kwargs:
-            key_type = kwargs["key_type"]
+        if "type" in kwargs:
+            key_type = kwargs["type"]
+            value_type = key_type
         else:
-            key_type = "str"
+            if "key_type" in kwargs:
+                key_type = kwargs["key_type"]
+            else:
+                key_type = "str"
+            #
+            if "value_type" in kwargs:
+                value_type = kwargs["value_type"]
+            else:
+                value_type = "str"
         #
         if isinstance(key_type, dict):
             self.key_type_dict = key_type
         else:
             self.key_type_dict = {topic_str: key_type for topic_str in self.topic_str_list}
-        #
-        if "value_type" in kwargs:
-            value_type = kwargs["value_type"]
-        else:
-            value_type = "str"
-        #
         if isinstance(value_type, dict):
             self.value_type_dict = value_type
         else:

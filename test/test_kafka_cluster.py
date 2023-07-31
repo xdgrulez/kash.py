@@ -60,6 +60,23 @@ class Test(unittest.TestCase):
             self.assertIn({"restype": "topic", "name": topic_str, "resource_pattern_type": "literal", 'principal': principal_str, 'host': '*', 'operation': 'read', 'permission_type': 'ALLOW'}, acl_dict_list)
             cluster.delete(topic_str)
 
+    # Brokers
+    
+    def test_brokers(self):
+        cluster = Cluster(cluster_str)
+        if "confluent.cloud" not in cluster.kafa_config_dict["bootstrap.servers"]: # cannot modify cluster properties of non-dedicated Confluent Cloud test cluster
+            broker_dict = cluster.brokers()
+            broker_dict1 = cluster.brokers("0")
+            self.assertEqual(broker_dict, broker_dict1)
+            broker_dict2 = cluster.brokers([0])
+            self.assertEqual(broker_dict1, broker_dict2)
+            broker_int = list(broker_dict.keys())[0]
+            old_background_threads_str = cluster.broker_config(broker_int)[broker_int]["background.threads"]
+            cluster.set_broker_config(broker_int, "background.threads", 5)
+            new_background_threads_str = cluster.broker_config(broker_int)[broker_int]["background.threads"]
+            self.assertEqual(new_background_threads_str, "5")
+            cluster.set_broker_config(broker_int, "background.threads", old_background_threads_str)
+
     # Topics
 
     def test_create(self):
@@ -279,21 +296,6 @@ class Test(unittest.TestCase):
         #
         cluster.close()
         cluster.delete(topic_str)
-
-    def test_brokers(self):
-        cluster = Cluster(cluster_str)
-        if "confluent.cloud" not in cluster.config_dict["bootstrap.servers"]:
-            broker_dict = cluster.brokers()
-            broker_dict1 = cluster.brokers("0")
-            self.assertEqual(broker_dict, broker_dict1)
-            broker_dict2 = cluster.brokers([0])
-            self.assertEqual(broker_dict1, broker_dict2)
-            broker_int = list(broker_dict.keys())[0]
-            old_background_threads_str = cluster.broker_config(broker_int)[broker_int]["background.threads"]
-            cluster.set_broker_config(broker_int, "background.threads", 5)
-            new_background_threads_str = cluster.broker_config(broker_int)[broker_int]["background.threads"]
-            self.assertEqual(new_background_threads_str, "5")
-            cluster.set_broker_config(broker_int, "background.threads", old_background_threads_str)
     
     def test_produce_consume_bytes(self):
         cluster = Cluster(cluster_str)
