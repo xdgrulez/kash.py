@@ -28,5 +28,5 @@ class LocalWriter(FileSystemWriter):
 
     #
 
-    def write_bytes(self, bytes):
+    def write_bytes(self, bytes, **kwargs):
         self.bufferedWriter.write(bytes)
