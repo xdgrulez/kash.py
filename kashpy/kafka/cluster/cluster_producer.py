@@ -30,11 +30,18 @@ class ClusterProducer:
         #
         self.topic_str = topic
         #
-        self.key_type_str = kwargs["key_type"] if "key_type" in kwargs else "str"
-        self.value_type_str = kwargs["value_type"] if "value_type" in kwargs else "str"
+        if "type" in kwargs["type"]:
+            self.key_type_str = kwargs["type"]
+            self.value_type_str = self.key_type_str
+        else:
+            self.key_type_str = kwargs["key_type"] if "key_type" in kwargs else "str"
+            self.value_type_str = kwargs["value_type"] if "value_type" in kwargs else "str"
         #
         self.key_schema_str = kwargs["key_schema"] if "key_schema" in kwargs else None
         self.value_schema_str = kwargs["value_schema"] if "value_schema" in kwargs else None
+        #
+        self.key_schema_id_int = kwargs["key_schema_id"] if "key_schema_id" in kwargs else None
+        self.value_schema_id_int = kwargs["value_schema_id"] if "value_schema_id" in kwargs else None
         #
         self.on_delivery_function = kwargs["on_delivery"] if "on_delivery" in kwargs else None
         #
@@ -88,6 +95,7 @@ class ClusterProducer:
         def serialize(key_bool, normalize_schemas=False):
             type_str = self.key_type_str if key_bool else self.value_type_str
             schema_str = self.key_schema_str if key_bool else self.value_schema_str
+            schema_id_int = self.key_schema_id_int if key_bool else self.value_schema_id_int
             payload = key if key_bool else value
             messageField = MessageField.KEY if key_bool else MessageField.VALUE
             #
@@ -99,24 +107,36 @@ class ClusterProducer:
                     payload_dict = payload
                 return payload_dict
             #
+            def get_schema(schema_str):
+                if schema_str is None:
+                    if schema_id_int is None:
+                        raise "Please provide a schema or schema ID for the " + "key" if key_bool else "value" + "."
+                    schema = self.schemaRegistry.schemaRegistryClient.get_schema(schema_id_int)
+                else:
+                    schema = schema_str
+                return schema
+            #
             if type_str.lower() == "json":
                 if isinstance(payload, dict):
                     payload_str_or_bytes = json.dumps(payload)
                 else:
                     payload_str_or_bytes = payload
             elif type_str.lower() in ["pb", "protobuf"]:
-                generalizedProtocolMessageType = self.schema_str_to_generalizedProtocolMessageType(schema_str, self.topic_str, key_bool, normalize_schemas)
+                schema = get_schema(schema_str)
+                generalizedProtocolMessageType = self.schema_str_to_generalizedProtocolMessageType(schema, self.topic_str, key_bool, normalize_schemas)
                 protobufSerializer = ProtobufSerializer(generalizedProtocolMessageType, self.schemaRegistry.schemaRegistryClient, {"use.deprecated.format": False})
                 payload_dict = payload_to_payload_dict(payload)
                 protobuf_message = generalizedProtocolMessageType()
                 ParseDict(payload_dict, protobuf_message)
                 payload_str_or_bytes = protobufSerializer(protobuf_message, SerializationContext(self.topic_str, messageField))
             elif type_str.lower() == "avro":
-                avroSerializer = AvroSerializer(self.schemaRegistryClient.schemaRegistryClient, schema_str)
+                schema = get_schema(schema_str)
+                avroSerializer = AvroSerializer(self.schemaRegistryClient.schemaRegistryClient, schema)
                 payload_dict = payload_to_payload_dict(payload)
                 payload_str_or_bytes = avroSerializer(payload_dict, SerializationContext(self.topic_str, messageField))
             elif type_str.lower() == "jsonschema":
-                jSONSerializer = JSONSerializer(schema_str, self.schemaRegistryClient.schemaRegistryClient)
+                schema = get_schema(schema_str)
+                jSONSerializer = JSONSerializer(schema, self.schemaRegistryClient.schemaRegistryClient)
                 payload_dict = payload_to_payload_dict(payload)
                 payload_str_or_bytes = jSONSerializer(payload_dict, SerializationContext(self.topic_str, messageField))
             else:

@@ -34,7 +34,11 @@ class ClusterConsumer():
         if "group" in kwargs and isinstance(kwargs["group"], str):
             self.group_str = kwargs["group"]
         else:
-            self.group_str = str(get_millis())
+            if "consumer.group.prefix" in kash_config_dict:
+                prefix_str = kash_config_dict["consumer.group.prefix"]
+            else:
+                prefix_str = ""
+            self.group_str = prefix_str + str(get_millis())
         #
         # Offsets
         #

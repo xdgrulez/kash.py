@@ -25,7 +25,11 @@ class RestProxyConsumer:
         if "group" in kwargs and isinstance(kwargs["group"], str):
             self.group_str = kwargs["group"]
         else:
-            self.group_str = str(get_millis())
+            if "consumer.group.prefix" in kash_config_dict:
+                prefix_str = kash_config_dict["consumer.group.prefix"]
+            else:
+                prefix_str = ""
+            self.group_str = prefix_str + str(get_millis())
         #
         # Offsets
         #
@@ -39,21 +43,24 @@ class RestProxyConsumer:
         #
         # Key and Value Types
         #
-        if "key_type" in kwargs:
-            key_type = kwargs["key_type"]
+        if "type" in kwargs:
+            key_type = kwargs["type"]
+            value_type = key_type
         else:
-            key_type = "json"
+            if "key_type" in kwargs:
+                key_type = kwargs["key_type"]
+            else:
+                key_type = "str"
+            #
+            if "value_type" in kwargs:
+                value_type = kwargs["value_type"]
+            else:
+                value_type = "str"
         #
         if isinstance(key_type, dict):
             self.key_type_dict = key_type
         else:
             self.key_type_dict = {topic_str: key_type for topic_str in self.topic_str_list}
-        #
-        if "value_type" in kwargs:
-            value_type = kwargs["value_type"]
-        else:
-            value_type = "json"
-        #
         if isinstance(value_type, dict):
             self.value_type_dict = value_type
         else:
@@ -215,9 +222,12 @@ class RestProxyConsumer:
         #
         url_str = f"{rest_proxy_url_str}/consumers/{self.group_str}/instances/{self.instance_id_str}/records?timeout={timeout_int}&max_bytes={max_bytes_int}"
         headers_dict = {"Accept": f"application/vnd.kafka.{type_str}.v2+json"}
-        response_dict = get(url_str, headers_dict, auth_str_tuple=auth_str_tuple, retries=self.kash_config_dict["requests.num.retries"])
         #
-        message_dict_list = [{"headers": None, "topic": rest_message_dict["topic"], "partition": rest_message_dict["partition"], "offset": rest_message_dict["offset"], "timestamp": None, "key": rest_message_dict["key"], "value": rest_message_dict["value"]} for rest_message_dict in response_dict]
+        message_dict_list = []
+        for _ in range(0, self.kash_config_dict["consume.num.attempts"]):
+            response_dict = get(url_str, headers_dict, auth_str_tuple=auth_str_tuple, retries=self.kash_config_dict["requests.num.retries"])
+            #
+            message_dict_list += [{"headers": None, "topic": rest_message_dict["topic"], "partition": rest_message_dict["partition"], "offset": rest_message_dict["offset"], "timestamp": None, "key": rest_message_dict["key"], "value": rest_message_dict["value"]} for rest_message_dict in response_dict]
         #
         return message_dict_list
 

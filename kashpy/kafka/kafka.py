@@ -82,6 +82,11 @@ class Kafka(Storage):
         else:
             self.auto_offset_reset(str(self.kash_config_dict["auto.offset.reset"]))
         #
+        if "consumer.group.prefix" not in self.kash_config_dict:
+            self.consumer_group_prefix("")
+        else:
+            self.consumer_group_prefix(str(self.kash_config_dict["consumer.group.prefix"]))
+        #
         # restproxy config kash section
         #
         if "auto.commit.enable" not in self.kash_config_dict:
@@ -99,6 +104,11 @@ class Kafka(Storage):
         else:
             self.consumer_request_timeout_ms(int(self.kash_config_dict["consumer.request.timeout.ms"]))
         #
+        if "consume.num.attempts" not in self.kash_config_dict:
+            self.consume_num_attempts(5)
+        else:
+            self.consume_num_attempts(int(self.kash_config_dict["consume.num.attempts"]))
+        #
         if "requests.num.retries" not in self.kash_config_dict:
             self.requests_num_retries(10)
         else:
@@ -108,6 +118,7 @@ class Kafka(Storage):
             self.schemaRegistry = self.get_schemaRegistry()
         else:
             self.schemaRegistry = None
+        #
 
     #
 
@@ -143,6 +154,9 @@ class Kafka(Storage):
     def auto_offset_reset(self, new_value=None): # str
         return self.get_set_config("auto.offset.reset", new_value)
 
+    def consumer_group_prefix(self, new_value=None): # str
+        return self.get_set_config("consumer.group.prefix", new_value)
+
     #
 
     def auto_commit_enable(self, new_value=None): # bool
@@ -153,6 +167,9 @@ class Kafka(Storage):
 
     def consumer_request_timeout_ms(self, new_value=None): # int
         return self.get_set_config("consumer.request.timeout.ms", new_value)
+
+    def consume_num_attempts(self, new_value=None): # int
+        return self.get_set_config("consume.num.attempts", new_value)
 
     def requests_num_retries(self, new_value=None): # int
         return self.get_set_config("requests.num.retries", new_value)
