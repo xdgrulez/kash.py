@@ -11,23 +11,18 @@ RD_KAFKA_PARTITION_UA = -1
 #
 
 class RestProxyProducer:
-    def __init__(self, rest_proxy_config_dict, schema_registry_config_dict, kash_config_dict, cluster_id_str, topic, **kwargs):
-        self.rest_proxy_config_dict = rest_proxy_config_dict
-        self.schema_registry_config_dict = schema_registry_config_dict
-        self.kash_config_dict = kash_config_dict
+    def __init__(self, kafka_obj, topic, **kwargs):
+        self.rest_proxy_config_dict = kafka_obj.rest_proxy_config_dict
+        self.schema_registry_config_dict = kafka_obj.schema_registry_config_dict
+        self.kash_config_dict = kafka_obj.kash_config_dict
         #
-        self.cluster_id_str = cluster_id_str
+        self.cluster_id_str = kafka_obj.cluster_id_str
         #
         self.topic_str = topic
         #
-        self.key_type_str = kwargs["key_type"] if "key_type" in kwargs else "json"
-        self.value_type_str = kwargs["value_type"] if "value_type" in kwargs else "json"
+        (self.key_type_str, self.value_type_str) = kafka_obj.get_key_value_type_tuple(**kwargs)
         #
-        self.key_schema_str = kwargs["key_schema"] if "key_schema" in kwargs else None
-        self.value_schema_str = kwargs["value_schema"] if "value_schema" in kwargs else None
-        #
-        self.key_schema_id_int = kwargs["key_schema_id"] if "key_schema_id" in kwargs else None
-        self.value_schema_id_int = kwargs["value_schema_id"] if "value_schema_id" in kwargs else None
+        (self.key_schema_str, self.value_schema_str, self.key_schema_id_int, self.value_schema_id_int) = kafka_obj.get_key_value_schema_tuple(**kwargs)
         #
         self.produced_counter_int = 0
 

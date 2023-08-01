@@ -17,21 +17,21 @@ class RestProxy(Kafka):
     #
 
     def get_admin(self):
-        admin = RestProxyAdmin(self.rest_proxy_config_dict, self.kash_config_dict, self.cluster_id_str)
+        admin = RestProxyAdmin(self)
         #
         return admin
 
     #
 
     def get_consumer(self, topics, **kwargs):
-        consumer = RestProxyConsumer(self.rest_proxy_config_dict, self.schema_registry_config_dict, self.kash_config_dict, self.cluster_id_str, topics, **kwargs)
+        consumer = RestProxyConsumer(self, topics, **kwargs)
         #
         return consumer
 
     #
 
     def get_producer(self, topics, **kwargs):
-        producer = RestProxyProducer(self.rest_proxy_config_dict, self.schema_registry_config_dict, self.kash_config_dict, self.cluster_id_str, topics, **kwargs)
+        producer = RestProxyProducer(self, topics, **kwargs)
         #
         return producer
     

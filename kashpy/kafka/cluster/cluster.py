@@ -14,19 +14,19 @@ class Cluster(Kafka):
     #
 
     def get_admin(self):
-        admin = ClusterAdmin(self.kafka_config_dict, self.kash_config_dict)
+        admin = ClusterAdmin(self)
         #
         return admin
 
     #
     def get_consumer(self, topics, **kwargs):
-        consumer = ClusterConsumer(self.kafka_config_dict, self.schema_registry_config_dict, self.kash_config_dict, topics, **kwargs)
+        consumer = ClusterConsumer(self, topics, **kwargs)
         #
         return consumer
 
     #
 
     def get_producer(self, topic, **kwargs):
-        producer = ClusterProducer(self.kafka_config_dict, self.schema_registry_config_dict, self.kash_config_dict, self.config_str, topic, **kwargs)
+        producer = ClusterProducer(self, topic, **kwargs)
         #
         return producer

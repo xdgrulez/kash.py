@@ -5,7 +5,7 @@ import time
 import unittest
 import warnings
 sys.path.insert(1, "..")
-from kashpy.kash import *
+from kashpy.kash001 import *
 
 from confluent_kafka.admin import _ConsumerGroupTopicPartitions
 

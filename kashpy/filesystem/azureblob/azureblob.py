@@ -12,20 +12,20 @@ class AzureBlob(FileSystem):
     #
 
     def get_admin(self):
-        admin = AzureBlobAdmin(self.azure_blob_config_dict, self.kash_config_dict)
+        admin = AzureBlobAdmin(self)
         #
         return admin
 
     #
 
     def get_reader(self, file, **kwargs):
-        reader = AzureBlobReader(self.azure_blob_config_dict, self.kash_config_dict, file, **kwargs)
+        reader = AzureBlobReader(self, file, **kwargs)
         #
         return reader
 
     #
 
     def get_writer(self, file, **kwargs):
-        writer = AzureBlobWriter(self.azure_blob_config_dict, self.kash_config_dict, file, **kwargs)
+        writer = AzureBlobWriter(self, file, **kwargs)
         #
         return writer

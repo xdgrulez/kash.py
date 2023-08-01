@@ -1,4 +1,4 @@
-from kashpy.kash import *
+from kashpy.kash001 import *
 from transformers import pipeline
 
 classifier = pipeline('text-classification', model='ProsusAI/finbert', return_all_scores=True)

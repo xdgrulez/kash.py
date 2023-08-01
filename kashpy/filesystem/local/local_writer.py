@@ -2,17 +2,16 @@ from kashpy.filesystem.filesystem_writer import FileSystemWriter
 
 
 class LocalWriter(FileSystemWriter):
-    def __init__(self, local_config_dict, kash_config_dict, file, **kwargs):
-        self.local_config_dict = local_config_dict
-        self.kash_config_dict = kash_config_dict
+    def __init__(self, fileystem_obj, file, **kwargs):
+        self.local_config_dict = fileystem_obj.local_config_dict
+        self.kash_config_dict = fileystem_obj.kash_config_dict
         #
         self.file_str = file
         #
-        self.key_type_str = kwargs["key_type"] if "key_type" in kwargs else "str"
-        self.value_type_str = kwargs["value_type"] if "value_type" in kwargs else "str"
+        (self.key_type_str, self.value_type_str) = fileystem_obj.get_key_value_type_tuple(**kwargs)
         #
-        self.key_value_separator_bytes = kwargs["key_value_separator"] if "key_value_separator" in kwargs else b"::"
-        self.message_separator_bytes = kwargs["message_separator"] if "message_separator" in kwargs else b"\n"
+        (self.key_value_separator_bytes, self.message_separator_bytes) = fileystem_obj.get_key_value_separator_message_separator_tuple(**kwargs)
+        #
         self.overwrite_bool = kwargs["overwrite"] if "overwrite" in kwargs else True
         #
         mode_str = "wb" if self.overwrite_bool else "ab"

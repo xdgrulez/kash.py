@@ -5,9 +5,9 @@ from azure.storage.blob import BlobServiceClient
 #
 
 class AzureBlobAdmin:
-    def __init__(self, azure_blob_config_dict, kash_config_dict):
-        self.azure_blob_config_dict = azure_blob_config_dict
-        self.kash_config_dict = kash_config_dict
+    def __init__(self, filesystem_obj):
+        self.azure_blob_config_dict = filesystem_obj.azure_blob_config_dict
+        self.kash_config_dict = filesystem_obj.kash_config_dict
         #
         blobServiceClient = BlobServiceClient.from_connection_string(self.azure_blob_config_dict["connection.string"])
         self.containerClient = blobServiceClient.get_container_client(self.azure_blob_config_dict["container.name"])

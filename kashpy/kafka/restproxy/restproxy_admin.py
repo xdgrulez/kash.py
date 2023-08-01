@@ -5,9 +5,9 @@ from kashpy.helpers import get, delete, post, is_pattern
 #
 
 class RestProxyAdmin:
-    def __init__(self, rest_proxy_config_dict, kash_config_dict, cluster_id_str):
-        self.rest_proxy_config_dict = rest_proxy_config_dict
-        self.kash_config_dict = kash_config_dict
+    def __init__(self, kafka_obj, cluster_id_str):
+        self.rest_proxy_config_dict = kafka_obj.rest_proxy_config_dict
+        self.kash_config_dict = kafka_obj.kash_config_dict
         #
         self.cluster_id_str = cluster_id_str
 

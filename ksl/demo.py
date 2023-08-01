@@ -1,4 +1,4 @@
-from kashpy.kash import *
+from kashpy.kash001 import *
 c = Cluster("local")
 c.cp("./scraped.txt", "scraped")
 c.ls()

@@ -9,10 +9,10 @@ ALL_MESSAGES = -1
 #
 
 class RestProxyConsumer:
-    def __init__(self, rest_proxy_config_dict, schema_registry_config_dict, kash_config_dict, cluster_id_str, *topics, **kwargs):
-        self.rest_proxy_config_dict = rest_proxy_config_dict
-        self.schema_registry_config_dict = schema_registry_config_dict
-        self.kash_config_dict = kash_config_dict
+    def __init__(self, kafka_obj, cluster_id_str, *topics, **kwargs):
+        self.rest_proxy_config_dict = kafka_obj.rest_proxy_config_dict
+        self.schema_registry_config_dict = kafka_obj.schema_registry_config_dict
+        self.kash_config_dict = kafka_obj.kash_config_dict
         #
         self.cluster_id_str = cluster_id_str
         #
@@ -22,49 +22,17 @@ class RestProxyConsumer:
         #
         # Group
         #
-        if "group" in kwargs and isinstance(kwargs["group"], str):
-            self.group_str = kwargs["group"]
-        else:
-            if "consumer.group.prefix" in kash_config_dict:
-                prefix_str = kash_config_dict["consumer.group.prefix"]
-            else:
-                prefix_str = ""
-            self.group_str = prefix_str + str(get_millis())
+        self.group_str = kafka_obj.get_group_str(**kwargs)
         #
         # Offsets
         #
-        self.offsets_dict = None
-        if "offsets" in kwargs:
-            str_or_int = list(kwargs["offsets"].keys())[0]
-            if isinstance(str_or_int, int):
-                self.offsets_dict = {topic_str: kwargs["offsets"] for topic_str in self.topic_str_list}
-            else:
-                self.offsets_dict = kwargs["offsets"]
+        self.offsets_dict = kafka_obj.get_offsets_dict(self.topic_str_list, **kwargs)
         #
         # Key and Value Types
         #
-        if "type" in kwargs:
-            key_type = kwargs["type"]
-            value_type = key_type
-        else:
-            if "key_type" in kwargs:
-                key_type = kwargs["key_type"]
-            else:
-                key_type = "str"
-            #
-            if "value_type" in kwargs:
-                value_type = kwargs["value_type"]
-            else:
-                value_type = "str"
+        (self.key_type, self.value_type) = kafka_obj.get_key_value_type_tuple(**kwargs)
         #
-        if isinstance(key_type, dict):
-            self.key_type_dict = key_type
-        else:
-            self.key_type_dict = {topic_str: key_type for topic_str in self.topic_str_list}
-        if isinstance(value_type, dict):
-            self.value_type_dict = value_type
-        else:
-            self.value_type_dict = {topic_str: value_type for topic_str in self.topic_str_list}
+        (self.key_type_dict, self.value_type_dict) = kafka_obj.get_key_value_type_dict_tuple(self.key_type, self.value_type, self.topic_str_list)
         #
         for topic_str in self.topic_str_list:
             key_type_str = self.key_type_dict[topic_str]

@@ -12,20 +12,20 @@ class S3(FileSystem):
     #
 
     def get_admin(self):
-        reader = S3Admin(self.s3_config_dict, self.kash_config_dict)
+        reader = S3Admin(self)
         #
         return reader
 
     #
 
     def get_reader(self, file, **kwargs):
-        reader = S3Reader(self.s3_config_dict, self.kash_config_dict, file, **kwargs)
+        reader = S3Reader(self, file, **kwargs)
         #
         return reader
 
     #
 
     def get_writer(self, file, **kwargs):
-        writer = S3Writer(self.s3_config_dict, self.kash_config_dict, file, **kwargs)
+        writer = S3Writer(self, file, **kwargs)
         #
         return writer

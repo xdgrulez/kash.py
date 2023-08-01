@@ -22,34 +22,24 @@ RD_KAFKA_PARTITION_UA = -1
 #
 
 class ClusterProducer:
-    def __init__(self, kafka_config_dict, schema_registry_config_dict, kash_config_dict, config_str, topic, **kwargs):
-        self.kafka_config_dict = kafka_config_dict
-        self.schema_registry_config_dict = schema_registry_config_dict
-        self.kash_config_dict = kash_config_dict
-        self.config_str = config_str
+    def __init__(self, kafka_obj, topic, **kwargs):
+        self.kafka_config_dict = kafka_obj.kafka_config_dict
+        self.schema_registry_config_dict = kafka_obj.schema_registry_config_dict
+        self.kash_config_dict = kafka_obj.kash_config_dict
+        self.config_str = kafka_obj.config_str
         #
         self.topic_str = topic
         #
-        if "type" in kwargs:
-            self.key_type_str = kwargs["type"]
-            self.value_type_str = self.key_type_str
-        else:
-            self.key_type_str = kwargs["key_type"] if "key_type" in kwargs else "str"
-            self.value_type_str = kwargs["value_type"] if "value_type" in kwargs else "str"
+        (self.key_type_str, self.value_type_str) = kafka_obj.get_key_value_type_tuple(**kwargs)
         #
-        self.key_schema_str = kwargs["key_schema"] if "key_schema" in kwargs else None
-        self.value_schema_str = kwargs["value_schema"] if "value_schema" in kwargs else None
-        #
-        self.key_schema_id_int = kwargs["key_schema_id"] if "key_schema_id" in kwargs else None
-        self.value_schema_id_int = kwargs["value_schema_id"] if "value_schema_id" in kwargs else None
+        (self.key_schema_str, self.value_schema_str, self.key_schema_id_int, self.value_schema_id_int) = kafka_obj.get_key_value_schema_tuple(**kwargs)
         #
         self.on_delivery_function = kwargs["on_delivery"] if "on_delivery" in kwargs else None
         #
         self.produced_counter_int = 0
         #
-        #
         if "schema.registry.url" in self.schema_registry_config_dict:
-            self.schemaRegistry = SchemaRegistry(schema_registry_config_dict, kash_config_dict)
+            self.schemaRegistry = SchemaRegistry(self.schema_registry_config_dict, self.kash_config_dict)
         else:
             self.schemaRegistry = None
         #

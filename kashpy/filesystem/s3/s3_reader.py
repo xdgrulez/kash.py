@@ -5,16 +5,15 @@ from minio import Minio
 #
 
 class S3Reader(FileSystemReader):
-    def __init__(self, s3_config_dict, kash_config_dict, file, **kwargs):
-        self.s3_config_dict = s3_config_dict
-        self.kash_config_dict = kash_config_dict
+    def __init__(self, fileystem_obj, file, **kwargs):
+        self.s3_config_dict = fileystem_obj.s3_config_dict
+        self.kash_config_dict = fileystem_obj.kash_config_dict
         #
         self.file_str = file
         #
-        self.key_type_str = kwargs["key_type"] if "key_type" in kwargs else "str"
-        self.value_type_str = kwargs["value_type"] if "value_type" in kwargs else "str"
-        self.key_value_separator_bytes = kwargs["key_value_separator"] if "key_value_separator" in kwargs else None
-        self.message_separator_bytes = kwargs["message_separator"] if "message_separator" in kwargs else b"\n"
+        (self.key_type_str, self.value_type_str) = fileystem_obj.get_key_value_type_tuple(**kwargs)
+        #
+        (self.key_value_separator_bytes, self.message_separator_bytes) = fileystem_obj.get_key_value_separator_message_separator_tuple(**kwargs)
         #
         self.minio = Minio(self.s3_config_dict["endpoint"], access_key=self.s3_config_dict["access.key"], secret_key=self.s3_config_dict["secret.key"], secure=False)
         #

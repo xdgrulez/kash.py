@@ -5,9 +5,9 @@ from minio import Minio
 #
 
 class S3Admin:
-    def __init__(self, s3_config_dict, kash_config_dict):
-        self.s3_config_dict = s3_config_dict
-        self.kash_config_dict = kash_config_dict
+    def __init__(self, filesystem_obj):
+        self.s3_config_dict = filesystem_obj.s3_config_dict
+        self.kash_config_dict = filesystem_obj.kash_config_dict
         #
         self.minio = Minio(self.s3_config_dict["endpoint"], access_key=self.s3_config_dict["access.key"], secret_key=self.s3_config_dict["secret.key"], secure=False)
 

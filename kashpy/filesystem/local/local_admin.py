@@ -4,9 +4,9 @@ import os
 #
 
 class LocalAdmin:
-    def __init__(self, local_config_dict, kash_config_dict):
-        self.local_config_dict = local_config_dict
-        self.kash_config_dict = kash_config_dict
+    def __init__(self, filesystem_obj):
+        self.local_config_dict = filesystem_obj.local_config_dict
+        self.kash_config_dict = filesystem_obj.kash_config_dict
 
     #
 

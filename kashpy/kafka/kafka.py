@@ -1,6 +1,6 @@
 from kashpy.kafka.schemaregistry import SchemaRegistry
 from kashpy.storage import Storage
-from kashpy.helpers import is_interactive
+from kashpy.helpers import is_interactive, get_millis
 
 #
 
@@ -304,6 +304,49 @@ class Kafka(Storage):
     
     def delete_acl(self, restype="any", name=None, resource_pattern_type="any", principal=None, host=None, operation="any", permission_type="any"):
         return self.admin.delete_acl(restype, name, resource_pattern_type, principal, host, operation, permission_type)
+
+    # Shared
+
+    def get_group_str(self, **kwargs):
+        if "group" in kwargs:
+            return kwargs["group"]
+        else:
+            if "consumer.group.prefix" in self.kash_config_dict:
+                prefix_str = self.kash_config_dict["consumer.group.prefix"]
+            else:
+                prefix_str = ""
+            return prefix_str + str(get_millis())
+
+    def get_offsets_dict(self, topic_str_list, **kwargs):
+        if "offsets" in kwargs:
+            str_or_int = list(offsets_dict.keys())[0]
+            if isinstance(str_or_int, int):
+                offsets_dict = {topic_str: offsets_dict for topic_str in topic_str_list}
+            else:
+                offsets_dict = offsets_dict
+        else:
+            return None
+
+    def get_key_value_type_dict_tuple(self, key_type, value_type, topic_str_list):
+        if isinstance(key_type, dict):
+            key_type_dict = key_type
+        else:
+            key_type_dict = {topic_str: key_type for topic_str in topic_str_list}
+        if isinstance(value_type, dict):
+            value_type_dict = value_type
+        else:
+            value_type_dict = {topic_str: value_type for topic_str in topic_str_list}
+        #
+        return (key_type_dict, value_type_dict)
+
+    def get_key_value_schema_tuple(self, **kwargs):
+        key_schema_str = kwargs["key_schema"] if "key_schema" in kwargs else None
+        value_schema_str = kwargs["value_schema"] if "value_schema" in kwargs else None
+        #
+        key_schema_id_int = kwargs["key_schema_id"] if "key_schema_id" in kwargs else None
+        value_schema_id_int = kwargs["value_schema_id"] if "value_schema_id" in kwargs else None
+        #
+        return (key_schema_str, value_schema_str, key_schema_id_int, value_schema_id_int)
 
     # Open
     def openr(self, topics, **kwargs):

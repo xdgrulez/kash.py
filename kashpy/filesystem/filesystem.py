@@ -80,6 +80,14 @@ class FileSystem(Storage):
 
     rm = delete
 
+    # Shared
+
+    def get_key_value_separator_message_separator_tuple(self, **kwargs):
+        key_value_separator_bytes = kwargs["key_value_separator"] if "key_value_separator" in kwargs else b"::"
+        message_separator_bytes = kwargs["message_separator"] if "message_separator" in kwargs else b"\n"
+        #
+        return (key_value_separator_bytes, message_separator_bytes)
+
     # Open
     def openr(self, file, **kwargs):
         reader = self.get_reader(file, **kwargs)

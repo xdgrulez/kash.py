@@ -12,20 +12,20 @@ class Local(FileSystem):
     #
 
     def get_admin(self):
-        reader = LocalAdmin(self.local_config_dict, self.kash_config_dict)
+        reader = LocalAdmin(self)
         #
         return reader
 
     #
 
     def get_reader(self, file, **kwargs):
-        reader = LocalReader(self.local_config_dict, self.kash_config_dict, file, **kwargs)
+        reader = LocalReader(self, file, **kwargs)
         #
         return reader
 
     #
 
     def get_writer(self, file, **kwargs):
-        writer = LocalWriter(self.local_config_dict, self.kash_config_dict, file, **kwargs)
+        writer = LocalWriter(self, file, **kwargs)
         #
         return writer
