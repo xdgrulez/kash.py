@@ -50,11 +50,6 @@ class Kafka(Storage):
         else:
             self.consume_timeout(float(self.kash_config_dict["consume.timeout"]))
         #
-        if "consume.num.messages" not in self.kash_config_dict:
-            self.consume_num_messages(1)
-        else:
-            self.consume_num_messages(int(self.kash_config_dict["consume.num.messages"]))
-        #
         if "enable.auto.commit" not in self.kash_config_dict:
             self.enable_auto_commit(True)
         else:
@@ -133,9 +128,6 @@ class Kafka(Storage):
 
     def consume_timeout(self, new_value=None): # float
         return self.get_set_config("consume.timeout", new_value)
-
-    def consume_num_messages(self, new_value=None): # int
-        return self.get_set_config("consume.num.messages", new_value)
 
     def enable_auto_commit(self, new_value=None): # bool
         return self.get_set_config("enable.auto.commit", new_value)
@@ -288,7 +280,7 @@ class Kafka(Storage):
     def brokers(self, pattern=None):
         return self.admin.brokers(pattern)
     
-    def broker_config(self, pattern):
+    def broker_config(self, pattern=None):
         return self.admin.broker_config(pattern)
     
     def set_broker_config(self, pattern, config, test=False):

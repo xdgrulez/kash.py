@@ -82,6 +82,7 @@ class ClusterConsumer():
 
     def foldl(self, foldl_function, initial_acc, n=ALL_MESSAGES, **kwargs):
         n_int = n
+        read_batch_size_int = kwargs["read_batch_size"] if "read_batch_size" in kwargs else 1
         #
         break_function = kwargs["break_function"] if "break_function" in kwargs else lambda _, _1: False
         #
@@ -89,10 +90,8 @@ class ClusterConsumer():
         message_counter_int = 0
         break_bool = False
         verbose_int = self.kash_config_dict["verbose"]
-        # Consume batch size should not be higher than n_int (otherwise would skip messages when called multiple times).
-        consume_num_messages_int = n_int if self.kash_config_dict["consume.num.messages"] > n_int else self.kash_config_dict["consume.num.messages"]
         while True:
-            message_dict_list = self.consume(n=consume_num_messages_int, **kwargs)
+            message_dict_list = self.consume(n=read_batch_size_int, **kwargs)
             if not message_dict_list:
                 break
             #
@@ -147,7 +146,7 @@ class ClusterConsumer():
     #
 
     def consume(self, **kwargs):
-        n_int = kwargs["batch_size"] if "batch_size" in kwargs else 1
+        n_int = kwargs["n"] if "n" in kwargs else 1
         #
         message_list = self.consumer.consume(n_int, self.kash_config_dict["consume.timeout"])
         #
@@ -159,7 +158,8 @@ class ClusterConsumer():
         asynchronous_bool = asynchronous
         #
         if offsets is None:
-            commit_topicPartition_list = self.consumer.commit() # cimpl.KafkaException: KafkaError{code=_NO_OFFSET,val=-168,str="Commit failed: Local: No offset stored"} if "asynchronous" argument is set
+            self.consumer.commit()
+            offsets_dict = {}
         else:
             str_or_int = list(offsets.keys())[0]
             if isinstance(str_or_int, str):
@@ -170,8 +170,8 @@ class ClusterConsumer():
             offsets_topicPartition_list = [TopicPartition(topic_str, partition_int, offset_int) for topic_str, offsets in offsets_dict.items() for partition_int, offset_int in offsets.items()]
             #
             commit_topicPartition_list = self.consumer.commit(offsets=offsets_topicPartition_list, asynchronous=asynchronous_bool)
-        #
-        offsets_dict = topicPartition_list_to_offsets_dict(commit_topicPartition_list)
+            #
+            offsets_dict = topicPartition_list_to_offsets_dict(commit_topicPartition_list)
         #
         return offsets_dict
 

@@ -31,8 +31,8 @@ class AzureBlobReader(FileSystemReader):
 
     #
 
-    def read_bytes(self, offset_int, buffer_size_int):
-        storageStreamDownloader = self.blobClient.download_blob(offset=offset_int, length=buffer_size_int)
+    def read_bytes(self, offset_int, n_int):
+        storageStreamDownloader = self.blobClient.download_blob(offset=offset_int, length=n_int)
         batch_bytes = storageStreamDownloader.read()
         #
         return batch_bytes

@@ -35,7 +35,7 @@ class LocalReader(FileSystemReader):
 
     #
 
-    def read_bytes(self, _, buffer_size_int):
-        batch_bytes = self.bufferedReader.read(buffer_size_int)
+    def read_bytes(self, _, n_int):
+        batch_bytes = self.bufferedReader.read(n_int)
         #
         return batch_bytes

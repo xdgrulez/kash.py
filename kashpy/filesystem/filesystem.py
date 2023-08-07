@@ -83,8 +83,8 @@ class FileSystem(Storage):
     # Shared
 
     def get_key_value_separator_message_separator_tuple(self, **kwargs):
-        key_value_separator_bytes = kwargs["key_value_separator"] if "key_value_separator" in kwargs else b"::"
-        message_separator_bytes = kwargs["message_separator"] if "message_separator" in kwargs else b"\n"
+        key_value_separator_bytes = bytes(kwargs["key_value_separator"], encoding="utf-8") if "key_value_separator" in kwargs else b"::"
+        message_separator_bytes = bytes(kwargs["message_separator"], encoding="utf-8") if "message_separator" in kwargs else b"\n"
         #
         return (key_value_separator_bytes, message_separator_bytes)
 

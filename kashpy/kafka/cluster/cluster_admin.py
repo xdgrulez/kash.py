@@ -60,7 +60,7 @@ class ClusterAdmin():
     def brokers(self, pattern=None):
         pattern_int_or_str_list = pattern if isinstance(pattern, list) else [pattern]
         #
-        if pattern_int_or_str_list is None:
+        if pattern_int_or_str_list == [None]:
             pattern_str_list = ["*"]
         else:
             pattern_str_list = [str(pattern_int_or_str) for pattern_int_or_str in pattern_int_or_str_list]
@@ -69,7 +69,7 @@ class ClusterAdmin():
         #
         return broker_dict
 
-    def broker_config(self, pattern):
+    def broker_config(self, pattern=None):
         broker_dict = self.brokers(pattern)
         #
         broker_int_broker_config_dict = {broker_int: self.get_resource_config_dict(ResourceType.BROKER, str(broker_int)) for broker_int in broker_dict}

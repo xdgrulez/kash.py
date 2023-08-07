@@ -43,5 +43,7 @@ def payload_to_bytes(key_or_value):
         return_bytes = str_to_bytes(key_or_value)
     elif isinstance(key_or_value, dict):
         return_bytes = dict_to_bytes(key_or_value)
+    elif key_or_value is None:
+        return_bytes = None
     #
     return return_bytes
