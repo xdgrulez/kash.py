@@ -113,21 +113,20 @@ class Storage(Shell):
             config_str_list.sort()
             return config_str_list
 
-    # Shared
+    # Helpers
 
     def get_key_value_type_tuple(self, **kwargs):
+        key_type = "str"
+        value_type = "str"
+        #
         if "type" in kwargs:
             key_type = kwargs["type"]
             value_type = key_type
-        else:
-            if "key_type" in kwargs:
-                key_type = kwargs["key_type"]
-            else:
-                key_type = "str"
-            #
-            if "value_type" in kwargs:
-                value_type = kwargs["value_type"]
-            else:
-                value_type = "str"
+        #
+        if "key_type" in kwargs:
+            key_type = kwargs["key_type"]
+        #
+        if "value_type" in kwargs:
+            value_type = kwargs["value_type"]
         #
         return (key_type, value_type)

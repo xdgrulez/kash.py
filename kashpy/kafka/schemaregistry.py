@@ -33,8 +33,9 @@ class SchemaRegistry:
 
     def create_schema_dict(self, schema_str, schema_type_str):
         schema = Schema(schema_str, schema_type_str) # TODO: support references
+        schema_dict = schema_to_schema_dict(schema)
         #
-        return schema
+        return schema_dict
 
     def create_subject_name_str(self, topic_str, key_bool):
         key_or_value_str = "key" if key_bool else "value"

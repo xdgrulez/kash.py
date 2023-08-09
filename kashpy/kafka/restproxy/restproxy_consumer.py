@@ -1,38 +1,16 @@
-from kashpy.helpers import get, delete, post, get_millis
+from kashpy.kafka.kafka_consumer import KafkaConsumer
 
-import time
-
-# Constants
-
-ALL_MESSAGES = -1
+from kashpy.helpers import get, delete, post
 
 #
 
-class RestProxyConsumer:
+class RestProxyConsumer(KafkaConsumer):
     def __init__(self, kafka_obj, cluster_id_str, *topics, **kwargs):
+        super().__init__(kafka_obj, *topics, **kwargs)
+        #
         self.rest_proxy_config_dict = kafka_obj.rest_proxy_config_dict
-        self.schema_registry_config_dict = kafka_obj.schema_registry_config_dict
-        self.kash_config_dict = kafka_obj.kash_config_dict
         #
         self.cluster_id_str = cluster_id_str
-        #
-        # Topics
-        #
-        self.topic_str_list = list(topics)
-        #
-        # Group
-        #
-        self.group_str = kafka_obj.get_group_str(**kwargs)
-        #
-        # Offsets
-        #
-        self.offsets_dict = kafka_obj.get_offsets_dict(self.topic_str_list, **kwargs)
-        #
-        # Key and Value Types
-        #
-        (self.key_type, self.value_type) = kafka_obj.get_key_value_type_tuple(**kwargs)
-        #
-        (self.key_type_dict, self.value_type_dict) = kafka_obj.get_key_value_type_dict_tuple(self.key_type, self.value_type, self.topic_str_list)
         #
         for topic_str in self.topic_str_list:
             key_type_str = self.key_type_dict[topic_str]
@@ -63,51 +41,6 @@ class RestProxyConsumer:
 
     #
 
-    def read(self, n=ALL_MESSAGES, **kwargs):
-        def foldl_function(message_dict_list, message_dict):
-            message_dict_list.append(message_dict)
-            #
-            return message_dict_list
-        #
-        return self.foldl(foldl_function, [], n, **kwargs)
-
-    #
-
-    def foldl(self, foldl_function, initial_acc, n=ALL_MESSAGES, **kwargs):
-        n_int = n
-        #
-        break_function = kwargs["break_function"] if "break_function" in kwargs else lambda _, _1: False
-        #
-        acc = initial_acc
-        message_counter_int = 0
-        break_bool = False
-        verbose_int = self.kash_config_dict["verbose"]
-        while True:
-            message_dict_list = self.consume(**kwargs)
-            if not message_dict_list:
-                break
-            #
-            for message_dict in message_dict_list:
-                if break_function(acc, message_dict):
-                    break_bool = True
-                    break
-                acc = foldl_function(acc, message_dict)
-            #
-            message_counter_int += len(message_dict_list)
-            #
-            if break_bool:
-                break
-            #
-            if verbose_int > 0 and message_counter_int % self.kash_config_dict["progress.num.messages"] == 0:
-                print(f"Consumed: {message_counter_int}")
-            if n_int != ALL_MESSAGES:
-                if message_counter_int >= n_int:
-                    break
-        #
-        return (acc, message_counter_int)
-
-    #
-
     def subscribe(self):
         rest_proxy_url_str = self.rest_proxy_config_dict["rest.proxy.url"]
         auth_str_tuple = self.get_auth_str_tuple()
@@ -122,7 +55,7 @@ class RestProxyConsumer:
             type_str = "AVRO"
         elif value_type_str.lower() in ["pb", "protobuf"]:
             type_str = "PROTOBUF"
-        elif value_type_str.lower() == "jsonschema":
+        elif value_type_str.lower() in ["jsonschema", "json_sr"]:
             type_str = "JSONSCHEMA"
         else:
             type_str = "BINARY"
@@ -183,7 +116,7 @@ class RestProxyConsumer:
             type_str = "avro"
         elif value_type_str.lower() in ["pb", "protobuf"]:
             type_str = "protobuf"
-        elif value_type_str.lower() == "jsonschema":
+        elif value_type_str.lower() in ["jsonschema", "json_sr"]:
             type_str = "jsonschema"
         else:
             type_str = "binary"
@@ -198,6 +131,8 @@ class RestProxyConsumer:
             message_dict_list += [{"headers": None, "topic": rest_message_dict["topic"], "partition": rest_message_dict["partition"], "offset": rest_message_dict["offset"], "timestamp": None, "key": rest_message_dict["key"], "value": rest_message_dict["value"]} for rest_message_dict in response_dict]
         #
         return message_dict_list
+
+    #
 
     def commit(self, offsets=None):
         offsets_dict = offsets

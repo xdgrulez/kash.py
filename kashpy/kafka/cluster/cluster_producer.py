@@ -12,6 +12,7 @@ from confluent_kafka.schema_registry.json_schema import JSONSerializer
 from confluent_kafka.schema_registry.protobuf import ProtobufSerializer
 from confluent_kafka.serialization import MessageField, SerializationContext
 
+from kashpy.kafka.kafka_producer import KafkaProducer
 from kashpy.kafka.schemaregistry import SchemaRegistry
 
 # Constants
@@ -21,22 +22,16 @@ RD_KAFKA_PARTITION_UA = -1
 
 #
 
-class ClusterProducer:
+class ClusterProducer(KafkaProducer):
     def __init__(self, kafka_obj, topic, **kwargs):
+        super().__init__(kafka_obj, topic, **kwargs)
+        #
         self.kafka_config_dict = kafka_obj.kafka_config_dict
-        self.schema_registry_config_dict = kafka_obj.schema_registry_config_dict
-        self.kash_config_dict = kafka_obj.kash_config_dict
         self.config_str = kafka_obj.config_str
         #
-        self.topic_str = topic
-        #
-        (self.key_type_str, self.value_type_str) = kafka_obj.get_key_value_type_tuple(**kwargs)
-        #
-        (self.key_schema_str, self.value_schema_str, self.key_schema_id_int, self.value_schema_id_int) = kafka_obj.get_key_value_schema_tuple(**kwargs)
+        self.schema_hash_int_generalizedProtocolMessageType_dict = {}
         #
         self.on_delivery_function = kwargs["on_delivery"] if "on_delivery" in kwargs else None
-        #
-        self.produced_counter_int = 0
         #
         if "schema.registry.url" in self.schema_registry_config_dict:
             self.schemaRegistry = SchemaRegistry(self.schema_registry_config_dict, self.kash_config_dict)
@@ -49,11 +44,6 @@ class ClusterProducer:
 
     def __del__(self):
         self.flush()
-
-    #
-
-    def write(self, value, **kwargs):
-        return self.produce(value, **kwargs)
 
     #
 
@@ -124,7 +114,7 @@ class ClusterProducer:
                 avroSerializer = AvroSerializer(self.schemaRegistry.schemaRegistryClient, schema)
                 payload_dict = payload_to_payload_dict(payload)
                 payload_str_or_bytes = avroSerializer(payload_dict, SerializationContext(self.topic_str, messageField))
-            elif type_str.lower() == "jsonschema":
+            elif type_str.lower() in ["jsonschema", "json_sr"]:
                 schema = get_schema(schema_str)
                 jSONSerializer = JSONSerializer(schema, self.schemaRegistry.schemaRegistryClient)
                 payload_dict = payload_to_payload_dict(payload)
@@ -148,14 +138,21 @@ class ClusterProducer:
         #
         return key_str_or_bytes_list, value_str_or_bytes_list
 
-    # helpers
+    # Helpers
 
     def schema_str_to_generalizedProtocolMessageType(self, schema_str, topic_str, key_bool, normalize_schemas=False):
-        subject_name_str = self.schemaRegistry.create_subject_name_str(topic_str, key_bool)
-        schema_dict = self.schemaRegistry.create_schema_dict(schema_str, "PROTOBUF")
-        schema_dict = self.schemaRegistry.register_schema(subject_name_str, schema_dict, normalize_schemas)
+        schema_hash_int = hash(schema_str)
+        if schema_hash_int in self.schema_hash_int_generalizedProtocolMessageType_dict:
+            generalizedProtocolMessageType = self.schema_hash_int_generalizedProtocolMessageType_dict[schema_hash_int]
+        else:
+            subject_name_str = self.schemaRegistry.create_subject_name_str(topic_str, key_bool)
+            schema_dict = self.schemaRegistry.create_schema_dict(schema_str, "PROTOBUF")
+            schema_id_int = self.schemaRegistry.register_schema(subject_name_str, schema_dict, normalize_schemas)
+            #
+            generalizedProtocolMessageType = self.schema_id_int_and_schema_str_to_generalizedProtocolMessageType(schema_id_int, schema_str)
+            #
+            self.schema_hash_int_generalizedProtocolMessageType_dict[schema_hash_int] = generalizedProtocolMessageType
         #
-        generalizedProtocolMessageType = self.schema_id_int_and_schema_str_to_generalizedProtocolMessageType(schema_dict["schema_id"], schema_str)
         return generalizedProtocolMessageType
 
     def schema_id_int_and_schema_str_to_generalizedProtocolMessageType(self, schema_id_int, schema_str):

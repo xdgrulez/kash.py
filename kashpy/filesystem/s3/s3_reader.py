@@ -27,7 +27,10 @@ class S3Reader(FileSystemReader):
 
     #
 
-    def read_bytes(self, offset_int, n_int):
+    def read_bytes(self, **kwargs):
+        offset_int = kwargs["offset"] if "offset" in kwargs else 0
+        n_int = kwargs["n"] if "n" in kwargs else 0
+        #
         response = self.minio.get_object(self.s3_config_dict["bucket.name"], self.file_str, offset=offset_int, length=n_int)
         batch_bytes = response.data
         #

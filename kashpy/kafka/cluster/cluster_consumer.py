@@ -10,38 +10,17 @@ import os
 import sys
 import tempfile
 
-from kashpy.helpers import get_millis
+from kashpy.kafka.kafka_consumer import KafkaConsumer
 from kashpy.kafka.schemaregistry import SchemaRegistry
-
-# Constants
-
-ALL_MESSAGES = -1
 
 #
 
-class ClusterConsumer():
+class ClusterConsumer(KafkaConsumer):
     def __init__(self, kafka_obj, *topics, **kwargs):
+        super().__init__(kafka_obj, *topics, **kwargs)
+        #
         self.kafka_config_dict = kafka_obj.kafka_config_dict
-        self.schema_registry_config_dict = kafka_obj.schema_registry_config_dict
-        self.kash_config_dict = kafka_obj.kash_config_dict
-        #
-        # Topics
-        #
-        self.topic_str_list = list(topics)
-        #
-        # Group
-        #
-        self.group_str = kafka_obj.get_group_str(**kwargs)
-        #
-        # Offsets
-        #
-        self.offsets_dict = kafka_obj.get_offsets_dict(self.topic_str_list, **kwargs)
-        #
-        # Key and Value Types
-        #
-        (self.key_type, self.value_type) = kafka_obj.get_key_value_type_tuple(**kwargs)
-        #
-        (self.key_type_dict, self.value_type_dict) = kafka_obj.get_key_value_type_dict_tuple(self.key_type, self.value_type, self.topic_str_list)
+        self.config_str = kafka_obj.config_str
         #
         if "schema.registry.url" in self.schema_registry_config_dict:
             self.schemaRegistry = SchemaRegistry(self.schema_registry_config_dict, self.kash_config_dict)
@@ -67,52 +46,6 @@ class ClusterConsumer():
 
     def __del__(self):
         self.close()
-
-    #
-
-    def read(self, n=ALL_MESSAGES, **kwargs):
-        def foldl_function(message_dict_list, message_dict):
-            message_dict_list.append(message_dict)
-            #
-            return message_dict_list
-        #
-        return self.foldl(foldl_function, [], n, **kwargs)
-
-    #
-
-    def foldl(self, foldl_function, initial_acc, n=ALL_MESSAGES, **kwargs):
-        n_int = n
-        read_batch_size_int = kwargs["read_batch_size"] if "read_batch_size" in kwargs else 1
-        #
-        break_function = kwargs["break_function"] if "break_function" in kwargs else lambda _, _1: False
-        #
-        acc = initial_acc
-        message_counter_int = 0
-        break_bool = False
-        verbose_int = self.kash_config_dict["verbose"]
-        while True:
-            message_dict_list = self.consume(n=read_batch_size_int, **kwargs)
-            if not message_dict_list:
-                break
-            #
-            for message_dict in message_dict_list:
-                if break_function(acc, message_dict):
-                    break_bool = True
-                    break
-                acc = foldl_function(acc, message_dict)
-            #
-            message_counter_int += len(message_dict_list)
-            #
-            if break_bool:
-                break
-            #
-            if verbose_int > 0 and message_counter_int % self.kash_config_dict["progress.num.messages"] == 0:
-                print(f"Consumed: {message_counter_int}")
-            if n_int != ALL_MESSAGES:
-                if message_counter_int >= n_int:
-                    break
-        #
-        return (acc, message_counter_int)
 
     #
 
@@ -153,6 +86,8 @@ class ClusterConsumer():
         message_dict_list = [self.message_to_message_dict(message, key_type=self.key_type_dict[message.topic()], value_type=self.value_type_dict[message.topic()]) for message in message_list]
         #
         return message_dict_list
+
+    #
 
     def commit(self, offsets=None, asynchronous=False): # TODO: Support message argument
         asynchronous_bool = asynchronous
@@ -212,14 +147,17 @@ class ClusterConsumer():
         elif key_type_str.lower() == "bytes":
             decode_key = bytes_to_bytes
         elif key_type_str.lower() == "json":
-            decode_key = json.loads
+            def decode_key(bytes):
+                str = bytes_to_str(bytes)
+                dict = json.loads(str)
+                return dict
         elif key_type_str.lower() in ["pb", "protobuf"]:
             def decode_key(bytes):
                 return self.bytes_protobuf_to_dict(bytes)
         elif key_type_str.lower() == "avro":
             def decode_key(bytes):
                 return self.bytes_avro_to_dict(bytes)
-        elif key_type_str.lower() == "jsonschema":
+        elif key_type_str.lower() in ["jsonschema", "json_sr"]:
             def decode_key(bytes):
                 return self.bytes_jsonschema_to_dict(bytes)
         #
@@ -228,14 +166,15 @@ class ClusterConsumer():
         elif value_type_str.lower() == "bytes":
             decode_value = bytes_to_bytes
         elif value_type_str.lower() == "json":
-            decode_value = json.loads
+            def decode_value(bytes):
+                return json.loads(bytes_to_str(bytes))
         elif value_type_str.lower() in ["pb", "protobuf"]:
             def decode_value(bytes):
                 return self.bytes_protobuf_to_dict(bytes)
         elif value_type_str.lower() == "avro":
             def decode_value(bytes):
                 return self.bytes_avro_to_dict(bytes)
-        elif value_type_str.lower() == "jsonschema":
+        elif value_type_str.lower() in ["jsonschema", "json_sr"]:
             def decode_value(bytes):
                 return self.bytes_jsonschema_to_dict(bytes)
         #
@@ -244,7 +183,6 @@ class ClusterConsumer():
 
     def schema_id_int_to_generalizedProtocolMessageType_protobuf_schema_str_tuple(self, schema_id_int):
         schema_dict = self.schemaRegistry.get_schema(schema_id_int)
-        schema_id_int = schema_dict["schema_id"]
         schema_str = schema_dict["schema_str"]
         #
         generalizedProtocolMessageType = self.schema_id_int_and_schema_str_to_generalizedProtocolMessageType(schema_id_int, schema_str)
@@ -252,7 +190,7 @@ class ClusterConsumer():
         return generalizedProtocolMessageType, schema_str
 
     def schema_id_int_and_schema_str_to_generalizedProtocolMessageType(self, schema_id_int, schema_str):
-        path_str = f"/{tempfile.gettempdir()}/kash.py/clusters/{self.cluster_str}"
+        path_str = f"/{tempfile.gettempdir()}/kash.py/clusters/{self.config_str}"
         os.makedirs(path_str, exist_ok=True)
         file_str = f"schema_{schema_id_int}.proto"
         file_path_str = f"{path_str}/{file_str}"

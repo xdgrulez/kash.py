@@ -5,7 +5,6 @@ import time
 import unittest
 import warnings
 sys.path.insert(1, "..")
-from kashpy.filesystem.local.local import *
 from kashpy.kafka.cluster.cluster import *
 from kashpy.helpers import *
 
@@ -21,12 +20,7 @@ class Test(unittest.TestCase):
         self.old_home_str = os.environ.get("KASHPY_HOME")
         os.environ["KASHPY_HOME"] = "."
         # https://simon-aubury.medium.com/kafka-with-avro-vs-kafka-with-protobuf-vs-kafka-with-json-schema-667494cbb2af
-        with open("./snacks_value.txt", "w") as textIOWrapper:
-            textIOWrapper.writelines(['{"name": "cookie", "calories": 500.0, "colour": "brown"}\n', '{"name": "cake", "calories": 260.0, "colour": "white"}\n', '{"name": "timtam", "calories": 80.0, "colour": "chocolate"}\n'])
-        with open("./snacks_value_no_newline.txt", "w") as textIOWrapper:
-            textIOWrapper.writelines(['{"name": "cookie", "calories": 500.0, "colour": "brown"}\n', '{"name": "cake", "calories": 260.0, "colour": "white"}\n', '{"name": "timtam", "calories": 80.0, "colour": "chocolate"}'])
-        with open("./snacks_key_value.txt", "w") as textIOWrapper:
-            textIOWrapper.writelines(['{"name": "cookie_key", "calories": 500.0, "colour": "brown"}/{"name": "cookie_value", "calories": 500.0, "colour": "brown"}\n', '{"name": "cake_key", "calories": 260.0, "colour": "white"}/{"name": "cake_value", "calories": 260.0, "colour": "white"}\n', '{"name": "timtam_key", "calories": 80.0, "colour": "chocolate"}/{"name": "timtam_value", "calories": 80.0, "colour": "chocolate"}\n'])
+        self.snack_str_list = ['{"name": "cookie", "calories": 500.0, "colour": "brown"}', '{"name": "cake", "calories": 260.0, "colour": "white"}', '{"name": "timtam", "calories": 80.0, "colour": "chocolate"}']
         #
         self.topic_str_list = []
         self.group_str_list = []
@@ -42,11 +36,7 @@ class Test(unittest.TestCase):
         #
         if self.old_home_str:
             os.environ["KASHPY_HOME"] = self.old_home_str
-        #
-        os.remove("./snacks_value.txt")
-        os.remove("./snacks_value_no_newline.txt")
-        os.remove("./snacks_key_value.txt")
-    
+
     def create_test_topic_name(self):
         topic_str = f"test_topic_{get_millis()}"
         #
@@ -98,6 +88,7 @@ class Test(unittest.TestCase):
 
     def test_groups(self):
         cluster = Cluster(cluster_str)
+        #
         topic_str = self.create_test_topic_name()
         cluster.create(topic_str)
         producer = cluster.openw(topic_str)
@@ -105,6 +96,7 @@ class Test(unittest.TestCase):
         producer.produce("message 2")
         producer.produce("message 3")
         producer.close()
+        #
         group_str = self.create_test_group_name()
         consumer = cluster.openr(topic_str, group=group_str)
         consumer.consume()
@@ -124,6 +116,7 @@ class Test(unittest.TestCase):
 
     def test_describe_groups(self):
         cluster = Cluster(cluster_str)
+        #
         topic_str = self.create_test_topic_name()
         cluster.create(topic_str)
         producer = cluster.openw(topic_str)
@@ -131,6 +124,7 @@ class Test(unittest.TestCase):
         producer.produce("message 2")
         producer.produce("message 3")
         producer.close()
+        #
         group_str = self.create_test_group_name()
         consumer = cluster.openr(topic_str, group=group_str)
         consumer.consume()
@@ -156,6 +150,7 @@ class Test(unittest.TestCase):
 
     def test_delete_groups(self):
         cluster = Cluster(cluster_str)
+        #
         topic_str = self.create_test_topic_name()
         cluster.create(topic_str)
         producer = cluster.openw(topic_str)
@@ -163,6 +158,7 @@ class Test(unittest.TestCase):
         producer.produce("message 2")
         producer.produce("message 3")
         producer.close()
+        #
         group_str = self.create_test_group_name()
         consumer = cluster.openr(topic_str, group=group_str)
         consumer.consume()
@@ -176,12 +172,14 @@ class Test(unittest.TestCase):
 
     def test_group_offsets(self):
         cluster = Cluster(cluster_str)
+        #
         topic_str = self.create_test_topic_name()
         cluster.create(topic_str, partitions=2)
         producer = cluster.openw(topic_str)
         producer.produce("message 1", partition=0)
         producer.produce("message 2", partition=1)
         producer.close()
+        #
         group_str = self.create_test_group_name()
         consumer = cluster.openr(topic_str, group=group_str, config={"enable.auto.commit": False})
         consumer.consume()
@@ -209,12 +207,9 @@ class Test(unittest.TestCase):
         producer.close()
         #
         group_str = self.create_test_group_name()
-        #
         consumer = cluster.openr(topic_str, group=group_str, config={"enable.auto.commit": False})
-        #
         group_str_topic_str_partition_int_offset_int_dict_dict_dict = cluster.set_group_offsets({group_str: {topic_str: {0: 2}}})
         self.assertEqual(group_str_topic_str_partition_int_offset_int_dict_dict_dict, {group_str: {topic_str: {0: 2}}})
-        #
         [message_dict] = consumer.consume()
         consumer.commit()
         self.assertEqual(message_dict["value"], "message 3")
@@ -225,36 +220,41 @@ class Test(unittest.TestCase):
 
     def test_config_set_config(self):
         cluster = Cluster(cluster_str)
+        #
         topic_str = self.create_test_topic_name()
         cluster.touch(topic_str)
+        #
         cluster.set_config(topic_str, {"retention.ms": 4711})
         new_retention_ms_str = cluster.config(topic_str)[topic_str]["retention.ms"]
         self.assertEqual(new_retention_ms_str, "4711")
-        cluster.rm(topic_str)
 
     def test_create_delete(self):
         cluster = Cluster(cluster_str)
+        #
         topic_str = self.create_test_topic_name()
-        cluster.create(topic_str)
+        cluster.touch(topic_str)
         topic_str_list = cluster.ls()
         self.assertIn(topic_str, topic_str_list)
-        cluster.delete(topic_str)
+        cluster.rm(topic_str)
         topic_str_list = cluster.ls()
         self.assertNotIn(topic_str, topic_str_list)
 
     def test_topics(self):
         cluster = Cluster(cluster_str)
+        #
         topic_str = self.create_test_topic_name()
         old_topic_str_list = cluster.topics(["test_*"])
         self.assertNotIn(topic_str, old_topic_str_list)
         cluster.create(topic_str)
         new_topic_str_list = cluster.ls(["test_*"])
         self.assertIn(topic_str, new_topic_str_list)
+        #
         producer = cluster.openw(topic_str)
         producer.produce("message 1", on_delivery=lambda kafkaError, message: print(kafkaError, message))
         producer.produce("message 2")
         producer.produce("message 3")
         producer.close()
+        #
         topic_str_size_int_dict_l = cluster.l(pattern=topic_str)
         topic_str_size_int_dict_ll = cluster.ll(pattern=topic_str)
         self.assertEqual(topic_str_size_int_dict_l, topic_str_size_int_dict_ll)
@@ -268,7 +268,9 @@ class Test(unittest.TestCase):
 
     def test_offsets_for_times(self):
         cluster = Cluster(cluster_str)
+        #
         cluster.verbose(1)
+        #
         topic_str = self.create_test_topic_name()
         cluster.create(topic_str)
         producer = cluster.openw(topic_str)
@@ -276,6 +278,7 @@ class Test(unittest.TestCase):
         time.sleep(1)
         producer.produce("message 2")
         producer.close()
+        #
         self.assertEqual(cluster.l(topic_str, partitions=True)[topic_str][1][0], 2)
         #
         group_str = self.create_test_group_name()
@@ -291,6 +294,7 @@ class Test(unittest.TestCase):
 
     def test_partitions_set_partitions(self):
         cluster = Cluster(cluster_str)
+        #
         topic_str = self.create_test_topic_name()
         cluster.create(topic_str)
         num_partitions_int_1 = cluster.partitions(topic_str)[topic_str]
@@ -301,6 +305,7 @@ class Test(unittest.TestCase):
 
     def test_exists(self):
         cluster = Cluster(cluster_str)
+        #
         topic_str = self.create_test_topic_name()
         self.assertFalse(cluster.exists(topic_str))
         cluster.create(topic_str)
@@ -308,166 +313,141 @@ class Test(unittest.TestCase):
 
     # Produce/Consume
 
-    def test_produce_consume_bytes(self):
-        local = Local("local")
+    def test_produce_consume_bytes_str(self):
         cluster = Cluster(cluster_str)
+        #
         topic_str = self.create_test_topic_name()
         cluster.create(topic_str)
-        local.cp("./snacks_value.txt", cluster, topic_str, target_value_type="str")
+        # Upon produce, the types "bytes" and "string" trigger the conversion of bytes, strings and dictionaries to bytes on Kafka.
+        producer = cluster.openw(topic_str, key_type="bytes", value_type="str")
+        producer.produce(self.snack_str_list, key=self.snack_str_list)
+        producer.close()
         self.assertEqual(cluster.size(topic_str)[topic_str][0], 3)
-        cluster.cp(topic_str, local, "./snacks_value1.txt", source_value_type="str", n=3, read_batch_size=3, write_batch_size=3)
-        self.assertTrue(filecmp.cmp("./snacks_value.txt", "./snacks_value1.txt"))
-        os.remove("./snacks_value1.txt")
         #
-        topic_str_key_value = self.create_test_topic_name()
-        cluster.create(topic_str_key_value)
-        local.cp("./snacks_key_value.txt", cluster, topic_str_key_value, target_key_type="str", target_value_type="str", key_value_separator="/")
-        self.assertEqual(cluster.size(topic_str_key_value)[topic_str_key_value][0], 3)
-        cluster.cp(topic_str_key_value, local, "./snacks_key_value1.txt", source_key_type="str", source_value_type="str", key_value_separator="/", n=3)
-        self.assertTrue(filecmp.cmp("./snacks_key_value.txt", "./snacks_key_value1.txt"))
-        os.remove("./snacks_key_value1.txt")
-
-    def test_produce_consume_string(self):
-        cluster = Cluster(cluster_str)
-        topic_str = create_test_topic_name()
-        cluster.create(topic_str)
-        cluster.cp("./snacks_value_no_newline.txt", topic_str, target_value_type="str", bufsize=150)
-        self.assertEqual(cluster.size(topic_str)[topic_str][0], 3)
-        cluster.cp(topic_str, "./snacks_value1.txt", source_value_type="str", n=3)
-        self.assertTrue(filecmp.cmp("./snacks_value.txt", "./snacks_value1.txt"))
-        os.remove("./snacks_value1.txt")
-        cluster.delete(topic_str)
-        #
-        topic_str_key_value = create_test_topic_name()
-        cluster.create(topic_str_key_value)
-        cluster.cp("./snacks_key_value.txt", topic_str_key_value, target_key_type="str", target_value_type="str", key_value_separator="/")
-        self.assertEqual(cluster.size(topic_str_key_value)[topic_str_key_value][0], 3)
-        cluster.cp(topic_str_key_value, "./snacks_key_value1.txt", source_key_type="str", source_value_type="str", key_value_separator="/", n=3)
-        self.assertTrue(filecmp.cmp("./snacks_key_value.txt", "./snacks_key_value1.txt"))
-        os.remove("./snacks_key_value1.txt")
-        cluster.delete(topic_str_key_value)
+        group_str = self.create_test_group_name()
+        # Upon consume, the type "str" triggers the conversion into a string, and "bytes" into bytes.
+        consumer = cluster.openr(topic_str, group=group_str, key_type="str", value_type="bytes")
+        message_dict_list = consumer.consume(n=3)
+        key_str_list = [message_dict["key"] for message_dict in message_dict_list]
+        value_bytes_list = [message_dict["value"] for message_dict in message_dict_list]
+        snack_bytes_list = [bytes(snack_str, encoding="utf-8") for snack_str in self.snack_str_list]
+        self.assertEqual(key_str_list, self.snack_str_list)
+        self.assertEqual(value_bytes_list, snack_bytes_list)
+        consumer.close()
     
     def test_produce_consume_json(self):
         cluster = Cluster(cluster_str)
-        topic_str = create_test_topic_name()
-        cluster.create(topic_str)
-        cluster.cp("./snacks_value.txt", topic_str, target_value_type="json")
-        self.assertEqual(cluster.size(topic_str)[topic_str][0], 3)
-        cluster.cp(topic_str, "./snacks_value1.txt", source_value_type="json", n=3)
-        self.assertTrue(filecmp.cmp("./snacks_value.txt", "./snacks_value1.txt"))
-        os.remove("./snacks_value1.txt")
-        cluster.delete(topic_str)
         #
-        topic_str_key_value = create_test_topic_name()
-        cluster.create(topic_str_key_value)
-        cluster.cp("./snacks_key_value.txt", topic_str_key_value, target_key_type="json", target_value_type="json", key_value_separator="/")
-        self.assertEqual(cluster.size(topic_str_key_value)[topic_str_key_value][0], 3)
-        cluster.cp(topic_str_key_value, "./snacks_key_value1.txt", source_key_type="json", source_value_type="json", key_value_separator="/", n=3)
-        self.assertTrue(filecmp.cmp("./snacks_key_value.txt", "./snacks_key_value1.txt"))
-        os.remove("./snacks_key_value1.txt")
-        cluster.delete(topic_str_key_value)
+        topic_str = self.create_test_topic_name()
+        cluster.create(topic_str)
+        # Upon produce, the types "str" and "json" trigger the conversion of bytes, strings and dictionaries to bytes on Kafka.
+        producer = cluster.openw(topic_str, key_type="str", value_type="json")
+        snack_dict_list = [json.loads(snack_str) for snack_str in self.snack_str_list]
+        producer.produce(snack_dict_list, key=self.snack_str_list)
+        producer.close()
+        self.assertEqual(cluster.size(topic_str)[topic_str][0], 3)
+        #
+        group_str = self.create_test_group_name()
+        # Upon consume, the type "json" triggers the conversion into a dictionary, and "str" into a string.
+        consumer = cluster.openr(topic_str, group=group_str, key_type="json", value_type="str")
+        (message_dict_list, _) = consumer.read(n=3)
+        key_dict_list = [message_dict["key"] for message_dict in message_dict_list]
+        value_str_list = [message_dict["value"] for message_dict in message_dict_list]
+        self.assertEqual(key_dict_list, snack_dict_list)
+        self.assertEqual(value_str_list, self.snack_str_list)
+        consumer.close()
 
     def test_produce_consume_protobuf(self):
         schema_str = 'message Snack { required string name = 1; required float calories = 2; optional string colour = 3; }'
         #
         cluster = Cluster(cluster_str)
-        topic_str = create_test_topic_name()
+        #
+        topic_str = self.create_test_topic_name()
         cluster.create(topic_str)
-        cluster.cp("./snacks_value.txt", topic_str, target_value_type="pb", target_value_schema=schema_str)
+        # Upon produce, the type "protobuf" (alias = "pb") triggers the conversion of bytes, strings and dictionaries into Protobuf-encoded bytes on Kafka.
+        producer = cluster.openw(topic_str, key_type="protobuf", value_type="pb", key_schema=schema_str, value_schema=schema_str)
+        snack_dict_list = [json.loads(snack_str) for snack_str in self.snack_str_list]
+        producer.produce(snack_dict_list, key=self.snack_str_list)
+        producer.close()
         self.assertEqual(cluster.size(topic_str)[topic_str][0], 3)
-        cluster.cp(topic_str, "./snacks_value1.txt", source_value_type="pb", n=3)
-        self.assertTrue(filecmp.cmp("./snacks_value.txt", "./snacks_value1.txt"))
-        os.remove("./snacks_value1.txt")
-        cluster.delete(topic_str)
         #
-        topic_str_key_value = create_test_topic_name()
-        cluster.create(topic_str_key_value)
-        cluster.cp("./snacks_key_value.txt", topic_str_key_value, target_key_type="pb", target_value_type="pb", target_key_schema=schema_str, target_value_schema=schema_str, key_value_separator="/")
-        self.assertEqual(cluster.size(topic_str_key_value)[topic_str_key_value][0], 3)
-        cluster.cp(topic_str_key_value, "./snacks_key_value1.txt", source_key_type="pb", source_value_type="pb", key_value_separator="/", n=3)
-        self.assertTrue(filecmp.cmp("./snacks_key_value.txt", "./snacks_key_value1.txt"))
-        os.remove("./snacks_key_value1.txt")
-        #
-        cluster.create(f"{topic_str_key_value}_1")
-        cp(cluster, topic_str_key_value, cluster, f"{topic_str_key_value}_1", keep_timestamps=False)
-        cluster.cp(f"{topic_str_key_value}_1", "./snacks_key_value2.txt", source_key_type="pb", source_value_type="pb", key_value_separator="/", n=3)
-        self.assertTrue(filecmp.cmp("./snacks_key_value.txt", "./snacks_key_value2.txt"))
-        os.remove("./snacks_key_value2.txt")
-        cluster.delete(topic_str_key_value)
-        cluster.delete(f"{topic_str_key_value}_1")
+        group_str = self.create_test_group_name()
+        # Upon consume, the type "protobuf" (alias = "pb") triggers the conversion into a dictionary.
+        consumer = cluster.openr(topic_str, group=group_str, key_type="pb", value_type="protobuf")
+        (message_dict_list, _) = consumer.read(n=3)
+        key_dict_list = [message_dict["key"] for message_dict in message_dict_list]
+        value_dict_list = [message_dict["value"] for message_dict in message_dict_list]
+        self.assertEqual(key_dict_list, snack_dict_list)
+        self.assertEqual(value_dict_list, snack_dict_list)
+        consumer.close()
 
-    def test_produce_consume_avro(self):
-        schema_str = '{ "type": "record", "name": "myrecord", "fields": [{"name": "name",  "type": "string" }, {"name": "calories", "type": "float" }, {"name": "colour", "type": "string" }] }'
+    def test_produce_consume_protobuf_avro(self):
+        protobuf_schema_str = 'message Snack { required string name = 1; required float calories = 2; optional string colour = 3; }'
+        avro_schema_str = '{ "type": "record", "name": "myrecord", "fields": [{"name": "name",  "type": "string" }, {"name": "calories", "type": "float" }, {"name": "colour", "type": "string" }] }'
         #
         cluster = Cluster(cluster_str)
-        topic_str = create_test_topic_name()
+        #
+        topic_str = self.create_test_topic_name()
         cluster.create(topic_str)
-        (num_lines_int, num_messages_int) = cluster.cp("./snacks_value.txt", topic_str, target_value_type="avro", target_value_schema=schema_str)
-        self.assertEqual(num_lines_int, 3)
-        self.assertEqual(num_messages_int, 3)
+        # Upon produce, the type "protobuf" (alias = "pb") triggers the conversion of bytes, strings and dictionaries into Protobuf-encoded bytes on Kafka, and "avro" into Avro-encoded bytes.
+        producer = cluster.openw(topic_str, key_type="protobuf", value_type="avro", key_schema=protobuf_schema_str, value_schema=avro_schema_str)
+        snack_dict_list = [json.loads(snack_str) for snack_str in self.snack_str_list]
+        snack_bytes_list = [bytes(snack_str, encoding="utf-8") for snack_str in self.snack_str_list]
+        producer.produce(snack_dict_list, key=snack_bytes_list)
+        producer.close()
         self.assertEqual(cluster.size(topic_str)[topic_str][0], 3)
-        (message_counter_int, line_counter_int) = cluster.cp(topic_str, "./snacks_value1.txt", source_value_type="avro", n=3)
-        self.assertEqual(message_counter_int, 3)
-        self.assertEqual(line_counter_int, 3)
-        self.assertTrue(filecmp.cmp("./snacks_value.txt", "./snacks_value1.txt"))
-        os.remove("./snacks_value1.txt")
-        cluster.delete(topic_str)
         #
-        topic_str_key_value = create_test_topic_name()
-        cluster.create(topic_str_key_value)
-        cluster.cp("./snacks_key_value.txt", topic_str_key_value, target_key_type="avro", target_value_type="avro", target_key_schema=schema_str, target_value_schema=schema_str, key_value_separator="/")
-        self.assertEqual(cluster.size(topic_str_key_value)[topic_str_key_value][0], 3)
-        cluster.cp(topic_str_key_value, "./snacks_key_value1.txt", source_key_type="avro", source_value_type="avro", key_value_separator="/", n=3)
-        self.assertTrue(filecmp.cmp("./snacks_key_value.txt", "./snacks_key_value1.txt"))
-        os.remove("./snacks_key_value1.txt")
-        #
-        cluster.create(f"{topic_str_key_value}_1")
-        (consumed_message_counter_int, produced_message_counter_int) = cp(cluster, topic_str_key_value, cluster, f"{topic_str_key_value}_1")
-        self.assertEqual(consumed_message_counter_int, 3)
-        self.assertEqual(produced_message_counter_int, 3)
-        cluster.cp(f"{topic_str_key_value}_1", "./snacks_key_value2.txt", source_key_type="avro", source_value_type="avro", key_value_separator="/", n=3)
-        self.assertTrue(filecmp.cmp("./snacks_key_value.txt", "./snacks_key_value2.txt"))
-        os.remove("./snacks_key_value2.txt")
-        cluster.delete(topic_str_key_value)
-        cluster.delete(f"{topic_str_key_value}_1")
+        group_str = self.create_test_group_name()
+        # Upon consume, the types "protobuf" (alias = "pb") and "avro" trigger the conversion into a dictionary.
+        consumer = cluster.openr(topic_str, group=group_str, key_type="pb", value_type="avro")
+        (message_dict_list, _) = consumer.read(n=3)
+        key_dict_list = [message_dict["key"] for message_dict in message_dict_list]
+        value_dict_list = [message_dict["value"] for message_dict in message_dict_list]
+        self.assertEqual(key_dict_list, snack_dict_list)
+        self.assertEqual(value_dict_list, snack_dict_list)
+        consumer.close()
 
-    def test_produce_consume_jsonschema(self):
+    def test_produce_consume_str_jsonschema(self):
         schema_str = '{ "title": "abc", "definitions" : { "record:myrecord" : { "type" : "object", "required" : [ "name", "calories" ], "additionalProperties" : false, "properties" : { "name" : {"type" : "string"}, "calories" : {"type" : "number"}, "colour" : {"type" : "string"} } } }, "$ref" : "#/definitions/record:myrecord" }'
         #
         cluster = Cluster(cluster_str)
-        topic_str = create_test_topic_name()
-        cluster.create(topic_str)
-        cluster.cp("./snacks_value.txt", topic_str, target_value_type="jsonschema", target_value_schema=schema_str)
-        self.assertEqual(cluster.size(topic_str)[topic_str][0], 3)
-        cluster.cp(topic_str, "./snacks_value1.txt", source_value_type="jsonschema", n=3)
-        self.assertTrue(filecmp.cmp("./snacks_value.txt", "./snacks_value1.txt"))
-        os.remove("./snacks_value1.txt")
-        cluster.delete(topic_str)
         #
-        topic_str_key_value = create_test_topic_name()
-        cluster.create(topic_str_key_value)
-        cluster.cp("./snacks_key_value.txt", topic_str_key_value, target_key_type="jsonschema", target_value_type="jsonschema", target_key_schema=schema_str, target_value_schema=schema_str, key_value_separator="/")
-        self.assertEqual(cluster.size(topic_str_key_value)[topic_str_key_value][0], 3)
-        cluster.cp(topic_str_key_value, "./snacks_key_value1.txt", source_key_type="jsonschema", source_value_type="jsonschema", key_value_separator="/", n=3)
-        self.assertTrue(filecmp.cmp("./snacks_key_value.txt", "./snacks_key_value1.txt"))
-        os.remove("./snacks_key_value1.txt")
-        cluster.delete(topic_str_key_value)
-
-    def test_offsets(self):
-        cluster = Cluster(cluster_str)
-        topic_str = create_test_topic_name()
+        topic_str = self.create_test_topic_name()
         cluster.create(topic_str)
-        cluster.produce(topic_str, "message 1")
-        cluster.produce(topic_str, "message 2")
-        cluster.produce(topic_str, "message 3")
-        cluster.flush()
-        cluster.cat(topic_str)
-        cluster.subscribe(topic_str, offsets={0: 2})
-        message_dict_list = cluster.consume()
+        # Upon produce, the type "str" triggers the conversion of bytes, strings and dictionaries into bytes on Kafka, and "jsonschema" (alias = "json_sr") into Protobuf/Avro-encoded bytes on Kafka.
+        producer = cluster.openw(topic_str, key_type="str", value_type="jsonschema", value_schema=schema_str)
+        snack_dict_list = [json.loads(snack_str) for snack_str in self.snack_str_list]
+        producer.produce(snack_dict_list, key=self.snack_str_list)
+        producer.close()
+        self.assertEqual(cluster.size(topic_str)[topic_str][0], 3)
+        #
+        group_str = self.create_test_group_name()
+        # Upon consume, the types "json" and "jsonschema" (alias = "json_sr") trigger the conversion into a dictionary.
+        consumer = cluster.openr(topic_str, group=group_str, key_type="json", value_type="json_sr")
+        (message_dict_list, _) = consumer.read(n=3)
+        key_dict_list = [message_dict["key"] for message_dict in message_dict_list]
+        value_dict_list = [message_dict["value"] for message_dict in message_dict_list]
+        self.assertEqual(key_dict_list, snack_dict_list)
+        self.assertEqual(value_dict_list, snack_dict_list)
+        consumer.close()
+
+    def test_consume_from_offsets(self):
+        cluster = Cluster(cluster_str)
+        #
+        topic_str = self.create_test_topic_name()
+        cluster.create(topic_str)
+        producer = cluster.openw(topic_str)
+        producer.produce("message 1")
+        producer.produce("message 2")
+        producer.produce("message 3")
+        producer.close()
+        #
+        group_str = self.create_test_group_name()
+        consumer = cluster.openr(topic_str, group=group_str, offsets={0: 2})
+        message_dict_list = consumer.consume()
         self.assertEqual(len(message_dict_list), 1)
         self.assertEqual(message_dict_list[0]["value"], "message 3")
-        cluster.close()
-        cluster.delete(topic_str)
+        consumer.close()
 
     def test_commit(self):
         cluster = Cluster(cluster_str)

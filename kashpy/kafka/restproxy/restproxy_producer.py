@@ -1,35 +1,21 @@
-from kashpy.helpers import post, get_auth_str_tuple
+from kashpy.kafka.kafka_producer import KafkaProducer
+from kashpy.helpers import post
 
 import json
-import time
 
 # Constants
 
-CURRENT_TIME = 0
 RD_KAFKA_PARTITION_UA = -1
 
 #
 
-class RestProxyProducer:
+class RestProxyProducer(KafkaProducer):
     def __init__(self, kafka_obj, topic, **kwargs):
+        super().__init__(kafka_obj, topic, **kwargs)
+        #
         self.rest_proxy_config_dict = kafka_obj.rest_proxy_config_dict
-        self.schema_registry_config_dict = kafka_obj.schema_registry_config_dict
-        self.kash_config_dict = kafka_obj.kash_config_dict
         #
         self.cluster_id_str = kafka_obj.cluster_id_str
-        #
-        self.topic_str = topic
-        #
-        (self.key_type_str, self.value_type_str) = kafka_obj.get_key_value_type_tuple(**kwargs)
-        #
-        (self.key_schema_str, self.value_schema_str, self.key_schema_id_int, self.value_schema_id_int) = kafka_obj.get_key_value_schema_tuple(**kwargs)
-        #
-        self.produced_counter_int = 0
-
-    #
-
-    def write(self, value, **kwargs):
-        return self.produce(value, **kwargs)
 
     #
 
@@ -66,7 +52,7 @@ class RestProxyProducer:
                 type_str = "PROTOBUF"
                 if not isinstance(value, dict):
                     value = json.loads(value)
-            elif self.value_type_str.lower() == "jsonschema":
+            elif self.value_type_str.lower() in ["jsonschema", "json_sr"]:
                 type_str = "JSONSCHEMA"
                 if not isinstance(value, dict):
                     value = json.loads(value)
@@ -93,7 +79,7 @@ class RestProxyProducer:
                     type_str = "PROTOBUF"
                     if not isinstance(key, dict):
                         key = json.loads(key)
-                elif self.key_type_str.lower() == "jsonschema":
+                elif self.key_type_str.lower() in ["jsonschema", "json_sr"]:
                     type_str = "JSONSCHEMA"
                     if not isinstance(key, dict):
                         key = json.loads(key)
