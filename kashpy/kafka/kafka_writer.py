@@ -1,4 +1,4 @@
-class KafkaProducer:
+class KafkaWriter:
     def __init__(self, kafka_obj, topic, **kwargs):
         self.schema_registry_config_dict = kafka_obj.schema_registry_config_dict
         self.kash_config_dict = kafka_obj.kash_config_dict

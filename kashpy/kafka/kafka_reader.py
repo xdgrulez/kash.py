@@ -6,7 +6,7 @@ ALL_MESSAGES = -1
 
 #
 
-class KafkaConsumer:
+class KafkaReader:
     def __init__(self, kafka_obj, *topics, **kwargs):
         self.schema_registry_config_dict = kafka_obj.schema_registry_config_dict
         self.kash_config_dict = kafka_obj.kash_config_dict

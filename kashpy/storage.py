@@ -15,7 +15,7 @@ class Storage(Shell):
         self.mandatory_section_str_list = mandatory_section_str_list
         self.optional_section_str_list = optional_section_str_list
         #
-        self.config_dict = self.get_config_dict()
+        self.config_dict = self.get_config_dict(config_str)
         #
         self.kash_config_dict = self.config_dict["kash"] if "kash" in self.config_dict else {}
         #
@@ -66,22 +66,22 @@ class Storage(Shell):
 
     #
 
-    def get_config_dict(self):
+    def get_config_dict(self, config_str):
         home_str = os.environ.get("KASHPY_HOME")
         if not home_str:
             home_str = "."
         #
         configs_path_str = f"{home_str}/configs/{self.dir_str}"
-        if os.path.exists(f"{configs_path_str}/{self.config_str}.yaml"):
-            config_dict = YamlLoader(f"{configs_path_str}/{self.config_str}.yaml").load()
+        if os.path.exists(f"{configs_path_str}/{config_str}.yaml"):
+            config_dict = YamlLoader(f"{configs_path_str}/{config_str}.yaml").load()
         elif os.path.exists(f"{configs_path_str}/{self.config_str}.yml"):
-            config_dict = YamlLoader(f"{configs_path_str}/{self.config_str}.yml").load()
+            config_dict = YamlLoader(f"{configs_path_str}/{config_str}.yml").load()
         else:
-            raise Exception(f"No configuration file \"{self.config_str}.yaml\" or \"{self.config_str}.yml\" found in \"{configs_path_str}\" directory (hint: use KASHPY_HOME environment variable to set the kash.py home directory).")
+            raise Exception(f"No configuration file \"{config_str}.yaml\" or \"{config_str}.yml\" found in \"{configs_path_str}\" directory (hint: use KASHPY_HOME environment variable to set the kash.py home directory).")
         #
         for mandatory_section_str in self.mandatory_section_str_list:
             if mandatory_section_str not in config_dict:
-                raise Exception(f"Connection configuration file \"{self.config_str}.yaml\" does not include a \"{mandatory_section_str}\" section.")
+                raise Exception(f"Connection configuration file \"{config_str}.yaml\" does not include a \"{mandatory_section_str}\" section.")
         #
         for optional_section_str in self.optional_section_str_list:
             if optional_section_str not in config_dict:

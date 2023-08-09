@@ -1,4 +1,5 @@
 #!/bin/bash
+export KASHPY_HOME=".."
 if [ -z $1 ]
 then
     coverage run -m unittest test_kafka_cluster.Test

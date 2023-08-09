@@ -1,10 +1,10 @@
-from kashpy.kafka.kafka_consumer import KafkaConsumer
+from kashpy.kafka.kafka_reader import KafkaReader
 
 from kashpy.helpers import get, delete, post
 
 #
 
-class RestProxyConsumer(KafkaConsumer):
+class RestProxyReader(KafkaReader):
     def __init__(self, kafka_obj, cluster_id_str, *topics, **kwargs):
         super().__init__(kafka_obj, *topics, **kwargs)
         #

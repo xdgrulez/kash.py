@@ -1,4 +1,4 @@
-from kashpy.kafka.kafka_producer import KafkaProducer
+from kashpy.kafka.kafka_writer import KafkaWriter
 from kashpy.helpers import post
 
 import json
@@ -9,7 +9,7 @@ RD_KAFKA_PARTITION_UA = -1
 
 #
 
-class RestProxyProducer(KafkaProducer):
+class RestProxyWriter(KafkaWriter):
     def __init__(self, kafka_obj, topic, **kwargs):
         super().__init__(kafka_obj, topic, **kwargs)
         #

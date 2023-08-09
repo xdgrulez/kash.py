@@ -12,7 +12,7 @@ from confluent_kafka.schema_registry.json_schema import JSONSerializer
 from confluent_kafka.schema_registry.protobuf import ProtobufSerializer
 from confluent_kafka.serialization import MessageField, SerializationContext
 
-from kashpy.kafka.kafka_producer import KafkaProducer
+from kashpy.kafka.kafka_writer import KafkaWriter
 from kashpy.kafka.schemaregistry import SchemaRegistry
 
 # Constants
@@ -22,7 +22,7 @@ RD_KAFKA_PARTITION_UA = -1
 
 #
 
-class ClusterProducer(KafkaProducer):
+class ClusterWriter(KafkaWriter):
     def __init__(self, kafka_obj, topic, **kwargs):
         super().__init__(kafka_obj, topic, **kwargs)
         #

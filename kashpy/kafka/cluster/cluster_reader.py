@@ -10,12 +10,12 @@ import os
 import sys
 import tempfile
 
-from kashpy.kafka.kafka_consumer import KafkaConsumer
+from kashpy.kafka.kafka_reader import KafkaReader
 from kashpy.kafka.schemaregistry import SchemaRegistry
 
 #
 
-class ClusterConsumer(KafkaConsumer):
+class ClusterReader(KafkaReader):
     def __init__(self, kafka_obj, *topics, **kwargs):
         super().__init__(kafka_obj, *topics, **kwargs)
         #

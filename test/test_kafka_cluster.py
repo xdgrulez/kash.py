@@ -1,5 +1,3 @@
-import filecmp
-import os
 import sys
 import time
 import unittest
@@ -13,12 +11,12 @@ principal_str = None
 # cluster_str = "ccloud"
 # principal_str = "User:admin"
 
+OFFSET_INVALID = -1001
+
 class Test(unittest.TestCase):
     def setUp(self):
         warnings.filterwarnings(action="ignore", message="unclosed", category=ResourceWarning)
         #
-        self.old_home_str = os.environ.get("KASHPY_HOME")
-        os.environ["KASHPY_HOME"] = "."
         # https://simon-aubury.medium.com/kafka-with-avro-vs-kafka-with-protobuf-vs-kafka-with-json-schema-667494cbb2af
         self.snack_str_list = ['{"name": "cookie", "calories": 500.0, "colour": "brown"}', '{"name": "cake", "calories": 260.0, "colour": "white"}', '{"name": "timtam", "calories": 80.0, "colour": "chocolate"}']
         #
@@ -33,9 +31,6 @@ class Test(unittest.TestCase):
             cluster.delete_groups(group_str)
         for topic_str in self.topic_str_list:
             cluster.delete(topic_str)
-        #
-        if self.old_home_str:
-            os.environ["KASHPY_HOME"] = self.old_home_str
 
     def create_test_topic_name(self):
         topic_str = f"test_topic_{get_millis()}"
@@ -451,483 +446,41 @@ class Test(unittest.TestCase):
 
     def test_commit(self):
         cluster = Cluster(cluster_str)
-        topic_str = create_test_topic_name()
+        #
+        topic_str = self.create_test_topic_name()
         cluster.create(topic_str)
-        cluster.produce(topic_str, "message 1")
-        cluster.produce(topic_str, "message 2")
-        cluster.produce(topic_str, "message 3")
-        cluster.flush()
-        cluster.cat(topic_str, n=3)
-        cluster.subscribe(topic_str, config={"enable.auto.commit": "False"})
-        cluster.consume()
-        offsets_dict = cluster.offsets()
-        self.assertEqual(offsets_dict[0], "OFFSET_INVALID")
-        cluster.commit()
-        offsets_dict1 = cluster.offsets()
-        self.assertEqual(offsets_dict1[0], 1)
-        cluster.close()
-        cluster.delete(topic_str)
-
-    def test_errors(self):
-        cluster = Cluster(cluster_str)
-        cluster.cp("./abc", "./abc")
-        cluster.consume("abc")
+        producer = cluster.openw(topic_str)
+        producer.produce("message 1")
+        producer.produce("message 2")
+        producer.produce("message 3")
+        producer.close()
+        #
+        group_str = self.create_test_group_name()
+        consumer = cluster.openr(topic_str, group=group_str, config={"enable.auto.commit": "False"})
+        consumer.consume()
+        offsets_dict = consumer.offsets()
+        self.assertEqual(offsets_dict[topic_str][0], OFFSET_INVALID)
+        consumer.commit()
+        offsets_dict1 = consumer.offsets()
+        self.assertEqual(offsets_dict1[topic_str][0], 1)
+        consumer.close()
     
     def test_cluster_settings(self):
         cluster = Cluster(cluster_str)
+        #
         cluster.verbose(0)
         self.assertEqual(cluster.verbose(), 0)
 
-    def test_transforms_string(self):
-        cluster = Cluster(cluster_str)
-        topic_str = create_test_topic_name()
-        cluster.touch(topic_str)
-        cluster.cp("./snacks_value.txt", topic_str, target_value_type="str")
-        self.assertEqual(cluster.size(topic_str)[topic_str][0], 3)
-        #
-        def map_function(message_dict):
-            value_dict = json.loads(message_dict["value"])
-            value_dict["colour"] += "ish"
-            value_str = json.dumps(value_dict)
-            message_dict["value"] = value_str
-            return message_dict
-        cluster.create(f"{topic_str}_1")
-        map(cluster, topic_str, cluster, f"{topic_str}_1", map_function, source_value_type="str", n=2)
-        self.assertEqual(cluster.size(f"{topic_str}_1")[f"{topic_str}_1"][0], 2)
-        #
-        cluster.subscribe(f"{topic_str}_1", value_type="str")
-        message_dict_list = cluster.consume(n=2)
-        for message_dict in message_dict_list:
-            value_dict = json.loads(message_dict["value"])            
-            self.assertRegex(value_dict["colour"], ".*ish")
-        #
-        cluster.delete(topic_str)
-        cluster.delete(f"{topic_str}_1")
-
-    def test_transforms_json(self):
-        cluster = Cluster(cluster_str)
-        topic_str = create_test_topic_name()
-        cluster.create(topic_str)
-        cluster.cp("./snacks_value.txt", topic_str, target_value_type="json", n=2)
-        self.assertEqual(cluster.size(topic_str)[topic_str][0], 2)
-        #
-        def map_function(message_dict):
-            message_dict["value"]["colour"] += "ish"
-            return message_dict
-        cluster.create(f"{topic_str}_1")
-        map(cluster, topic_str, cluster, f"{topic_str}_1", map_function, source_value_type="json", n=3)
-        #
-        cluster.subscribe(f"{topic_str}_1", value_type="json")
-        message_dict_list = cluster.consume(n=2)
-        for message_dict in message_dict_list:
-            self.assertRegex(message_dict["value"]["colour"], ".*ish")
-        #
-        cluster.delete(topic_str)
-        cluster.delete(f"{topic_str}_1")
-
-    def test_transforms_protobuf(self):
-        schema_str = 'message Snack { required string name = 1; required float calories = 2; optional string colour = 3; }'
-        #
-        cluster = Cluster(cluster_str)
-        topic_str = create_test_topic_name()
-        cluster.create(topic_str)
-        cluster.cp("./snacks_key_value.txt", topic_str, target_key_type="pb", target_value_type="pb", target_key_schema=schema_str, target_value_schema=schema_str, key_value_separator="/")
-        self.assertEqual(cluster.size(topic_str)[topic_str][0], 3)
-        #
-        def map_function(message_dict):
-            message_dict["key"]["colour"] += "ishy"
-            message_dict["value"]["colour"] += "ish"
-            return message_dict
-        cluster.create(f"{topic_str}_1")
-        map(cluster, topic_str, cluster, f"{topic_str}_1", map_function, source_key_type="pb", source_value_type="pb", n=3)
-        #
-        cluster.subscribe(f"{topic_str}_1", key_type="pb", value_type="pb")
-        message_dict_list = cluster.consume(n=3)
-        for message_dict in message_dict_list:
-            self.assertRegex(message_dict["key"]["colour"], ".*ishy")
-            self.assertRegex(message_dict["value"]["colour"], ".*ish")
-        #
-        cluster.delete(topic_str)
-        cluster.delete(f"{topic_str}_1")
-
-    def test_transforms_avro(self):
-        schema_str = '{ "type": "record", "name": "myrecord", "fields": [{"name": "name",  "type": "string" }, {"name": "calories", "type": "float" }, {"name": "colour", "type": "string" }] }'
-        #
-        cluster = Cluster(cluster_str)
-        topic_str = create_test_topic_name()
-        cluster.create(topic_str)
-        cluster.cp("./snacks_value.txt", topic_str, target_value_type="avro", target_value_schema=schema_str)
-        self.assertEqual(cluster.size(topic_str)[topic_str][0], 3)
-        #
-        def map_function(message_dict):
-            message_dict["value"]["colour"] += "ish"
-            return message_dict
-        cluster.create(f"{topic_str}_1")
-        map(cluster, topic_str, cluster, f"{topic_str}_1", map_function, source_value_type="avro", n=3)
-        #
-        cluster.subscribe(f"{topic_str}_1", value_type="avro")
-        message_dict_list = cluster.consume(n=3)
-        for message_dict in message_dict_list:
-            self.assertRegex(message_dict["value"]["colour"], ".*ish")
-        #
-        cluster.delete(topic_str)
-        cluster.delete(f"{topic_str}_1")
-
-    def test_transforms_jsonschema(self):
-        schema_str = '{ "title": "abc", "definitions" : { "record:myrecord" : { "type" : "object", "required" : [ "name", "calories" ], "additionalProperties" : false, "properties" : { "name" : {"type" : "string"}, "calories" : {"type" : "number"}, "colour" : {"type" : "string"} } } }, "$ref" : "#/definitions/record:myrecord" }'
-        #
-        cluster = Cluster(cluster_str)
-        topic_str = create_test_topic_name()
-        cluster.create(topic_str)
-        cluster.cp("./snacks_value.txt", topic_str, target_value_type="jsonschema", target_value_schema=schema_str)
-        self.assertEqual(cluster.size(topic_str)[topic_str][0], 3)
-        #
-        def map_function(message_dict):
-            message_dict["value"]["colour"] += "ish"
-            return message_dict
-        cluster.create(f"{topic_str}_1")
-        map(cluster, topic_str, cluster, f"{topic_str}_1", map_function, source_value_type="jsonschema", n=3)
-        #
-        cluster.subscribe(f"{topic_str}_1", value_type="jsonschema")
-        message_dict_list = cluster.consume(n=3)
-        for message_dict in message_dict_list:
-            self.assertRegex(message_dict["value"]["colour"], ".*ish")
-        #
-        cluster.delete(topic_str)
-        cluster.delete(f"{topic_str}_1")
-
-    def test_transforms_bytes(self):
-        cluster = Cluster(cluster_str)
-        topic_str = create_test_topic_name()
-        cluster.create(topic_str)
-        cluster.cp("./snacks_value.txt", topic_str, target_value_type="str")
-        self.assertEqual(cluster.size(topic_str)[topic_str][0], 3)
-        #
-        def flatmap_function(message_dict):
-            value_bytearray = bytearray(message_dict["value"])
-            value_bytearray[10] = ord("X")
-            message_dict["value"] = bytes(value_bytearray)
-            return [message_dict]
-        cluster.create(f"{topic_str}_1")
-        flatmap(cluster, topic_str, cluster, f"{topic_str}_1", flatmap_function, source_value_type="bytes", n=3)
-        #
-        cluster.subscribe(f"{topic_str}_1", value_type="bytes")
-        message_dict_list = cluster.consume(n=3)
-        for message_dict in message_dict_list:            
-            value_bytes = message_dict["value"]
-            self.assertEqual(value_bytes[10], ord("X"))     
-        #
-        cluster.delete(topic_str)
-        cluster.delete(f"{topic_str}_1")
-
-    def test_grep(self):
-        schema_str = '{ "type": "record", "name": "myrecord", "fields": [{"name": "name",  "type": "string" }, {"name": "calories", "type": "float" }, {"name": "colour", "type": "string" }] }'
-        #
-        cluster = Cluster(cluster_str)
-        cluster.verbose(1)
-        topic_str = create_test_topic_name()
-        cluster.create(topic_str)
-        cluster.cp("./snacks_value.txt", topic_str, target_value_type="avro", target_value_schema=schema_str)
-        self.assertEqual(cluster.size(topic_str)[topic_str][0], 3)
-        #
-        (message_dict_list, num_matching_messages_int, message_counter_int) = cluster.grep(topic_str, ".*name.*cake", value_type="avro")
-        self.assertEqual(len(message_dict_list), 1)
-        self.assertEqual(num_matching_messages_int, 1)
-        self.assertEqual(message_counter_int, 3)
-        #
-        (message_dict_list, num_matching_messages_int, message_counter_int) = cluster.grep_fun(topic_str, lambda message_dict: message_dict["value"]["name"] == "cake", value_type="avro", offsets={0: 2})
-        self.assertEqual(len(message_dict_list), 0)
-        self.assertEqual(num_matching_messages_int, 0)
-        self.assertEqual(message_counter_int, 1)
-        #
-        cluster.delete(topic_str)
-    
-    def test_replicate_change_schema(self):
-        avro_schema_str = '{ "type": "record", "name": "myrecord", "fields": [{"name": "name",  "type": "string" }, {"name": "calories", "type": "float" }, {"name": "colour", "type": "string" }] }'
-        #
-        cluster = Cluster(cluster_str)
-        topic_str = create_test_topic_name()
-        cluster.create(topic_str)
-        cluster.cp("./snacks_value.txt", topic_str, target_value_type="avro", target_value_schema=avro_schema_str)
-        self.assertEqual(cluster.size(topic_str)[topic_str][0], 3)
-        #
-        protobuf_schema_str = 'message Snack { required string name = 1; required float calories = 2; optional string colour = 3; }'
-        cluster.create(f"{topic_str}_1")
-        (consumed_message_counter_int, produced_message_counter_int) = cluster.cp(topic_str, f"{topic_str}_1", source_value_type="avro", target_value_type="pb", target_value_schema=protobuf_schema_str, n=3)
-        self.assertEqual(consumed_message_counter_int, 3)
-        self.assertEqual(produced_message_counter_int, 3)
-        #
-        cluster.cp(f"{topic_str}_1", "./snacks_value1.txt", source_value_type="pb", n=3)
-        self.assertTrue(filecmp.cmp("./snacks_value.txt", "./snacks_value1.txt"))
-        os.remove("./snacks_value1.txt")
-        #
-        cluster.delete(topic_str)
-        cluster.delete(f"{topic_str}_1")
-
-    def test_flush_timeout_bug(self):
+    def test_configs(self):
         cluster = Cluster(cluster_str)
         #
-        for i in range(3):
-            print(i)
-            topic_str = create_test_topic_name()
-            cluster.create(topic_str)
-            cluster.create(f"{topic_str}_1")
-            #
-            cluster.cp("./snacks_value.txt", topic_str, target_value_type="str")
-            self.assertEqual(cluster.size(topic_str)[topic_str][0], 3)
-            cluster.cp(topic_str, "./snacks_value1.txt", source_value_type="str", n=3)
-            cluster.cp("./snacks_value1.txt", f"{topic_str}_1", target_value_type="str")
-            self.assertEqual(cluster.size(f"{topic_str}_1")[f"{topic_str}_1"][0], 3)
-            #
-            cluster.delete(topic_str)
-            cluster.delete(f"{topic_str}_1")
-    
-    def test_diff(self):
-        cluster = Cluster(cluster_str)
-        topic_str = create_test_topic_name()
-        cluster.create(topic_str)
-        cluster.cp("./snacks_value.txt", topic_str, target_value_type="json")
-        self.assertEqual(cluster.size(topic_str)[topic_str][0], 3)
+        config_str_list1 = cluster.configs()
+        self.assertIn("local", config_str_list1)
+        config_str_list2 = cluster.configs("loc*")
+        self.assertIn("local", config_str_list2)
+        config_str_list3 = cluster.configs("this_pattern_shall_not_match_anything")
+        self.assertEqual(config_str_list3, [])
         #
-        cluster.create(f"{topic_str}_1")
-        cluster.cp("./snacks_value.txt", f"{topic_str}_1", target_value_type="json")
-        self.assertEqual(cluster.size(f"{topic_str}_1")[f"{topic_str}_1"][0], 3)
-        #
-        def map_function(message_dict):
-            if message_dict["value"]["name"] == "cookie":
-                message_dict["value"]["colour"] += "ish"
-            return message_dict
-        cluster.create(f"{topic_str}_2")
-        map(cluster, topic_str, cluster, f"{topic_str}_2", map_function, source_value_type="json", n=3)
-        self.assertEqual(cluster.size(f"{topic_str}_2")[f"{topic_str}_2"][1][0], 3)
-        #
-        def break_function(message_dict1, _):
-            value_dict1 = json.loads(message_dict1["value"])
-            if value_dict1["colour"] == "white":
-                return True
-            else:
-                return False
-        #
-        cluster2 = Cluster(cluster_str)
-        cluster.verbose(1)
-        differing_message_dict_tuple_list, num_messages_int1, num_messages_int2 = diff(cluster, topic_str, cluster2, f"{topic_str}_1", break_function=break_function)
-        self.assertEqual(differing_message_dict_tuple_list, [])
-        self.assertEqual(num_messages_int1, 2)
-        self.assertEqual(num_messages_int2, 2)
-        #
-        differing_message_dict_tuple_list1, num_messages_int1, num_messages_int2 = cluster.diff(topic_str, f"{topic_str}_2", value_type1="json", value_type2="json")
-        self.assertEqual(len(differing_message_dict_tuple_list1), 1)
-        self.assertEqual(num_messages_int1, 3)
-        self.assertEqual(num_messages_int2, 3)
-        self.assertEqual(differing_message_dict_tuple_list1[0][0]["value"]["name"], "cookie")
-        #
-        differing_message_dict_tuple_list1, num_messages_int1, num_messages_int2 = cluster.diff_fun(topic_str, f"{topic_str}_2", lambda x, y: x["value"] != y["value"], value_type1="json", value_type2="json")
-        self.assertEqual(len(differing_message_dict_tuple_list1), 1)
-        self.assertEqual(num_messages_int1, 3)
-        self.assertEqual(num_messages_int2, 3)
-        self.assertEqual(differing_message_dict_tuple_list1[0][0]["value"]["name"], "cookie")
-        #
-        acc, num_messages_int1, num_messages_int2 = cluster.zip_foldl(topic_str, f"{topic_str}_2", lambda acc, x, y: acc + [(x["value"], y["value"])], [], value_type1="json", value_type2="json")
-        self.assertEqual(len(acc), 3)
-        self.assertEqual(num_messages_int1, 3)
-        self.assertEqual(num_messages_int2, 3)
-        self.assertEqual(acc[0][0]["name"], "cookie")
-        #
-        cluster.delete(topic_str)
-        cluster.delete(f"{topic_str}_1")
-        cluster.delete(f"{topic_str}_2")
-
-    def test_upload_flatmap(self):
-        cluster = Cluster(cluster_str)
-        topic_str = create_test_topic_name()
-        cluster.create(topic_str)
-        #
-        def flatmap_function(key_str_value_str_tuple):
-            return [(key_str_value_str_tuple[0], key_str_value_str_tuple[1]), (key_str_value_str_tuple[0], key_str_value_str_tuple[1])]
-        #
-        def break_function(key_str_value_str_tuple):
-            value_str = key_str_value_str_tuple[1]
-            return "white" in value_str
-        #
-        cluster.cp("./snacks_value.txt", topic_str, flatmap_function=flatmap_function, break_function=break_function, target_value_type="str")
-        self.assertEqual(cluster.size(topic_str)[topic_str][0], 2)
-        #
-        cluster.delete(topic_str)
-
-
-    def test_download_flatmap(self):
-        cluster = Cluster(cluster_str)
-        topic_str = create_test_topic_name()
-        cluster.create(topic_str)
-        #
-        cluster.cp("./snacks_value.txt", topic_str, target_value_type="str")
-        self.assertEqual(cluster.size(topic_str)[topic_str][0], 3)
-        #
-        def flatmap_function(message_dict):
-            return [message_dict, message_dict]
-        (message_counter_int, line_counter_int) = cluster.cp(topic_str, "./snacks_value1.txt", flatmap_function=flatmap_function, target_value_type="str")
-        self.assertEqual(message_counter_int, 3)
-        self.assertEqual(line_counter_int, 6)
-        lines_count_int = count_lines("./snacks_value1.txt")
-        self.assertEqual(lines_count_int, 6)
-        #
-        os.remove("./snacks_value1.txt")
-        cluster.delete(topic_str)
-
-    def test_wc(self):
-        cluster = Cluster(cluster_str)
-        topic_str = create_test_topic_name()
-        cluster.create(topic_str)
-        #
-        cluster.cp("./snacks_value.txt", topic_str, target_value_type="str")
-        self.assertEqual(cluster.size(topic_str)[topic_str][0], 3)
-        #
-        (num_messages_int, num_words_int, num_bytes_int) = cluster.wc(topic_str)
-        self.assertEqual(num_messages_int, 3)
-        self.assertEqual(num_words_int, 18)
-        self.assertEqual(num_bytes_int, 169)
-        #
-        cluster.delete(topic_str)
-        #
-        cluster.create(f"{topic_str}_1")
-        cluster.cp("./snacks_key_value.txt", f"{topic_str}_1", target_key_type="str", target_value_type="str", key_value_separator="/")
-        self.assertEqual(cluster.size(f"{topic_str}_1")[f"{topic_str}_1"][0], 3)
-        #
-        (num_messages_int, num_words_int, num_bytes_int) = cluster.wc(f"{topic_str}_1")
-        self.assertEqual(num_messages_int, 3)
-        self.assertEqual(num_words_int, 36)
-        self.assertEqual(num_bytes_int, 368)
-        #
-        cluster.delete(f"{topic_str}_1")
-
-    def test_map(self):
-        cluster = Cluster(cluster_str)
-        topic_str = create_test_topic_name()
-        cluster.create(topic_str)
-        #
-        cluster.cp("./snacks_value.txt", topic_str, target_value_type="str")
-        self.assertEqual(cluster.size(topic_str)[topic_str][0], 3)
-        #
-        def map_function(message_dict):
-            value_dict = json.loads(message_dict["value"])
-            value_dict["colour"] += "ish"
-            value_str = json.dumps(value_dict)
-            message_dict["value"] = value_str
-            return message_dict
-        #
-        def break_function(message_dict):
-            value_dict = json.loads(message_dict["value"])
-            if value_dict["colour"] == "white":
-                return True
-            else:
-                return False
-        #
-        message_dict_list, num_messages_int = cluster.map(topic_str, map_function, break_function=break_function)
-        self.assertEqual(json.loads(message_dict_list[0]["value"])["colour"], "brownish")
-        self.assertEqual(num_messages_int, 2)
-        #
-        cluster.delete(topic_str)
-
-    def test_filter(self):
-        cluster = Cluster(cluster_str)
-        topic_str = create_test_topic_name()
-        cluster.create(topic_str)
-        #
-        cluster.cp("./snacks_value.txt", topic_str, target_value_type="str")
-        self.assertEqual(cluster.size(topic_str)[topic_str][0], 3)
-        #
-        def filter_function(message_dict):
-            return message_dict["value"]["colour"] == "brown"
-        #
-        message_dict_list, _ = cluster.filter(topic_str, filter_function, value_type="json")
-        self.assertEqual(len(message_dict_list), 1)
-        #
-        (num_messages_int, produced_messages_counter_int) = filter(cluster, topic_str, cluster, f"{topic_str}_1", filter_function, source_value_type="json")
-        self.assertEqual(num_messages_int, 3)
-        self.assertEqual(produced_messages_counter_int, 1)
-        #
-        cluster.delete(topic_str)
-        cluster.delete(f"{topic_str}_1")
-
-    def test_map_filter_to_from_file(self):
-        cluster = Cluster(cluster_str)
-        topic_str = create_test_topic_name()
-        cluster.create(topic_str)
-        #
-        cluster.map_from_file("./snacks_value.txt", topic_str, lambda x: x)
-        self.assertEqual(cluster.size(topic_str)[topic_str][0], 3)
-        #
-        def map_function(message_dict):
-            message_dict["value"]["colour"] = "brown"
-            return message_dict
-        (message_counter_int, line_counter_int) = cluster.map_to_file(topic_str, "./snacks_value1.txt", map_function=map_function, value_type="json")
-        self.assertEqual(message_counter_int, 3)
-        self.assertEqual(line_counter_int, 3)
-        #
-        def filter_function(key_str_value_str_tuple):
-            _, value_str = key_str_value_str_tuple
-            return json.loads(value_str)["name"] == "timtam"
-        (lines_counter_int, produced_messages_counter_int) = cluster.filter_from_file("./snacks_value1.txt", topic_str, filter_function)
-        self.assertEqual(lines_counter_int, 3)
-        self.assertEqual(produced_messages_counter_int, 1)
-        #
-        def filter_function(message_dict):
-            return message_dict["value"]["name"] == "timtam"
-        (message_counter_int, line_counter_int) = cluster.filter_to_file(topic_str, "./snacks_value2.txt", filter_function, value_type="json")
-        self.assertEqual(message_counter_int, 4)
-        self.assertEqual(line_counter_int, 2)
-        #
-        os.remove("./snacks_value1.txt")
-        os.remove("./snacks_value2.txt")
-        cluster.delete(topic_str)
-
-    def test_head_tail(self):
-        cluster = Cluster(cluster_str)
-        topic_str = create_test_topic_name()
-        cluster.create(topic_str)
-        #
-        cluster.cp("./snacks_value.txt", topic_str, flatmap_function=lambda x: [x, x, x, x], target_value_type="str")
-        self.assertEqual(cluster.size(topic_str)[topic_str][0], 12)
-        #
-        topic_str_message_dict_list_dict = cluster.head(topic_str)
-        self.assertEqual(len(topic_str_message_dict_list_dict[topic_str]), 10)
-        self.assertEqual(topic_str_message_dict_list_dict[topic_str][0]["offset"], 0)
-        self.assertEqual(topic_str_message_dict_list_dict[topic_str][9]["offset"], 9)
-        #
-        topic_str_message_dict_list_dict = cluster.tail(topic_str)
-        self.assertEqual(len(topic_str_message_dict_list_dict[topic_str]), 10)
-        self.assertEqual(topic_str_message_dict_list_dict[topic_str][0]["offset"], 2)
-        self.assertEqual(topic_str_message_dict_list_dict[topic_str][9]["offset"], 11)
-        #
-        cluster.delete(topic_str)
-
-    def test_cp_no_target_schema(self):
-        schema_str = '{ "type": "record", "name": "myrecord", "fields": [{"name": "name",  "type": "string" }, {"name": "calories", "type": "float" }, {"name": "colour", "type": "string" }] }'
-        # Create topic with three Avro-encoded messages using the value schema schema_str.
-        cluster = Cluster(cluster_str)
-        topic_str = create_test_topic_name()
-        cluster.create(topic_str)
-        cluster.cp("./snacks_value.txt", topic_str, target_value_type="avro", target_value_schema=schema_str)
-        self.assertEqual(cluster.size(topic_str)[topic_str][0], 3)
-        # Copy the topic to another topic *with* setting the target value schema explicitly.
-        cluster.cp(topic_str, f"{topic_str}_1", source_value_type="avro", target_value_type="avro", target_value_schema=schema_str)
-#        self.assertEqual(cluster.size(topic_str)[topic_str][0], 3)
-#        diff_tuple = cluster.diff(topic_str, f"{topic_str}_1")
-#        self.assertEqual(diff_tuple[0], [])
-        # Copy the topic to another topic *without* setting the target value schema explicitly.
-        cluster.cp(topic_str, f"{topic_str}_2", source_value_type="avro", target_value_type="avro")
-#        self.assertEqual(cluster.size(topic_str)[topic_str][0], 3)
-#        diff_tuple = cluster.diff(topic_str, f"{topic_str}_2")
-#        self.assertEqual(diff_tuple[0], [])
-        #
-        cluster.delete(topic_str)
-        cluster.delete(f"{topic_str}_1")
-        cluster.delete(f"{topic_str}_2")
-
-    def test_clusters(self):
-        cluster_str_list1 = clusters()
-        self.assertIn("local", cluster_str_list1)
-        cluster_str_list2 = clusters("loc*")
-        self.assertIn("local", cluster_str_list2)
-        cluster_str_list3 = clusters("this_pattern_shall_not_match_anything")
-        self.assertEqual(cluster_str_list3, [])
+        config_str_config_dict_dict = cluster.configs(verbose=True)
+        self.assertIn("local", config_str_config_dict_dict)
+        self.assertEqual(True, config_str_config_dict_dict["local"]["kash"]["enable.auto.commit"])
