@@ -37,10 +37,10 @@ class KafkaReader:
         #
         break_function = kwargs["break_function"] if "break_function" in kwargs else lambda _, _1: False
         #
-        acc = initial_acc
         message_counter_int = 0
+        #
+        acc = initial_acc
         break_bool = False
-        verbose_int = self.kash_config_dict["verbose"]
         while True:
             message_dict_list = self.consume(n=read_batch_size_int, **kwargs)
             if not message_dict_list:
@@ -51,19 +51,16 @@ class KafkaReader:
                     break_bool = True
                     break
                 acc = foldl_function(acc, message_dict)
-            #
-            message_counter_int += len(message_dict_list)
+                message_counter_int += 1
             #
             if break_bool:
                 break
             #
-            if verbose_int > 0 and message_counter_int % self.kash_config_dict["progress.num.messages"] == 0:
-                print(f"Consumed: {message_counter_int}")
             if n_int != ALL_MESSAGES:
                 if message_counter_int >= n_int:
                     break
         #
-        return (acc, message_counter_int)
+        return acc
 
     #
 
@@ -88,7 +85,7 @@ class KafkaReader:
             return prefix_str + str(get_millis())
 
     def get_offsets_dict(self, topic_str_list, **kwargs):
-        if "offsets" in kwargs:
+        if "offsets" in kwargs and kwargs["offsets"] is not None:
             offsets_dict = kwargs["offsets"]
             str_or_int = list(offsets_dict.keys())[0]
             if isinstance(str_or_int, int):

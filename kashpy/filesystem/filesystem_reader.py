@@ -16,8 +16,6 @@ class FileSystemReader():
         message_counter_int = 0
         break_bool = False
         read_batch_size_int = self.kash_config_dict["read.batch.size"]
-        progress_num_messages_int = self.kash_config_dict["progress.num.messages"]
-        verbose_int = self.kash_config_dict["verbose"]
         acc = initial_acc
         offset_int = 0
         #
@@ -38,8 +36,6 @@ class FileSystemReader():
                 acc = foldl_function(acc, message_dict)
                 #
                 message_counter_int += 1
-                if verbose_int > 0 and message_counter_int % progress_num_messages_int == 0:
-                    print(f"Read: {message_counter_int}")
                 #
                 return (acc, break_bool, message_counter_int)
             #
@@ -72,7 +68,7 @@ class FileSystemReader():
             #
             buffer_bytes = message_bytes_list[-1]
         #
-        return (acc, message_counter_int)
+        return acc
 
     #
 

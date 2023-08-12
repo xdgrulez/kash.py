@@ -6,18 +6,27 @@ ALL_MESSAGES = -1
 
 class Functional:
     def foldl(self, resource, foldl_function, initial_acc, n=ALL_MESSAGES, **kwargs):
+        verbose_int = self.kash_config_dict["verbose"]
+        progress_num_messages_int = self.kash_config_dict["progress.num.messages"]
+        #
         reader = self.openr(resource, **kwargs)
         #
-        def foldl_function1(acc, message_dict):
+        def foldl_function1(acc_progress_message_counter_int_tuple, message_dict):
+            (acc, progress_message_counter_int) = acc_progress_message_counter_int_tuple
+            #
             acc = foldl_function(acc, message_dict)
             #
-            return acc
+            progress_message_counter_int += 1
+            if verbose_int > 0 and progress_message_counter_int % progress_num_messages_int == 0:
+                print(f"Read: {progress_message_counter_int}")
+            #
+            return (acc, progress_message_counter_int)
         #
-        result = reader.foldl(foldl_function1, initial_acc, n, **kwargs)
+        result_progress_message_counter_int_tuple = reader.foldl(foldl_function1, (initial_acc, 0), n, **kwargs)
         #
         reader.close()
         #
-        return result
+        return result_progress_message_counter_int_tuple
 
     #
 
@@ -50,6 +59,9 @@ class Functional:
     #
 
     def flatmap_to(self, resource, target_storage, target_resource, flatmap_function, n=ALL_MESSAGES, **kwargs):
+        progress_num_messages_int = self.kash_config_dict["progress.num.messages"]
+        verbose_int = self.verbose()
+        #
         def write_batch(batch_message_dict_list):
             value_list = [message_dict["value"] for message_dict in batch_message_dict_list]
             #
@@ -66,8 +78,8 @@ class Functional:
             target_writer.write(value_list, key=key_list, partition=partition_list, timestamp=timestamp_list, headers=headers_list)
         #
 
-        def foldl_function(write_batch_size_int_batch_message_dict_list_tuple, message_dict):
-            (write_batch_size_int, batch_message_dict_list) = write_batch_size_int_batch_message_dict_list_tuple
+        def foldl_function(write_batch_size_int_batch_message_dict_list_progress_message_counter_int_tuple, message_dict):
+            (write_batch_size_int, batch_message_dict_list, progress_message_counter_int) = write_batch_size_int_batch_message_dict_list_progress_message_counter_int_tuple
             #
             message_dict_list = flatmap_function(message_dict)
             #
@@ -75,9 +87,14 @@ class Functional:
             #
             if len(batch_message_dict_list) >= write_batch_size_int:
                 write_batch(batch_message_dict_list)
-                return (write_batch_size_int, [])
+                #
+                progress_message_counter_int += len(batch_message_dict_list)
+                if verbose_int > 0 and progress_message_counter_int % progress_num_messages_int == 0:
+                    print(f"Written: {progress_message_counter_int}")
+                #
+                return (write_batch_size_int, [], progress_message_counter_int)
             else:
-                return (write_batch_size_int, batch_message_dict_list)
+                return (write_batch_size_int, batch_message_dict_list, progress_message_counter_int)
 
         source_kwargs = kwargs.copy()
         if "source_key_type" in kwargs:
@@ -111,25 +128,28 @@ class Functional:
         #
         target_writer = target_storage.openw(target_resource, **target_kwargs)
         #
-        (write_batch_size_int_batch_message_dict_list_tuple, _) = self.foldl(resource, foldl_function, (write_batch_size_int, []), n, **source_kwargs)
-        (_, batch_message_dict_list) = write_batch_size_int_batch_message_dict_list_tuple
+        (write_batch_size_int_batch_message_dict_list_progress_message_counter_int_tuple, read_message_counter_int) = self.foldl(resource, foldl_function, (write_batch_size_int, [], 0), n, **source_kwargs)
+        (_, batch_message_dict_list, written_progress_message_counter_int) = write_batch_size_int_batch_message_dict_list_progress_message_counter_int_tuple
         #
         if len(batch_message_dict_list) > 0:
             write_batch(batch_message_dict_list)
+            written_progress_message_counter_int += len(batch_message_dict_list)
         #
         target_writer.close()
+        #
+        return (read_message_counter_int, written_progress_message_counter_int)
 
     def map_to(self, resource, target_storage, target_resource, map_function, n=ALL_MESSAGES, **kwargs):
         def flatmap_function(message_dict):
             return [map_function(message_dict)]
         #
-        self.flatmap_to(resource, target_storage, target_resource, flatmap_function, n, **kwargs)
+        return self.flatmap_to(resource, target_storage, target_resource, flatmap_function, n, **kwargs)
 
     def filter_to(self, resource, target_storage, target_resource, filter_function, n=ALL_MESSAGES, **kwargs):
         def flatmap_function(message_dict):
             return [message_dict] if filter_function(message_dict) else []
         #
-        self.flatmap_to(resource, target_storage, target_resource, flatmap_function, n, **kwargs)
+        return self.flatmap_to(resource, target_storage, target_resource, flatmap_function, n, **kwargs)
 
     #
 

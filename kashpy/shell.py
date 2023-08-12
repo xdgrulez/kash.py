@@ -32,7 +32,7 @@ class Shell(Functional):
     #
 
     def cp(self, source_resource, target_storage, target_resource, map_function=lambda x: x, n=ALL_MESSAGES, **kwargs):
-        self.map_to(source_resource, target_storage, target_resource, map_function, n, **kwargs)
+        return self.map_to(source_resource, target_storage, target_resource, map_function, n, **kwargs)
 
     #
 
@@ -80,7 +80,7 @@ class Shell(Functional):
     def diff(self, resource1, storage2, resource2, n=ALL_MESSAGES, **kwargs):
         def diff_function(message_dict1, message_dict2):
             return message_dict1["key"] != message_dict2["key"] or message_dict1["value"] != message_dict2["value"]
-        return self.diff_fun(resource1, storage2, resource2, diff_function, n=n)
+        return self.diff_fun(resource1, storage2, resource2, diff_function, n=n, **kwargs)
 
     #
 
