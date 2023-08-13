@@ -5,12 +5,12 @@ from kashpy.helpers import get, delete, post
 #
 
 class RestProxyReader(KafkaReader):
-    def __init__(self, kafka_obj, cluster_id_str, *topics, **kwargs):
-        super().__init__(kafka_obj, *topics, **kwargs)
+    def __init__(self, restproxy_obj, *topics, **kwargs):
+        super().__init__(restproxy_obj, *topics, **kwargs)
         #
-        self.rest_proxy_config_dict = kafka_obj.rest_proxy_config_dict
+        self.rest_proxy_config_dict = restproxy_obj.rest_proxy_config_dict
         #
-        self.cluster_id_str = cluster_id_str
+        self.cluster_id_str = restproxy_obj.cluster_id_str
         #
         for topic_str in self.topic_str_list:
             key_type_str = self.key_type_dict[topic_str]

@@ -10,12 +10,12 @@ RD_KAFKA_PARTITION_UA = -1
 #
 
 class RestProxyWriter(KafkaWriter):
-    def __init__(self, kafka_obj, topic, **kwargs):
-        super().__init__(kafka_obj, topic, **kwargs)
+    def __init__(self, restproxy_obj, topic, **kwargs):
+        super().__init__(restproxy_obj, topic, **kwargs)
         #
-        self.rest_proxy_config_dict = kafka_obj.rest_proxy_config_dict
+        self.rest_proxy_config_dict = restproxy_obj.rest_proxy_config_dict
         #
-        self.cluster_id_str = kafka_obj.cluster_id_str
+        self.cluster_id_str = restproxy_obj.cluster_id_str
 
     #
 

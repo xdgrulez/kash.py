@@ -5,11 +5,11 @@ from kashpy.helpers import get, delete, post, is_pattern
 #
 
 class RestProxyAdmin:
-    def __init__(self, kafka_obj, cluster_id_str):
-        self.rest_proxy_config_dict = kafka_obj.rest_proxy_config_dict
-        self.kash_config_dict = kafka_obj.kash_config_dict
+    def __init__(self, restproxy_obj):
+        self.rest_proxy_config_dict = restproxy_obj.rest_proxy_config_dict
+        self.kash_config_dict = restproxy_obj.kash_config_dict
         #
-        self.cluster_id_str = cluster_id_str
+        self.cluster_id_str = restproxy_obj.cluster_id_str
 
     # ACLs
 
@@ -72,7 +72,14 @@ class RestProxyAdmin:
 
     # Brokers
 
-    def brokers(self):
+    def brokers(self, pattern=None):
+        pattern_int_or_str_list = pattern if isinstance(pattern, list) else [pattern]
+        #
+        if pattern_int_or_str_list == [None]:
+            pattern_str_list = ["*"]
+        else:
+            pattern_str_list = [str(pattern_int_or_str) for pattern_int_or_str in pattern_int_or_str_list]
+        #
         rest_proxy_url_str = self.rest_proxy_config_dict["rest.proxy.url"]
         auth_str_tuple = self.get_auth_str_tuple()
         #
@@ -81,11 +88,13 @@ class RestProxyAdmin:
         response_dict = get(url_str, headers_dict, auth_str_tuple=auth_str_tuple, retries=self.kash_config_dict["requests.num.retries"])
         kafkaBroker_dict_list = response_dict["data"]
         #
-        broker_dict = {kafkaBroker_dict["broker_id"]: kafkaBroker_dict["host"] + ":" + str(kafkaBroker_dict["port"]) for kafkaBroker_dict in kafkaBroker_dict_list}
+        broker_dict = {kafkaBroker_dict["broker_id"]: kafkaBroker_dict["host"] + ":" + str(kafkaBroker_dict["port"]) for kafkaBroker_dict in kafkaBroker_dict_list if any(fnmatch(str(kafkaBroker_dict["broker_id"]), pattern_str) for pattern_str in pattern_str_list)}
         #
         return broker_dict
 
-    def broker_config(self):
+    def broker_config(self, pattern=None):
+        broker_dict = self.brokers(pattern)
+        #
         rest_proxy_url_str = self.rest_proxy_config_dict["rest.proxy.url"]
         auth_str_tuple = self.get_auth_str_tuple()
         #
@@ -94,16 +103,21 @@ class RestProxyAdmin:
         response_dict = get(url_str, headers_dict, auth_str_tuple=auth_str_tuple, retries=self.kash_config_dict["requests.num.retries"])
         kafkaClusterConfig_dict_list = response_dict["data"]
         #
-        config_dict = {}
+        cluster_config_dict = {}
         for kafkaClusterConfig_dict in kafkaClusterConfig_dict_list:
             key_str = kafkaClusterConfig_dict["name"]
             value_str = kafkaClusterConfig_dict["value"]
             #
-            config_dict[key_str] = value_str
+            cluster_config_dict[key_str] = value_str
         #
-        return config_dict
+        broker_int_broker_config_dict = {broker_int: cluster_config_dict for broker_int in broker_dict}
+        #
+        return broker_int_broker_config_dict
 
-    def set_broker_config(self, config_dict, test=False):
+    def set_broker_config(self, config, pattern=None, test=False):
+        config_dict = config
+        broker_dict = self.brokers(pattern)
+        #
         rest_proxy_url_str = self.rest_proxy_config_dict["rest.proxy.url"]
         auth_str_tuple = self.get_auth_str_tuple()
         #
@@ -114,17 +128,19 @@ class RestProxyAdmin:
         payload_dict = {"data": dict_list}
         post(url_str, headers_dict, payload_dict, auth_str_tuple=auth_str_tuple, retries=self.kash_config_dict["requests.num.retries"])
         #
-        return config_dict
+        broker_int_broker_config_dict_dict = {broker_int: config_dict for broker_int in broker_dict}
+        #
+        return broker_int_broker_config_dict_dict
 
     # Groups
 
-    def describe_groups(self, patterns="*", state_patterns="*"):
-        pattern_str_list = [patterns] if isinstance(patterns, str) else patterns
-        state_pattern_str_list = [state_patterns] if isinstance(patterns, str) else state_patterns
+    def describe_groups(self, pattern="*", state_pattern="*"):
+        pattern_str_list = [pattern] if isinstance(pattern, str) else pattern
+        state_pattern_str_list = [state_pattern] if isinstance(pattern, str) else state_pattern
         #
         kafkaConsumerGroup_dict_list = self.get_kafkaConsumerGroup_dict_list(pattern_str_list)
         #
-        group_str_group_description_dict_dict = {kafkaConsumerGroup_dict["consumer_group_id"]: {"group_id": kafkaConsumerGroup_dict["consumer_group_id"], "is_simple_consumer_group": kafkaConsumerGroup_dict["is_simple"], "partition_assignor": kafkaConsumerGroup_dict["partition_assignor"], "state": kafkaConsumerGroup_dict["state"]} for kafkaConsumerGroup_dict in kafkaConsumerGroup_dict_list if any(fnmatch(kafkaConsumerGroup_dict["consumer_group_id"], pattern_str) for pattern_str in pattern_str_list) and any(fnmatch(kafkaConsumerGroup_dict["state"], state_pattern_str.upper()) for state_pattern_str in state_pattern_str_list)}
+        group_str_group_description_dict_dict = {kafkaConsumerGroup_dict["consumer_group_id"]: {"group_id": kafkaConsumerGroup_dict["consumer_group_id"], "is_simple_consumer_group": kafkaConsumerGroup_dict["is_simple"], "partition_assignor": kafkaConsumerGroup_dict["partition_assignor"], "state": kafkaConsumerGroup_dict["state"].lower()} for kafkaConsumerGroup_dict in kafkaConsumerGroup_dict_list if any(fnmatch(kafkaConsumerGroup_dict["consumer_group_id"], pattern_str) for pattern_str in pattern_str_list) and any(fnmatch(kafkaConsumerGroup_dict["state"].lower(), state_pattern_str) for state_pattern_str in state_pattern_str_list)}
         #
         rest_proxy_url_str = self.rest_proxy_config_dict["rest.proxy.url"]
         auth_str_tuple = self.get_auth_str_tuple()
@@ -149,20 +165,20 @@ class RestProxyAdmin:
         #
         return group_str_group_description_dict_dict
 
-    def groups(self, patterns="*", state_patterns="*", state=False):
-        pattern_str_list = [patterns] if isinstance(patterns, str) else patterns
-        state_pattern_str_list = [state_patterns] if isinstance(patterns, str) else state_patterns
+    def groups(self, pattern="*", state_pattern="*", state=False):
+        pattern_str_list = [pattern] if isinstance(pattern, str) else pattern
+        state_pattern_str_list = [state_pattern] if isinstance(state_pattern, str) else state_pattern
         state_bool = state
         #
         kafkaConsumerGroup_dict_list = self.get_kafkaConsumerGroup_dict_list(pattern_str_list)
         #
-        group_str_state_str_dict = {kafkaConsumerGroup_dict["consumer_group_id"]: kafkaConsumerGroup_dict["state"] for kafkaConsumerGroup_dict in kafkaConsumerGroup_dict_list if any(fnmatch(kafkaConsumerGroup_dict["consumer_group_id"], pattern_str) for pattern_str in pattern_str_list) and any(fnmatch(kafkaConsumerGroup_dict["state"], state_pattern_str.upper()) for state_pattern_str in state_pattern_str_list)}
+        group_str_state_str_dict = {kafkaConsumerGroup_dict["consumer_group_id"]: kafkaConsumerGroup_dict["state"].lower() for kafkaConsumerGroup_dict in kafkaConsumerGroup_dict_list if any(fnmatch(kafkaConsumerGroup_dict["consumer_group_id"], pattern_str) for pattern_str in pattern_str_list) and any(fnmatch(kafkaConsumerGroup_dict["state"].lower(), state_pattern_str) for state_pattern_str in state_pattern_str_list)}
         #
         return group_str_state_str_dict if state_bool else list(group_str_state_str_dict.keys())
 
-    def group_offsets(self, patterns, state_patterns="*"):
-        pattern_str_list = [patterns] if isinstance(patterns, str) else patterns
-        state_pattern_str_list = [state_patterns] if isinstance(patterns, str) else state_patterns
+    def group_offsets(self, pattern, state_pattern="*"):
+        pattern_str_list = [pattern] if isinstance(pattern, str) else pattern
+        state_pattern_str_list = [state_pattern] if isinstance(pattern, str) else state_pattern
         #
         kafkaConsumerGroup_dict_list = self.get_kafkaConsumerGroup_dict_list(pattern_str_list)
         #

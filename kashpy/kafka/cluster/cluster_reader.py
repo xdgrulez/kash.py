@@ -16,11 +16,11 @@ from kashpy.kafka.schemaregistry import SchemaRegistry
 #
 
 class ClusterReader(KafkaReader):
-    def __init__(self, kafka_obj, *topics, **kwargs):
-        super().__init__(kafka_obj, *topics, **kwargs)
+    def __init__(self, cluster_obj, *topics, **kwargs):
+        super().__init__(cluster_obj, *topics, **kwargs)
         #
-        self.kafka_config_dict = kafka_obj.kafka_config_dict
-        self.config_str = kafka_obj.config_str
+        self.kafka_config_dict = cluster_obj.kafka_config_dict
+        self.config_str = cluster_obj.config_str
         #
         if "schema.registry.url" in self.schema_registry_config_dict:
             self.schemaRegistry = SchemaRegistry(self.schema_registry_config_dict, self.kash_config_dict)

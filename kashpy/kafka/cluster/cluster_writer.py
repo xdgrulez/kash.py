@@ -23,11 +23,11 @@ RD_KAFKA_PARTITION_UA = -1
 #
 
 class ClusterWriter(KafkaWriter):
-    def __init__(self, kafka_obj, topic, **kwargs):
-        super().__init__(kafka_obj, topic, **kwargs)
+    def __init__(self, cluster_obj, topic, **kwargs):
+        super().__init__(cluster_obj, topic, **kwargs)
         #
-        self.kafka_config_dict = kafka_obj.kafka_config_dict
-        self.config_str = kafka_obj.config_str
+        self.kafka_config_dict = cluster_obj.kafka_config_dict
+        self.config_str = cluster_obj.config_str
         #
         self.schema_hash_int_generalizedProtocolMessageType_dict = {}
         #

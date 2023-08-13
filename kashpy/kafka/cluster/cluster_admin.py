@@ -5,9 +5,9 @@ from confluent_kafka import Consumer, TopicPartition
 from confluent_kafka.admin import AclBinding, AclBindingFilter, AclOperation, AclPermissionType, AdminClient, ConfigResource, _ConsumerGroupState, _ConsumerGroupTopicPartitions, NewPartitions, NewTopic, ResourcePatternType, ResourceType
 
 class ClusterAdmin():
-    def __init__(self, kafka_obj):
-        self.kafka_config_dict = kafka_obj.kafka_config_dict
-        self.kash_config_dict = kafka_obj.kash_config_dict
+    def __init__(self, cluster_obj):
+        self.kafka_config_dict = cluster_obj.kafka_config_dict
+        self.kash_config_dict = cluster_obj.kash_config_dict
         #
         self.adminClient = AdminClient(self.kafka_config_dict)
 
@@ -76,7 +76,7 @@ class ClusterAdmin():
         #
         return broker_int_broker_config_dict
 
-    def set_broker_config(self, pattern, config, test=False):
+    def set_broker_config(self, config, pattern=None, test=False):
         config_dict = config
         test_bool = test
         #
@@ -85,8 +85,9 @@ class ClusterAdmin():
         for broker_int in broker_dict:
             self.set_resource_config_dict(ResourceType.BROKER, str(broker_int), config_dict, test_bool)
         #
-        broker_int_key_str_value_str_tuple_dict = {broker_int: config_dict for broker_int in broker_dict}
-        return broker_int_key_str_value_str_tuple_dict
+        broker_int_broker_config_dict_dict = {broker_int: config_dict for broker_int in broker_dict}
+        #
+        return broker_int_broker_config_dict_dict
 
     # Broker/Topic Configuration
 

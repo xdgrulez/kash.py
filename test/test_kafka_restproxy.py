@@ -3,7 +3,7 @@ import time
 import unittest
 import warnings
 sys.path.insert(1, "..")
-from kashpy.kafka.cluster.cluster import *
+from kashpy.kafka.restproxy.restproxy import *
 from kashpy.helpers import *
 
 config_str = "local"
@@ -38,11 +38,9 @@ class Test(unittest.TestCase):
         print("Test:", self._testMethodName)
 
     def tearDown(self):
-        c = Cluster(config_str)
-        for group_str in self.group_str_list:
-            c.delete_groups(group_str)
+        r = RestProxy(config_str)
         for topic_str in self.topic_str_list:
-            c.delete(topic_str)
+            r.delete(topic_str)
 
     def create_test_topic_name(self):
         while True:
@@ -69,7 +67,7 @@ class Test(unittest.TestCase):
 
     def test_acls(self):
         if principal_str:
-            c = Cluster(config_str)
+            c = RestProxy(config_str)
             topic_str = self.create_test_topic_name()
             c.create(topic_str)
             c.create_acl(restype="topic", name=topic_str, resource_pattern_type="literal", principal=principal_str, host="*", operation="read", permission_type="allow")
@@ -82,138 +80,110 @@ class Test(unittest.TestCase):
     # Brokers
     
     def test_brokers(self):
-        c = Cluster(config_str)
-        if "confluent.cloud" not in c.kafka_config_dict["bootstrap.servers"]: # cannot modify cluster properties of non-dedicated Confluent Cloud test cluster
-            broker_dict = c.brokers()
+        r = RestProxy(config_str)
+        if "confluent.cloud" not in r.rest_proxy_config_dict["rest.proxy.url"]: # cannot modify cluster properties of non-dedicated Confluent Cloud test cluster
+            broker_dict = r.brokers()
             broker_int = list(broker_dict.keys())[0]
-            broker_dict1 = c.brokers(f"{broker_int}")
+            broker_dict1 = r.brokers(f"{broker_int}")
             self.assertEqual(broker_dict, broker_dict1)
-            broker_dict2 = c.brokers([broker_int])
+            broker_dict2 = r.brokers([broker_int])
             self.assertEqual(broker_dict1, broker_dict2)
             broker_int = list(broker_dict.keys())[0]
-            old_background_threads_str = c.broker_config(broker_int)[broker_int]["background.threads"]
-            c.set_broker_config({"background.threads": 5}, broker_int)
-            new_background_threads_str = c.broker_config(broker_int)[broker_int]["background.threads"]
+            broker_int_broker_config_dict = r.broker_config(broker_int)
+            if "background.threads" in broker_int_broker_config_dict[broker_int]:
+                old_background_threads_str = broker_int_broker_config_dict[broker_int]["background.threads"]
+            else:
+                old_background_threads_str = "10"
+            r.set_broker_config({"background.threads": 5}, broker_int)
+            new_background_threads_str = r.broker_config(broker_int)[broker_int]["background.threads"]
             self.assertEqual(new_background_threads_str, "5")
-            c.set_broker_config({"background.threads": old_background_threads_str}, broker_int)
+            r.set_broker_config({"background.threads": old_background_threads_str}, broker_int)
 
     # Groups
 
     def test_groups(self):
-        c = Cluster(config_str)
+        r = RestProxy(config_str)
         #
         topic_str = self.create_test_topic_name()
-        c.create(topic_str)
-        w = c.openw(topic_str)
+        r.create(topic_str)
+        w = r.openw(topic_str)
         w.produce("message 1")
         w.produce("message 2")
         w.produce("message 3")
         w.close()
         #
         group_str = self.create_test_group_name()
-        r = c.openr(topic_str, group=group_str)
-        r.consume()
+        reader = r.openr(topic_str, group=group_str)
+        reader.consume()
         #
-        group_str_list1 = c.groups(["test*", "test_group*"])
+        group_str_list1 = r.groups(["test*", "test_group*"])
         self.assertIn(group_str, group_str_list1)
-        group_str_list2 = c.groups("test_group*")
+        group_str_list2 = r.groups("test_group*")
         self.assertIn(group_str, group_str_list2)
-        group_str_list3 = c.groups("test_group*", state_pattern=["stable"])
+        group_str_list3 = r.groups("test_group*", state_pattern=["stable"])
         self.assertIn(group_str, group_str_list3)
-        group_str_state_str_dict = c.groups("test_group*", state_pattern="stab*", state=True)
+        group_str_state_str_dict = r.groups("test_group*", state_pattern="stab*", state=True)
         self.assertIn("stable", group_str_state_str_dict[group_str])
-        group_str_list4 = c.groups(state_pattern="unknown", state=False)
+        group_str_list4 = r.groups(state_pattern="unknown", state=False)
         self.assertEqual(group_str_list4, [])
         #
-        r.close()
+        reader.close()
 
     def test_describe_groups(self):
-        c = Cluster(config_str)
+        r = RestProxy(config_str)
         #
         topic_str = self.create_test_topic_name()
-        c.create(topic_str)
-        w = c.openw(topic_str)
+        r.create(topic_str)
+        w = r.openw(topic_str)
         w.produce("message 1")
         w.produce("message 2")
         w.produce("message 3")
         w.close()
         #
         group_str = self.create_test_group_name()
-        r = c.openr(topic_str, group=group_str)
-        r.consume()
+        reader = r.openr(topic_str, group=group_str)
+        reader.consume()
         #
-        group_dict = c.describe_groups(group_str)[group_str]
+        group_dict = r.describe_groups(group_str)[group_str]
         self.assertEqual(group_dict["group_id"], group_str)
         self.assertEqual(group_dict["is_simple_consumer_group"], False)
-        self.assertEqual(group_dict["members"][0]["client_id"], "rdkafka")
-        self.assertIsNone(group_dict["members"][0]["assignment"]["topic_partitions"][0]["error"])
-        self.assertIsNone(group_dict["members"][0]["assignment"]["topic_partitions"][0]["metadata"])
-        self.assertEqual(group_dict["members"][0]["assignment"]["topic_partitions"][0]["offset"], -1001)
-        self.assertEqual(group_dict["members"][0]["assignment"]["topic_partitions"][0]["partition"], 0)
-        self.assertEqual(group_dict["members"][0]["assignment"]["topic_partitions"][0]["topic"], topic_str)
+        self.assertEqual(group_dict["members"][0]["client_id"][:len(f"consumer-{group_str}")], f"consumer-{group_str}")
         self.assertIsNone(group_dict["members"][0]["group_instance_id"])
         self.assertEqual(group_dict["partition_assignor"], "range")
         self.assertEqual(group_dict["state"], "stable")
-        broker_dict = c.brokers()
+        broker_dict = r.brokers()
         broker_int = list(broker_dict.keys())[0]
-        self.assertEqual(group_dict["coordinator"]["id"], broker_int)
-        self.assertEqual(group_dict["coordinator"]["id_string"], f"{broker_int}")
         #
-        r.close()
+        reader.close()
 
-    def test_delete_groups(self):
-        c = Cluster(config_str)
+    def test_group_offsets(self):
+        r = RestProxy(config_str)
         #
         topic_str = self.create_test_topic_name()
-        c.create(topic_str)
-        w = c.openw(topic_str)
-        w.produce("message 1")
-        w.produce("message 2")
-        w.produce("message 3")
-        w.close()
-        #
-        group_str = self.create_test_group_name()
-        r = c.openr(topic_str, group=group_str)
-        r.consume()
-        #
-        group_str_list = c.delete_groups(group_str, state_pattern=["empt*"])
-        self.assertEqual(group_str_list, [])
-        group_str_list = c.groups(group_str, state_pattern="*")
-        self.assertEqual(group_str_list, [group_str])
-        #
-        r.close()
-
-    def test_group_offsets_member_id(self):
-        c = Cluster(config_str)
-        #
-        topic_str = self.create_test_topic_name()
-        c.create(topic_str, partitions=2)
-        w = c.openw(topic_str)
+        r.create(topic_str, partitions=2)
+        w = r.openw(topic_str)
         w.produce("message 1", partition=0)
         w.produce("message 2", partition=1)
         w.close()
         #
         group_str = self.create_test_group_name()
-        r = c.openr(topic_str, group=group_str, config={"enable.auto.commit": False})
-        r.consume()
-        r.commit()
-        r.consume()
-        r.commit()
+        reader = r.openr(topic_str, group=group_str, config={"enable.auto.commit": False})
+        reader.consume()
+        reader.commit()
+        reader.consume()
+        reader.commit()
         #
-        group_str_topic_str_partition_int_offset_int_dict_dict_dict = c.group_offsets(group_str)
+        group_str_topic_str_partition_int_offset_int_dict_dict_dict = r.group_offsets(group_str)
         self.assertIn(group_str, group_str_topic_str_partition_int_offset_int_dict_dict_dict)
         self.assertIn(topic_str, group_str_topic_str_partition_int_offset_int_dict_dict_dict[group_str])
         self.assertEqual(group_str_topic_str_partition_int_offset_int_dict_dict_dict[group_str][topic_str][0], 1)
         self.assertEqual(group_str_topic_str_partition_int_offset_int_dict_dict_dict[group_str][topic_str][1], 1)
         #
-        member_id_str = r.memberid()
-        self.assertEqual("rdkafka-", member_id_str[:8])
-        #
-        r.unsubscribe()
-        r.close()
+        reader.unsubscribe()
+        reader.close()
 
     def test_set_group_offsets(self):
-        c = Cluster(config_str)
+        c = RestProxy(config_str)
         #
         topic_str = self.create_test_topic_name()
         c.create(topic_str)
@@ -236,7 +206,7 @@ class Test(unittest.TestCase):
     # Topics
 
     def test_config_set_config(self):
-        c = Cluster(config_str)
+        c = RestProxy(config_str)
         #
         topic_str = self.create_test_topic_name()
         c.touch(topic_str)
@@ -246,7 +216,7 @@ class Test(unittest.TestCase):
         self.assertEqual(new_retention_ms_str, "4711")
 
     def test_create_delete(self):
-        c = Cluster(config_str)
+        c = RestProxy(config_str)
         #
         topic_str = self.create_test_topic_name()
         c.touch(topic_str)
@@ -257,7 +227,7 @@ class Test(unittest.TestCase):
         self.assertNotIn(topic_str, topic_str_list)
 
     def test_topics(self):
-        c = Cluster(config_str)
+        c = RestProxy(config_str)
         #
         topic_str = self.create_test_topic_name()
         old_topic_str_list = c.topics(["test_*"])
@@ -284,7 +254,7 @@ class Test(unittest.TestCase):
         self.assertEqual(topic_str_total_size_int_size_dict_tuple_dict[topic_str][0], 3)
 
     def test_offsets_for_times(self):
-        c = Cluster(config_str)
+        c = RestProxy(config_str)
         #
         c.verbose(1)
         #
@@ -310,7 +280,7 @@ class Test(unittest.TestCase):
         self.assertEqual(message1_offset_int, found_message1_offset_int)
 
     def test_partitions_set_partitions(self):
-        c = Cluster(config_str)
+        c = RestProxy(config_str)
         #
         topic_str = self.create_test_topic_name()
         c.create(topic_str)
@@ -321,7 +291,7 @@ class Test(unittest.TestCase):
         self.assertEqual(num_partitions_int_2, 2)
 
     def test_exists(self):
-        c = Cluster(config_str)
+        c = RestProxy(config_str)
         #
         topic_str = self.create_test_topic_name()
         self.assertFalse(c.exists(topic_str))
@@ -331,7 +301,7 @@ class Test(unittest.TestCase):
     # Produce/Consume
 
     def test_produce_consume_bytes_str(self):
-        c = Cluster(config_str)
+        c = RestProxy(config_str)
         #
         topic_str = self.create_test_topic_name()
         c.create(topic_str)
@@ -352,7 +322,7 @@ class Test(unittest.TestCase):
         r.close()
     
     def test_produce_consume_json(self):
-        c = Cluster(config_str)
+        c = RestProxy(config_str)
         #
         topic_str = self.create_test_topic_name()
         c.create(topic_str)
@@ -373,7 +343,7 @@ class Test(unittest.TestCase):
         r.close()
 
     def test_produce_consume_protobuf(self):
-        c = Cluster(config_str)
+        c = RestProxy(config_str)
         #
         topic_str = self.create_test_topic_name()
         c.create(topic_str)
@@ -394,7 +364,7 @@ class Test(unittest.TestCase):
         r.close()
 
     def test_produce_consume_protobuf_avro(self):
-        c = Cluster(config_str)
+        c = RestProxy(config_str)
         #
         topic_str = self.create_test_topic_name()
         c.create(topic_str)
@@ -415,7 +385,7 @@ class Test(unittest.TestCase):
         r.close()
 
     def test_produce_consume_str_jsonschema(self):
-        c = Cluster(config_str)
+        c = RestProxy(config_str)
         #
         topic_str = self.create_test_topic_name()
         c.create(topic_str)
@@ -436,7 +406,7 @@ class Test(unittest.TestCase):
         r.close()
 
     def test_consume_from_offsets(self):
-        c = Cluster(config_str)
+        c = RestProxy(config_str)
         #
         topic_str = self.create_test_topic_name()
         c.create(topic_str)
@@ -454,7 +424,7 @@ class Test(unittest.TestCase):
         r.close()
 
     def test_commit(self):
-        c = Cluster(config_str)
+        c = RestProxy(config_str)
         #
         topic_str = self.create_test_topic_name()
         c.create(topic_str)
@@ -475,13 +445,13 @@ class Test(unittest.TestCase):
         r.close()
     
     def test_cluster_settings(self):
-        c = Cluster(config_str)
+        c = RestProxy(config_str)
         #
         c.verbose(0)
         self.assertEqual(c.verbose(), 0)
 
     def test_configs(self):
-        c = Cluster(config_str)
+        c = RestProxy(config_str)
         #
         config_str_list1 = c.configs()
         self.assertIn("local", config_str_list1)
@@ -498,7 +468,7 @@ class Test(unittest.TestCase):
 
     # Shell.cat -> Functional.map -> Functional.flatmap -> Functional.foldl -> ClusterReader.openr/KafkaReader.foldl/ClusterReader.close -> ClusterReader.consume
     def test_cat(self):
-        c = Cluster(config_str)
+        c = RestProxy(config_str)
         #
         topic_str = self.create_test_topic_name()
         c.create(topic_str)
@@ -521,7 +491,7 @@ class Test(unittest.TestCase):
 
     # Shell.head -> Shell.cat
     def test_head(self):
-        c = Cluster(config_str)
+        c = RestProxy(config_str)
         #
         topic_str = self.create_test_topic_name()
         c.create(topic_str)
@@ -544,7 +514,7 @@ class Test(unittest.TestCase):
 
     # Shell.tail -> Functional.map -> Functional.flatmap -> Functional.foldl -> ClusterReader.openr/KafkaReader.foldl/ClusterReader.close -> ClusterReader.consume
     def test_tail(self):
-        c = Cluster(config_str)
+        c = RestProxy(config_str)
         #
         topic_str = self.create_test_topic_name()
         c.create(topic_str)
@@ -567,7 +537,7 @@ class Test(unittest.TestCase):
 
     # Shell.cp -> Functional.map_to -> Functional.flatmap_to -> ClusterReader.openw/Functional.foldl/ClusterReader.close -> ClusterReader.openr/KafkaReader.foldl/ClusterReader.close -> ClusterReader.consume
     def test_cp(self):
-        c = Cluster(config_str)
+        c = RestProxy(config_str)
         #
         topic_str1 = self.create_test_topic_name()
         c.create(topic_str1)
@@ -592,7 +562,7 @@ class Test(unittest.TestCase):
         self.assertEqual(message_dict_list2[0]["value"], self.snack_ish_dict_list[0])
 
     def test_wc(self):
-        c = Cluster(config_str)
+        c = RestProxy(config_str)
         #
         topic_str = self.create_test_topic_name()
         c.create(topic_str)
@@ -608,7 +578,7 @@ class Test(unittest.TestCase):
 
     # Shell.diff -> Shell.diff_fun -> Functional.zipfoldl -> ClusterReader.openr/read/close
     def test_diff(self):
-        c = Cluster(config_str)
+        c = RestProxy(config_str)
         #
         topic_str1 = self.create_test_topic_name()
         c.create(topic_str1)
@@ -631,7 +601,7 @@ class Test(unittest.TestCase):
 
     # Shell.diff -> Shell.diff_fun -> Functional.flatmap -> Functional.foldl -> ClusterReader.open/Kafka.foldl/ClusterReader.close -> ClusterReader.consume 
     def test_grep(self):
-        c = Cluster(config_str)
+        c = RestProxy(config_str)
         #
         topic_str = self.create_test_topic_name()
         c.create(topic_str)
@@ -648,7 +618,7 @@ class Test(unittest.TestCase):
     # Functional
 
     def test_foreach(self):
-        c = Cluster(config_str)
+        c = RestProxy(config_str)
         #
         topic_str = self.create_test_topic_name()
         c.create(topic_str)
@@ -663,7 +633,7 @@ class Test(unittest.TestCase):
         self.assertEqual("chocolate", colour_str_list[2])
 
     def test_filter(self):
-        c = Cluster(config_str)
+        c = RestProxy(config_str)
         #
         topic_str = self.create_test_topic_name()
         c.create(topic_str)
@@ -676,7 +646,7 @@ class Test(unittest.TestCase):
         self.assertEqual(3, message_counter_int)
 
     def test_filter_to(self):
-        c = Cluster(config_str)
+        c = RestProxy(config_str)
         #
         topic_str1 = self.create_test_topic_name()
         c.create(topic_str1)
