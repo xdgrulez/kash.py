@@ -31,6 +31,8 @@ class RestProxyReader(KafkaReader):
         self.consumer_config_dict["consumer.request.timeout.ms"] = self.kash_config_dict["consumer.request.timeout.ms"]
         if "config" in kwargs:
             for key_str, value in kwargs["config"].items():
+                if key_str == "enable.auto.commit":
+                    key_str = "auto.commit.enable"
                 self.consumer_config_dict[key_str] = value
         #
         # Instance ID

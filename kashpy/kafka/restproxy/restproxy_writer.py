@@ -1,5 +1,5 @@
 from kashpy.kafka.kafka_writer import KafkaWriter
-from kashpy.helpers import post
+from kashpy.helpers import post, is_base64_encoded, base64_encode
 
 import json
 
@@ -58,6 +58,9 @@ class RestProxyWriter(KafkaWriter):
                     value = json.loads(value)
             else:
                 type_str = "BINARY"
+                if not is_base64_encoded(value):
+                    value_bytes = base64_encode(value)
+                    value = value_bytes.decode()
             #
             if self.value_schema_id_int is not None:
                 payload_dict = {"value": {"schema_id": self.value_schema_id_int, "data": value}}
@@ -85,6 +88,9 @@ class RestProxyWriter(KafkaWriter):
                         key = json.loads(key)
                 else:
                     type_str = "BINARY"
+                    if not is_base64_encoded(key):
+                        key_bytes = base64_encode(key)
+                        key = key_bytes.decode()
                 #
                 if self.key_schema_id_int is not None:
                     payload_dict["key"] = {"schema_id": self.key_schema_id_int, "data": key}

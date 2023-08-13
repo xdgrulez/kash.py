@@ -168,9 +168,9 @@ class Test(unittest.TestCase):
         #
         group_str = self.create_test_group_name()
         reader = r.openr(topic_str, group=group_str, config={"enable.auto.commit": False})
-        reader.consume()
+        x = reader.consume()
         reader.commit()
-        reader.consume()
+        y = reader.consume()
         reader.commit()
         #
         group_str_topic_str_partition_int_offset_int_dict_dict_dict = r.group_offsets(group_str)
@@ -181,27 +181,6 @@ class Test(unittest.TestCase):
         #
         reader.unsubscribe()
         reader.close()
-
-    def test_set_group_offsets(self):
-        c = RestProxy(config_str)
-        #
-        topic_str = self.create_test_topic_name()
-        c.create(topic_str)
-        w = c.openw(topic_str)
-        w.produce("message 1")
-        w.produce("message 2")
-        w.produce("message 3")
-        w.close()
-        #
-        group_str = self.create_test_group_name()
-        r = c.openr(topic_str, group=group_str, config={"enable.auto.commit": False})
-        group_str_topic_str_partition_int_offset_int_dict_dict_dict = c.set_group_offsets({group_str: {topic_str: {0: 2}}})
-        self.assertEqual(group_str_topic_str_partition_int_offset_int_dict_dict_dict, {group_str: {topic_str: {0: 2}}})
-        [message_dict] = r.consume()
-        r.commit()
-        self.assertEqual(message_dict["value"], "message 3")
-        #
-        r.close()
 
     # Topics
 

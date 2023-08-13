@@ -1,5 +1,6 @@
+import base64
+import binascii
 import json
-import logging
 import requests
 from requests.adapters import HTTPAdapter, Retry
 import sys
@@ -102,3 +103,29 @@ def is_json(str):
 
 def is_pattern(str):
     return "*" in str or "?" in str or ("[" in str and "]" in str) or ("[!" in str and "]" in str)
+
+
+def is_base64_encoded(str_or_bytes_or_dict):
+    try:
+        if isinstance(str_or_bytes_or_dict, bytes):
+            decoded_bytes = base64.b64decode(str_or_bytes_or_dict)
+        elif isinstance(str_or_bytes_or_dict, str):
+            decoded_bytes = base64.b64decode(bytes(str_or_bytes_or_dict, encoding="utf-8"))
+        elif isinstance(str_or_bytes_or_dict, dict):
+            decoded_bytes = base64.b64decode(bytes(json.dumps(str_or_bytes_or_dict), encoding="utf-8"))
+        else:
+            return False
+        encoded_bytes = base64.b64encode(decoded_bytes)
+        return str_or_bytes_or_dict == encoded_bytes
+    except (binascii.Error, UnicodeDecodeError):
+        return False
+
+
+def base64_encode(str_or_bytes_or_dict):
+    if isinstance(str_or_bytes_or_dict, bytes):
+        encoded_bytes = base64.b64encode(str_or_bytes_or_dict)
+    elif isinstance(str_or_bytes_or_dict, str):
+        encoded_bytes = base64.b64encode(bytes(str_or_bytes_or_dict, encoding="utf-8"))
+    elif isinstance(str_or_bytes_or_dict, dict):
+        encoded_bytes = base64.b64encode(bytes(json.dumps(str_or_bytes_or_dict), encoding="utf-8"))
+    return encoded_bytes
