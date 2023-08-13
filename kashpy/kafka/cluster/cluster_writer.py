@@ -90,7 +90,7 @@ class ClusterWriter(KafkaWriter):
             def get_schema(schema_str):
                 if schema_str is None:
                     if schema_id_int is None:
-                        raise Exception("Please provide a schema or schema ID for the " + "key" if key_bool else "value" + ".")
+                        raise Exception("Please provide a schema or schema ID for the " + ("key" if key_bool else "value") + ".")
                     schema = self.schemaRegistry.schemaRegistryClient.get_schema(schema_id_int)
                 else:
                     schema = schema_str

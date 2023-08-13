@@ -22,6 +22,12 @@ class Test(unittest.TestCase):
         self.snack_bytes_list = [bytes(snack_str, encoding="utf-8") for snack_str in self.snack_str_list]
         self.snack_dict_list = [json.loads(snack_str) for snack_str in self.snack_str_list]
         #
+        self.snack_ish_dict_list = []
+        for snack_dict in self.snack_dict_list:
+            snack_dict1 = snack_dict.copy()
+            snack_dict1["colour"] += "ish"
+            self.snack_ish_dict_list.append(snack_dict1)
+        #
         self.avro_schema_str = '{ "type": "record", "name": "myrecord", "fields": [{"name": "name",  "type": "string" }, {"name": "calories", "type": "float" }, {"name": "colour", "type": "string" }] }'
         self.protobuf_schema_str = 'message Snack { required string name = 1; required float calories = 2; optional string colour = 3; }'
         self.jsonschema_schema_str = '{ "title": "abc", "definitions" : { "record:myrecord" : { "type" : "object", "required" : [ "name", "calories" ], "additionalProperties" : false, "properties" : { "name" : {"type" : "string"}, "calories" : {"type" : "number"}, "colour" : {"type" : "string"} } } }, "$ref" : "#/definitions/record:myrecord" }'
@@ -39,16 +45,22 @@ class Test(unittest.TestCase):
             c.delete(topic_str)
 
     def create_test_topic_name(self):
-        topic_str = f"test_topic_{get_millis()}"
-        #
-        self.topic_str_list.append(topic_str)
+        while True:
+            topic_str = f"test_topic_{get_millis()}"
+            #
+            if topic_str not in self.topic_str_list:
+                self.topic_str_list.append(topic_str)
+                break
         #
         return topic_str
 
     def create_test_group_name(self):
-        group_str = f"test_group_{get_millis()}"
-        #
-        self.group_str_list.append(group_str)
+        while True:
+            group_str = f"test_group_{get_millis()}"
+            #
+            if group_str not in self.group_str_list:
+                self.group_str_list.append(group_str)
+                break
         #
         return group_str
 
@@ -171,7 +183,7 @@ class Test(unittest.TestCase):
         #
         r.close()
 
-    def test_group_offsets(self):
+    def test_group_offsets_member_id(self):
         c = Cluster(cluster_str)
         #
         topic_str = self.create_test_topic_name()
@@ -194,6 +206,10 @@ class Test(unittest.TestCase):
         self.assertEqual(group_str_topic_str_partition_int_offset_int_dict_dict_dict[group_str][topic_str][0], 1)
         self.assertEqual(group_str_topic_str_partition_int_offset_int_dict_dict_dict[group_str][topic_str][1], 1)
         #
+        member_id_str = r.memberid()
+        self.assertEqual("rdkafka-", member_id_str[:8])
+        #
+        r.unsubscribe()
         r.close()
 
     def test_set_group_offsets(self):
@@ -349,7 +365,7 @@ class Test(unittest.TestCase):
         group_str = self.create_test_group_name()
         # Upon consume, the type "json" triggers the conversion into a dictionary, and "str" into a string.
         r = c.openr(topic_str, group=group_str, key_type="json", value_type="str")
-        (message_dict_list, _) = r.read(n=3)
+        message_dict_list = r.read(n=3)
         key_dict_list = [message_dict["key"] for message_dict in message_dict_list]
         value_str_list = [message_dict["value"] for message_dict in message_dict_list]
         self.assertEqual(key_dict_list, self.snack_dict_list)
@@ -370,7 +386,7 @@ class Test(unittest.TestCase):
         group_str = self.create_test_group_name()
         # Upon consume, the type "protobuf" (alias = "pb") triggers the conversion into a dictionary.
         r = c.openr(topic_str, group=group_str, key_type="pb", value_type="protobuf")
-        (message_dict_list, _) = r.read(n=3)
+        message_dict_list = r.read(n=3)
         key_dict_list = [message_dict["key"] for message_dict in message_dict_list]
         value_dict_list = [message_dict["value"] for message_dict in message_dict_list]
         self.assertEqual(key_dict_list, self.snack_dict_list)
@@ -391,7 +407,7 @@ class Test(unittest.TestCase):
         group_str = self.create_test_group_name()
         # Upon consume, the types "protobuf" (alias = "pb") and "avro" trigger the conversion into a dictionary.
         r = c.openr(topic_str, group=group_str, key_type="pb", value_type="avro")
-        (message_dict_list, _) = r.read(n=3)
+        message_dict_list = r.read(n=3)
         key_dict_list = [message_dict["key"] for message_dict in message_dict_list]
         value_dict_list = [message_dict["value"] for message_dict in message_dict_list]
         self.assertEqual(key_dict_list, self.snack_dict_list)
@@ -412,7 +428,7 @@ class Test(unittest.TestCase):
         group_str = self.create_test_group_name()
         # Upon consume, the types "json" and "jsonschema" (alias = "json_sr") trigger the conversion into a dictionary.
         r = c.openr(topic_str, group=group_str, key_type="json", value_type="json_sr")
-        (message_dict_list, _) = r.read(n=3)
+        message_dict_list = r.read(n=3)
         key_dict_list = [message_dict["key"] for message_dict in message_dict_list]
         value_dict_list = [message_dict["value"] for message_dict in message_dict_list]
         self.assertEqual(key_dict_list, self.snack_dict_list)
@@ -480,7 +496,7 @@ class Test(unittest.TestCase):
 
     # Shell
 
-    # Shell.cat -> Functional.map -> Functional.flatmap -> Functional.foldl -> KafkaReader.foldl -> ClusterReader.consume
+    # Shell.cat -> Functional.map -> Functional.flatmap -> Functional.foldl -> ClusterReader.openr/KafkaReader.foldl/ClusterReader.close -> ClusterReader.consume
     def test_cat(self):
         c = Cluster(cluster_str)
         #
@@ -526,7 +542,7 @@ class Test(unittest.TestCase):
         self.assertEqual(1, n_int2)
         self.assertEqual(message_dict_list2[0]["value"], self.snack_dict_list[1])
 
-    # Shell.tail -> Functional.map -> Functional.flatmap -> Functional.foldl -> KafkaReader.foldl -> ClusterReader.consume
+    # Shell.tail -> Functional.map -> Functional.flatmap -> Functional.foldl -> ClusterReader.openr/KafkaReader.foldl/ClusterReader.close -> ClusterReader.consume
     def test_tail(self):
         c = Cluster(cluster_str)
         #
@@ -549,6 +565,7 @@ class Test(unittest.TestCase):
         self.assertEqual(1, n_int2)
         self.assertEqual(message_dict_list2[0]["value"], self.snack_dict_list[2])
 
+    # Shell.cp -> Functional.map_to -> Functional.flatmap_to -> ClusterReader.openw/Functional.foldl/ClusterReader.close -> ClusterReader.openr/KafkaReader.foldl/ClusterReader.close -> ClusterReader.consume
     def test_cp(self):
         c = Cluster(cluster_str)
         #
@@ -559,8 +576,12 @@ class Test(unittest.TestCase):
         w.close()
         topic_str2 = self.create_test_topic_name()
         #
+        def map_ish(message_dict):
+            message_dict["value"]["colour"] += "ish"
+            return message_dict
+        #
         group_str1 = self.create_test_group_name()
-        (read_n_int, written_n_int) = c.cp(topic_str1, c, topic_str2, group=group_str1, source_value_type="jsonschema", target_value_type="json", write_batch_size=2, n=3)
+        (read_n_int, written_n_int) = c.cp(topic_str1, c, topic_str2, group=group_str1, source_value_type="jsonschema", target_value_type="json", write_batch_size=2, map_function=map_ish, n=3)
         self.assertEqual(3, read_n_int)
         self.assertEqual(3, written_n_int)
         #
@@ -568,7 +589,7 @@ class Test(unittest.TestCase):
         (message_dict_list2, n_int2) = c.cat(topic_str2, group=group_str2, value_type="json", n=1)
         self.assertEqual(1, len(message_dict_list2))
         self.assertEqual(1, n_int2)
-        self.assertEqual(message_dict_list2[0]["value"], self.snack_dict_list[0])
+        self.assertEqual(message_dict_list2[0]["value"], self.snack_ish_dict_list[0])
 
     def test_wc(self):
         c = Cluster(cluster_str)
@@ -585,6 +606,7 @@ class Test(unittest.TestCase):
         self.assertEqual(12, acc_num_words_int)
         self.assertEqual(110, acc_num_bytes_int)
 
+    # Shell.diff -> Shell.diff_fun -> Functional.zipfoldl -> ClusterReader.openr/read/close
     def test_diff(self):
         c = Cluster(cluster_str)
         #
@@ -597,31 +619,80 @@ class Test(unittest.TestCase):
         topic_str2 = self.create_test_topic_name()
         c.create(topic_str2)
         w2 = c.openw(topic_str2, value_type="avro", value_schema=self.avro_schema_str)
-        snack_ish_dict_list = []
-        for snack_dict in self.snack_dict_list:
-            snack_dict["colour"] += "ish"
-            snack_ish_dict_list.append(snack_dict)
-        w2.produce(snack_ish_dict_list)
+        w2.produce(self.snack_ish_dict_list)
         w2.close()
         #
         group_str1 = self.create_test_group_name()
         group_str2 = self.create_test_group_name()
-        (message_dict_message_dict_tuple_list, _, _) = c.diff(topic_str1, c, topic_str2, group1=group_str1, group2=group_str2, value_type1="pb", value_type2="avro", n=3)
+        (message_dict_message_dict_tuple_list, message_counter_int1, message_counter_int2) = c.diff(topic_str1, c, topic_str2, group1=group_str1, group2=group_str2, value_type1="pb", value_type2="avro", n=3)
         self.assertEqual(3, len(message_dict_message_dict_tuple_list))
+        self.assertEqual(3, message_counter_int1)
+        self.assertEqual(3, message_counter_int2)
 
-    # diff_fun
-    # grep
-    # grep_fun
+    # Shell.diff -> Shell.diff_fun -> Functional.flatmap -> Functional.foldl -> ClusterReader.open/Kafka.foldl/ClusterReader.close -> ClusterReader.consume 
+    def test_grep(self):
+        c = Cluster(cluster_str)
+        #
+        topic_str = self.create_test_topic_name()
+        c.create(topic_str)
+        w = c.openw(topic_str, value_type="protobuf", value_schema=self.protobuf_schema_str)
+        w.produce(self.snack_str_list)
+        w.close()
+        #
+        group_str = self.create_test_group_name()
+        (message_dict_message_dict_tuple_list, message_counter_int1, message_counter_int2) = c.grep(topic_str, ".*brown.*", group=group_str, value_type="pb", n=3)
+        self.assertEqual(1, len(message_dict_message_dict_tuple_list))
+        self.assertEqual(1, message_counter_int1)
+        self.assertEqual(3, message_counter_int2)
     
     # Functional
 
-    # foldl
-    # flatmap
-    # map
-    # filter
-    # foreach
-    
-    # flatmap_to
-    # map_to
-    # filter_to
-    # zip_foldl
+    def test_foreach(self):
+        c = Cluster(cluster_str)
+        #
+        topic_str = self.create_test_topic_name()
+        c.create(topic_str)
+        w = c.openw(topic_str, value_type="jsonschema", value_schema=self.jsonschema_schema_str)
+        w.produce(self.snack_str_list)
+        w.close()
+        #
+        colour_str_list = []
+        c.foreach(topic_str, foreach_function=lambda message_dict: colour_str_list.append(message_dict["value"]["colour"]), value_type="jsonschema")
+        self.assertEqual("brown", colour_str_list[0])
+        self.assertEqual("white", colour_str_list[1])
+        self.assertEqual("chocolate", colour_str_list[2])
+
+    def test_filter(self):
+        c = Cluster(cluster_str)
+        #
+        topic_str = self.create_test_topic_name()
+        c.create(topic_str)
+        w = c.openw(topic_str, value_type="avro", value_schema=self.avro_schema_str)
+        w.produce(self.snack_str_list)
+        w.close()
+        #
+        (message_dict_list, message_counter_int) = c.filter(topic_str, filter_function=lambda message_dict: message_dict["value"]["calories"] > 100, value_type="avro")
+        self.assertEqual(2, len(message_dict_list))
+        self.assertEqual(3, message_counter_int)
+
+    def test_filter_to(self):
+        c = Cluster(cluster_str)
+        #
+        topic_str1 = self.create_test_topic_name()
+        c.create(topic_str1)
+        w = c.openw(topic_str1, value_type="avro", value_schema=self.avro_schema_str)
+        w.produce(self.snack_str_list)
+        w.close()
+        #
+        topic_str2 = self.create_test_topic_name()
+        #
+        (read_n_int, written_n_int) = c.filter_to(topic_str1, c, topic_str2, filter_function=lambda message_dict: message_dict["value"]["calories"] > 100, source_value_type="avro", target_value_type="json")
+        self.assertEqual(3, read_n_int)
+        self.assertEqual(2, written_n_int)
+        #
+        group_str = self.create_test_group_name()
+        (message_dict_list, n_int) = c.cat(topic_str2, group=group_str, value_type="json", n=2)
+        self.assertEqual(2, len(message_dict_list))
+        self.assertEqual(2, n_int)
+        self.assertEqual(500.0, message_dict_list[0]["value"]["calories"])
+        self.assertEqual(260.0, message_dict_list[1]["value"]["calories"])
