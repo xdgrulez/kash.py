@@ -67,6 +67,7 @@ class ClusterWriter(KafkaWriter):
         value_list = value if isinstance(value, list) else [value]
         #
         key_list = key if isinstance(key, list) else [key for _ in value_list]
+        #
         partition_int_list = partition if isinstance(partition, list) else [partition for _ in value_list]
         timestamp_int_list = timestamp if isinstance(timestamp, list) else [timestamp for _ in value_list]
         headers_str_bytes_tuple_list_list = headers if isinstance(headers, list) else [headers for _ in value_list]

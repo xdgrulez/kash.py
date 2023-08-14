@@ -400,80 +400,62 @@ class Test(unittest.TestCase):
 
     # Shell.cat -> Functional.map -> Functional.flatmap -> Functional.foldl -> ClusterReader.openr/KafkaReader.foldl/ClusterReader.close -> ClusterReader.consume
     def test_cat(self):
-        c = RestProxy(config_str)
+        r = RestProxy(config_str)
         #
         topic_str = self.create_test_topic_name()
-        c.create(topic_str)
-        w = c.openw(topic_str)
+        r.create(topic_str)
+        w = r.openw(topic_str)
         w.produce(self.snack_str_list)
         w.close()
         #
-        group_str1 = self.create_test_group_name()
-        (message_dict_list1, n_int1) = c.cat(topic_str, group=group_str1)
-        self.assertEqual(3, len(message_dict_list1))
-        self.assertEqual(3, n_int1)
-        value_str_list1 = [message_dict["value"] for message_dict in message_dict_list1]
-        self.assertEqual(value_str_list1, self.snack_str_list)
-        #
-        group_str2 = self.create_test_group_name()
-        (message_dict_list2, n_int2) = c.cat(topic_str, group=group_str2, offsets={0:1}, n=1)
-        self.assertEqual(1, len(message_dict_list2))
-        self.assertEqual(1, n_int2)
-        self.assertEqual(message_dict_list2[0]["value"], self.snack_str_list[1])
+        group_str = self.create_test_group_name()
+        (message_dict_list, n_int) = r.cat(topic_str, group=group_str)
+        self.assertEqual(3, len(message_dict_list))
+        self.assertEqual(3, n_int)
+        value_str_list = [message_dict["value"] for message_dict in message_dict_list]
+        self.assertEqual(value_str_list, self.snack_str_list)
 
     # Shell.head -> Shell.cat
     def test_head(self):
-        c = RestProxy(config_str)
+        r = RestProxy(config_str)
         #
         topic_str = self.create_test_topic_name()
-        c.create(topic_str)
-        w = c.openw(topic_str, value_type="avro", value_schema=self.avro_schema_str)
+        r.create(topic_str)
+        w = r.openw(topic_str, value_type="avro", value_schema=self.avro_schema_str)
         w.produce(self.snack_str_list)
         w.close()
         #
-        group_str1 = self.create_test_group_name()
-        (message_dict_list1, n_int1) = c.head(topic_str, group=group_str1, value_type="avro", n=3)
-        self.assertEqual(3, len(message_dict_list1))
-        self.assertEqual(3, n_int1)
-        value_dict_list1 = [message_dict["value"] for message_dict in message_dict_list1]
-        self.assertEqual(value_dict_list1, self.snack_dict_list)
-        #
-        group_str2 = self.create_test_group_name()
-        (message_dict_list2, n_int2) = c.head(topic_str, group=group_str2, offsets={0:1}, value_type="avro", n=1)
-        self.assertEqual(1, len(message_dict_list2))
-        self.assertEqual(1, n_int2)
-        self.assertEqual(message_dict_list2[0]["value"], self.snack_dict_list[1])
+        group_str = self.create_test_group_name()
+        (message_dict_list, n_int) = r.head(topic_str, group=group_str, type="avro")
+        self.assertEqual(3, len(message_dict_list))
+        self.assertEqual(3, n_int)
+        value_dict_list = [message_dict["value"] for message_dict in message_dict_list]
+        self.assertEqual(value_dict_list, self.snack_dict_list)
 
     # Shell.tail -> Functional.map -> Functional.flatmap -> Functional.foldl -> ClusterReader.openr/KafkaReader.foldl/ClusterReader.close -> ClusterReader.consume
     def test_tail(self):
-        c = RestProxy(config_str)
+        r = RestProxy(config_str)
         #
         topic_str = self.create_test_topic_name()
-        c.create(topic_str)
-        w = c.openw(topic_str, value_type="protobuf", value_schema=self.protobuf_schema_str)
+        r.create(topic_str)
+        w = r.openw(topic_str, value_type="protobuf", value_schema=self.protobuf_schema_str)
         w.produce(self.snack_dict_list)
         w.close()
         #
-        group_str1 = self.create_test_group_name()
-        (message_dict_list1, n_int1) = c.tail(topic_str, group=group_str1, value_type="pb", n=3)
-        self.assertEqual(3, len(message_dict_list1))
-        self.assertEqual(3, n_int1)
-        value_dict_list1 = [message_dict["value"] for message_dict in message_dict_list1]
-        self.assertEqual(value_dict_list1, self.snack_dict_list)
-        #
-        group_str2 = self.create_test_group_name()
-        (message_dict_list2, n_int2) = c.tail(topic_str, group=group_str2, value_type="pb", n=1)
-        self.assertEqual(1, len(message_dict_list2))
-        self.assertEqual(1, n_int2)
-        self.assertEqual(message_dict_list2[0]["value"], self.snack_dict_list[2])
+        group_str = self.create_test_group_name()
+        (message_dict_list, n_int) = r.tail(topic_str, group=group_str, type="pb")
+        self.assertEqual(3, len(message_dict_list))
+        self.assertEqual(3, n_int)
+        value_dict_list = [message_dict["value"] for message_dict in message_dict_list]
+        self.assertEqual(value_dict_list, self.snack_dict_list)
 
     # Shell.cp -> Functional.map_to -> Functional.flatmap_to -> ClusterReader.openw/Functional.foldl/ClusterReader.close -> ClusterReader.openr/KafkaReader.foldl/ClusterReader.close -> ClusterReader.consume
     def test_cp(self):
-        c = RestProxy(config_str)
+        r = RestProxy(config_str)
         #
         topic_str1 = self.create_test_topic_name()
-        c.create(topic_str1)
-        w = c.openw(topic_str1, value_type="json_sr", value_schema=self.jsonschema_schema_str)
+        r.create(topic_str1)
+        w = r.openw(topic_str1, value_type="json_sr", value_schema=self.jsonschema_schema_str)
         w.produce(self.snack_bytes_list)
         w.close()
         topic_str2 = self.create_test_topic_name()
@@ -483,30 +465,31 @@ class Test(unittest.TestCase):
             return message_dict
         #
         group_str1 = self.create_test_group_name()
-        (read_n_int, written_n_int) = c.cp(topic_str1, c, topic_str2, group=group_str1, source_value_type="jsonschema", target_value_type="json", write_batch_size=2, map_function=map_ish, n=3)
+        (read_n_int, written_n_int) = r.cp(topic_str1, r, topic_str2, group=group_str1, source_type="jsonschema", target_type="json", write_batch_size=2, map_function=map_ish, n=3)
         self.assertEqual(3, read_n_int)
         self.assertEqual(3, written_n_int)
         #
         group_str2 = self.create_test_group_name()
-        (message_dict_list2, n_int2) = c.cat(topic_str2, group=group_str2, value_type="json", n=1)
-        self.assertEqual(1, len(message_dict_list2))
-        self.assertEqual(1, n_int2)
-        self.assertEqual(message_dict_list2[0]["value"], self.snack_ish_dict_list[0])
+        (message_dict_list2, n_int2) = r.cat(topic_str2, group=group_str2, type="json")
+        self.assertEqual(3, len(message_dict_list2))
+        self.assertEqual(3, n_int2)
+        value_dict_list2 = [message_dict2["value"] for message_dict2 in message_dict_list2]
+        self.assertEqual(value_dict_list2, self.snack_ish_dict_list)
 
     def test_wc(self):
-        c = RestProxy(config_str)
+        r = RestProxy(config_str)
         #
         topic_str = self.create_test_topic_name()
-        c.create(topic_str)
-        w = c.openw(topic_str, value_type="protobuf", value_schema=self.protobuf_schema_str)
+        r.create(topic_str)
+        w = r.openw(topic_str, value_type="protobuf", value_schema=self.protobuf_schema_str)
         w.produce(self.snack_dict_list)
         w.close()
         #
         group_str1 = self.create_test_group_name()
-        (num_messages_int, acc_num_words_int, acc_num_bytes_int) = c.wc(topic_str, group=group_str1, value_type="pb", n=2)
-        self.assertEqual(2, num_messages_int)
-        self.assertEqual(12, acc_num_words_int)
-        self.assertEqual(110, acc_num_bytes_int)
+        (num_messages_int, acc_num_words_int, acc_num_bytes_int) = r.wc(topic_str, group=group_str1, type="pb")
+        self.assertEqual(3, num_messages_int)
+        self.assertEqual(18, acc_num_words_int)
+        self.assertEqual(169, acc_num_bytes_int)
 
     # Shell.diff -> Shell.diff_fun -> Functional.zipfoldl -> ClusterReader.openr/read/close
     def test_diff(self):

@@ -33,11 +33,12 @@ class RestProxyWriter(KafkaWriter):
         #
         url_str = f"{rest_proxy_url_str}/v3/clusters/{self.cluster_id_str}/topics/{self.topic_str}/records"
         #
-        keys = key if isinstance(key, list) else [key]
-        values = value if isinstance(value, list) else [value]
+        value_list = value if isinstance(value, list) else [value]
+        #
+        key_list = key if isinstance(key, list) else [key for _ in value_list]
         #
         payload_dict_list = []
-        for key, value in zip(keys, values):
+        for key, value in zip(key_list, value_list):
             headers_dict = {"Content-Type": "application/json", "Transfer-Encoding": "chunked"}
             #
             if self.value_type_str.lower() == "json":
@@ -114,7 +115,7 @@ class RestProxyWriter(KafkaWriter):
         #
         self.produced_counter_int += len(payload_dict_list)
         #
-        return keys, values
+        return key_list, value_list
 
     #
 

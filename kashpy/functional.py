@@ -101,6 +101,8 @@ class Functional:
             source_kwargs["key_type"] = kwargs["source_key_type"]
         if "source_value_type" in kwargs:
             source_kwargs["value_type"] = kwargs["source_value_type"]
+        if "source_type" in kwargs:
+            source_kwargs["type"] = kwargs["source_type"]
         if "source_key_schema" in kwargs:
             source_kwargs["key_schema"] = kwargs["source_key_schema"]
         if "source_value_schema" in kwargs:
@@ -115,6 +117,8 @@ class Functional:
             target_kwargs["key_type"] = kwargs["target_key_type"]
         if "target_value_type" in kwargs:
             target_kwargs["value_type"] = kwargs["target_value_type"]
+        if "target_type" in kwargs:
+            target_kwargs["type"] = kwargs["target_type"]
         if "target_key_schema" in kwargs:
             target_kwargs["key_schema"] = kwargs["target_key_schema"]
         if "target_value_schema" in kwargs:
