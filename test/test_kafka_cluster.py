@@ -319,6 +319,14 @@ class Test(unittest.TestCase):
         c.set_partitions(topic_str, 2)
         num_partitions_int_2 = c.partitions(topic_str)[topic_str]
         self.assertEqual(num_partitions_int_2, 2)
+        topic_str_partition_int_partition_dict_dict_dict = c.partitions(topic_str, verbose=True)[topic_str]
+        self.assertEqual(list(topic_str_partition_int_partition_dict_dict_dict.keys()), [0, 1])
+        self.assertEqual(topic_str_partition_int_partition_dict_dict_dict[0]["leader"], 1)
+        self.assertEqual(topic_str_partition_int_partition_dict_dict_dict[0]["replicas"], [1])
+        self.assertEqual(topic_str_partition_int_partition_dict_dict_dict[0]["isrs"], [1])
+        self.assertEqual(topic_str_partition_int_partition_dict_dict_dict[1]["leader"], 1)
+        self.assertEqual(topic_str_partition_int_partition_dict_dict_dict[1]["replicas"], [1])
+        self.assertEqual(topic_str_partition_int_partition_dict_dict_dict[1]["isrs"], [1])
 
     def test_exists(self):
         c = Cluster(config_str)

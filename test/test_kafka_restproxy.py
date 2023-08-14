@@ -237,8 +237,16 @@ class Test(unittest.TestCase):
         #
         topic_str = self.create_test_topic_name()
         r.create(topic_str, partitions=2)
-        num_partitions_int = r.partitions(topic_str)[topic_str]
-        self.assertEqual(num_partitions_int, 2)
+        num_partitions_int1 = r.partitions(topic_str)[topic_str]
+        self.assertEqual(num_partitions_int1, 2)
+        topic_str_partition_int_partition_dict_dict_dict = r.partitions(topic_str, verbose=True)[topic_str]
+        self.assertEqual(list(topic_str_partition_int_partition_dict_dict_dict.keys()), [0, 1])
+        self.assertEqual(topic_str_partition_int_partition_dict_dict_dict[0]["leader"], 1)
+        self.assertEqual(topic_str_partition_int_partition_dict_dict_dict[0]["replicas"], [1])
+        self.assertEqual(topic_str_partition_int_partition_dict_dict_dict[0]["isrs"], [1])
+        self.assertEqual(topic_str_partition_int_partition_dict_dict_dict[1]["leader"], 1)
+        self.assertEqual(topic_str_partition_int_partition_dict_dict_dict[1]["replicas"], [1])
+        self.assertEqual(topic_str_partition_int_partition_dict_dict_dict[1]["isrs"], [1])
 
     def test_exists(self):
         r = RestProxy(config_str)

@@ -320,7 +320,13 @@ class ClusterAdmin():
         #
         if verbose_bool:
             topic_str_topic_dict_dict = {topic_str: topicMetadata_to_topic_dict(topic_str_topicMetadata_dict[topic_str]) for topic_str in topic_str_topicMetadata_dict if any(fnmatch(topic_str, pattern_str) for pattern_str in pattern_str_or_str_list)}
-            return topic_str_topic_dict_dict
+            #
+            topic_str_partition_int_partition_dict_dict_dict = {}
+            for topic_str, topic_dict in topic_str_topic_dict_dict.items():
+                partitions_dict = topic_dict["partitions"]
+                topic_str_partition_int_partition_dict_dict_dict[topic_str] = partitions_dict
+            #
+            return topic_str_partition_int_partition_dict_dict_dict
         else:
             topic_str_num_partitions_int_dict = {topic_str: len(topic_str_topicMetadata_dict[topic_str].partitions) for topic_str in topic_str_topicMetadata_dict if any(fnmatch(topic_str, pattern_str) for pattern_str in pattern_str_or_str_list)}
             return topic_str_num_partitions_int_dict
