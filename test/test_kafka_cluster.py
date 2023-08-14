@@ -419,7 +419,7 @@ class Test(unittest.TestCase):
         #
         topic_str = self.create_test_topic_name()
         c.create(topic_str)
-        # Upon produce, the type "str" triggers the conversion of bytes, strings and dictionaries into bytes on Kafka, and "jsonschema" (alias = "json_sr") into Protobuf/Avro-encoded bytes on Kafka.
+        # Upon produce, the type "str" triggers the conversion of bytes, strings and dictionaries into bytes on Kafka, and "jsonschema" (alias = "json_sr") into JSONSchema-encoded bytes on Kafka.
         w = c.openw(topic_str, key_type="str", value_type="jsonschema", value_schema=self.jsonschema_schema_str)
         w.produce(self.snack_dict_list, key=self.snack_str_list)
         w.close()

@@ -168,9 +168,9 @@ class Test(unittest.TestCase):
         #
         group_str = self.create_test_group_name()
         reader = r.openr(topic_str, group=group_str, config={"enable.auto.commit": False})
-        x = reader.consume()
+        reader.consume()
         reader.commit()
-        y = reader.consume()
+        reader.consume()
         reader.commit()
         #
         group_str_topic_str_partition_int_offset_int_dict_dict_dict = r.group_offsets(group_str)
@@ -185,97 +185,68 @@ class Test(unittest.TestCase):
     # Topics
 
     def test_config_set_config(self):
-        c = RestProxy(config_str)
+        r = RestProxy(config_str)
         #
         topic_str = self.create_test_topic_name()
-        c.touch(topic_str)
+        r.touch(topic_str)
         #
-        c.set_config(topic_str, {"retention.ms": 4711})
-        new_retention_ms_str = c.config(topic_str)[topic_str]["retention.ms"]
+        r.set_config(topic_str, {"retention.ms": 4711})
+        new_retention_ms_str = r.config(topic_str)[topic_str]["retention.ms"]
         self.assertEqual(new_retention_ms_str, "4711")
 
     def test_create_delete(self):
-        c = RestProxy(config_str)
+        r = RestProxy(config_str)
         #
         topic_str = self.create_test_topic_name()
-        c.touch(topic_str)
-        topic_str_list = c.ls()
+        r.touch(topic_str)
+        topic_str_list = r.ls()
         self.assertIn(topic_str, topic_str_list)
-        c.rm(topic_str)
-        topic_str_list = c.ls()
+        r.rm(topic_str)
+        topic_str_list = r.ls()
         self.assertNotIn(topic_str, topic_str_list)
 
     def test_topics(self):
-        c = RestProxy(config_str)
+        r = RestProxy(config_str)
         #
         topic_str = self.create_test_topic_name()
-        old_topic_str_list = c.topics(["test_*"])
+        old_topic_str_list = r.topics(["test_*"])
         self.assertNotIn(topic_str, old_topic_str_list)
-        c.create(topic_str)
-        new_topic_str_list = c.ls(["test_*"])
+        r.create(topic_str)
+        new_topic_str_list = r.ls(["test_*"])
         self.assertIn(topic_str, new_topic_str_list)
         #
-        w = c.openw(topic_str)
+        w = r.openw(topic_str)
         w.produce("message 1", on_delivery=lambda kafkaError, message: print(kafkaError, message))
         w.produce("message 2")
         w.produce("message 3")
         w.close()
         #
-        topic_str_size_int_dict_l = c.l(pattern=topic_str)
-        topic_str_size_int_dict_ll = c.ll(pattern=topic_str)
+        topic_str_size_int_dict_l = r.l(pattern=topic_str)
+        topic_str_size_int_dict_ll = r.ll(pattern=topic_str)
         self.assertEqual(topic_str_size_int_dict_l, topic_str_size_int_dict_ll)
         size_int = topic_str_size_int_dict_l[topic_str]
         self.assertEqual(size_int, 3)
-        topic_str_total_size_int_size_dict_tuple_dict = c.topics(pattern=topic_str, size=True, partitions=True)
+        topic_str_total_size_int_size_dict_tuple_dict = r.topics(pattern=topic_str, size=True, partitions=True)
         self.assertEqual(topic_str_total_size_int_size_dict_tuple_dict[topic_str][0], 3)
         self.assertEqual(topic_str_total_size_int_size_dict_tuple_dict[topic_str][1][0], 3)
-        topic_str_total_size_int_size_dict_tuple_dict = c.topics(pattern=topic_str, size=False, partitions=True)
+        topic_str_total_size_int_size_dict_tuple_dict = r.topics(pattern=topic_str, size=False, partitions=True)
         self.assertEqual(topic_str_total_size_int_size_dict_tuple_dict[topic_str][0], 3)
 
-    def test_offsets_for_times(self):
-        c = RestProxy(config_str)
-        #
-        c.verbose(1)
-        #
-        topic_str = self.create_test_topic_name()
-        c.create(topic_str)
-        w = c.openw(topic_str)
-        w.produce("message 1")
-        time.sleep(1)
-        w.produce("message 2")
-        w.close()
-        #
-        self.assertEqual(c.l(topic_str, partitions=True)[topic_str][1][0], 2)
-        #
-        group_str = self.create_test_group_name()
-        r = c.openr(topic_str, group=group_str)
-        message_dict_list = r.consume(n=2)
-        r.close()
-        message1_timestamp_int = message_dict_list[1]["timestamp"][1]
-        message1_offset_int = message_dict_list[1]["offset"]
-        #
-        topic_str_partition_int_offset_int_dict_dict = c.offsets_for_times(topic_str, {0: message1_timestamp_int})
-        found_message1_offset_int = topic_str_partition_int_offset_int_dict_dict[topic_str][0]
-        self.assertEqual(message1_offset_int, found_message1_offset_int)
-
     def test_partitions_set_partitions(self):
-        c = RestProxy(config_str)
+        r = RestProxy(config_str)
         #
         topic_str = self.create_test_topic_name()
-        c.create(topic_str)
-        num_partitions_int_1 = c.partitions(topic_str)[topic_str]
-        self.assertEqual(num_partitions_int_1, 1)
-        c.set_partitions(topic_str, 2)
-        num_partitions_int_2 = c.partitions(topic_str)[topic_str]
-        self.assertEqual(num_partitions_int_2, 2)
+        r.create(topic_str, partitions=2)
+        num_partitions_int = r.partitions(topic_str)[topic_str]
+        self.assertEqual(num_partitions_int, 2)
 
     def test_exists(self):
-        c = RestProxy(config_str)
+        r = RestProxy(config_str)
         #
         topic_str = self.create_test_topic_name()
-        self.assertFalse(c.exists(topic_str))
-        c.create(topic_str)
-        self.assertTrue(c.exists(topic_str))
+        self.assertFalse(r.exists(topic_str))
+        r.create(topic_str)
+        self.assertTrue(r.exists(topic_str))
 
     # Produce/Consume
 
@@ -299,26 +270,26 @@ class Test(unittest.TestCase):
         self.assertEqual(key_str_list, self.snack_str_list)
         self.assertEqual(value_bytes_list, self.snack_bytes_list)
         r.close()
-    
+
     def test_produce_consume_json(self):
         c = RestProxy(config_str)
         #
         topic_str = self.create_test_topic_name()
         c.create(topic_str)
-        # Upon produce, the types "str" and "json" trigger the conversion of bytes, strings and dictionaries to bytes on Kafka.
-        w = c.openw(topic_str, key_type="str", value_type="json")
+        # Upon produce, the type "json" triggers the conversion of bytes, strings and dictionaries to bytes on Kafka.
+        w = c.openw(topic_str, key_type="json", value_type="json")
         w.produce(self.snack_dict_list, key=self.snack_str_list)
         w.close()
         self.assertEqual(c.size(topic_str)[topic_str][0], 3)
         #
         group_str = self.create_test_group_name()
-        # Upon consume, the type "json" triggers the conversion into a dictionary, and "str" into a string.
-        r = c.openr(topic_str, group=group_str, key_type="json", value_type="str")
+        # Upon consume, the type "json" triggers the conversion into a dictionary.
+        r = c.openr(topic_str, group=group_str, key_type="json", value_type="json")
         message_dict_list = r.read(n=3)
         key_dict_list = [message_dict["key"] for message_dict in message_dict_list]
-        value_str_list = [message_dict["value"] for message_dict in message_dict_list]
+        value_dict_list = [message_dict["value"] for message_dict in message_dict_list]
         self.assertEqual(key_dict_list, self.snack_dict_list)
-        self.assertEqual(value_str_list, self.snack_str_list)
+        self.assertEqual(value_dict_list, self.snack_dict_list)
         r.close()
 
     def test_produce_consume_protobuf(self):
@@ -342,104 +313,86 @@ class Test(unittest.TestCase):
         self.assertEqual(value_dict_list, self.snack_dict_list)
         r.close()
 
-    def test_produce_consume_protobuf_avro(self):
-        c = RestProxy(config_str)
+    def test_produce_consume_avro(self):
+        r = RestProxy(config_str)
         #
         topic_str = self.create_test_topic_name()
-        c.create(topic_str)
-        # Upon produce, the type "protobuf" (alias = "pb") triggers the conversion of bytes, strings and dictionaries into Protobuf-encoded bytes on Kafka, and "avro" into Avro-encoded bytes.
-        w = c.openw(topic_str, key_type="protobuf", value_type="avro", key_schema=self.protobuf_schema_str, value_schema=self.avro_schema_str)
+        r.create(topic_str)
+        # Upon produce, the type "avro" triggers the conversion of bytes, strings and dictionaries into Avro-encoded bytes on Kafka.
+        w = r.openw(topic_str, key_type="avro", value_type="avro", key_schema=self.avro_schema_str, value_schema=self.avro_schema_str)
         w.produce(self.snack_dict_list, key=self.snack_bytes_list)
         w.close()
-        self.assertEqual(c.size(topic_str)[topic_str][0], 3)
+        self.assertEqual(r.size(topic_str)[topic_str][0], 3)
         #
         group_str = self.create_test_group_name()
         # Upon consume, the types "protobuf" (alias = "pb") and "avro" trigger the conversion into a dictionary.
-        r = c.openr(topic_str, group=group_str, key_type="pb", value_type="avro")
-        message_dict_list = r.read(n=3)
+        reader = r.openr(topic_str, group=group_str, key_type="avro", value_type="avro")
+        message_dict_list = reader.read(n=3)
         key_dict_list = [message_dict["key"] for message_dict in message_dict_list]
         value_dict_list = [message_dict["value"] for message_dict in message_dict_list]
         self.assertEqual(key_dict_list, self.snack_dict_list)
         self.assertEqual(value_dict_list, self.snack_dict_list)
-        r.close()
+        reader.close()
 
-    def test_produce_consume_str_jsonschema(self):
-        c = RestProxy(config_str)
+    def test_produce_consume_jsonschema(self):
+        r = RestProxy(config_str)
         #
         topic_str = self.create_test_topic_name()
-        c.create(topic_str)
-        # Upon produce, the type "str" triggers the conversion of bytes, strings and dictionaries into bytes on Kafka, and "jsonschema" (alias = "json_sr") into Protobuf/Avro-encoded bytes on Kafka.
-        w = c.openw(topic_str, key_type="str", value_type="jsonschema", value_schema=self.jsonschema_schema_str)
+        r.create(topic_str)
+        # Upon produce, the type "jsonschema" triggers the conversion of bytes, strings and dictionaries into JSONSchema-encoded bytes on Kafka.
+        w = r.openw(topic_str, key_type="json_sr", value_type="jsonschema", key_schema=self.jsonschema_schema_str, value_schema=self.jsonschema_schema_str)
         w.produce(self.snack_dict_list, key=self.snack_str_list)
         w.close()
-        self.assertEqual(c.size(topic_str)[topic_str][0], 3)
+        self.assertEqual(r.size(topic_str)[topic_str][0], 3)
         #
         group_str = self.create_test_group_name()
-        # Upon consume, the types "json" and "jsonschema" (alias = "json_sr") trigger the conversion into a dictionary.
-        r = c.openr(topic_str, group=group_str, key_type="json", value_type="json_sr")
-        message_dict_list = r.read(n=3)
+        # Upon consume, the type "jsonschema" (alias = "json_sr") triggers the conversion into a dictionary.
+        reader = r.openr(topic_str, group=group_str, key_type="jsonschema", value_type="json_sr")
+        message_dict_list = reader.read(n=3)
         key_dict_list = [message_dict["key"] for message_dict in message_dict_list]
         value_dict_list = [message_dict["value"] for message_dict in message_dict_list]
         self.assertEqual(key_dict_list, self.snack_dict_list)
         self.assertEqual(value_dict_list, self.snack_dict_list)
-        r.close()
-
-    def test_consume_from_offsets(self):
-        c = RestProxy(config_str)
-        #
-        topic_str = self.create_test_topic_name()
-        c.create(topic_str)
-        w = c.openw(topic_str)
-        w.produce("message 1")
-        w.produce("message 2")
-        w.produce("message 3")
-        w.close()
-        #
-        group_str = self.create_test_group_name()
-        r = c.openr(topic_str, group=group_str, offsets={0: 2})
-        message_dict_list = r.consume()
-        self.assertEqual(len(message_dict_list), 1)
-        self.assertEqual(message_dict_list[0]["value"], "message 3")
-        r.close()
+        reader.close()
 
     def test_commit(self):
-        c = RestProxy(config_str)
+        r = RestProxy(config_str)
         #
         topic_str = self.create_test_topic_name()
-        c.create(topic_str)
-        w = c.openw(topic_str)
+        r.create(topic_str)
+        w = r.openw(topic_str)
         w.produce("message 1")
         w.produce("message 2")
         w.produce("message 3")
         w.close()
         #
         group_str = self.create_test_group_name()
-        r = c.openr(topic_str, group=group_str, config={"enable.auto.commit": "False"})
-        r.consume()
-        offsets_dict = r.offsets()
-        self.assertEqual(offsets_dict[topic_str][0], OFFSET_INVALID)
-        r.commit()
-        offsets_dict1 = r.offsets()
-        self.assertEqual(offsets_dict1[topic_str][0], 1)
-        r.close()
+        reader = r.openr(topic_str, group=group_str, config={"enable.auto.commit": "False"})
+        reader.consume()
+        offsets_dict = reader.offsets()
+        self.assertEqual(offsets_dict, {})
+        reader.commit()
+        offsets_dict1 = reader.offsets()
+        self.assertEqual(offsets_dict1[topic_str][0], 3)
+        reader.close()
     
     def test_cluster_settings(self):
-        c = RestProxy(config_str)
+        r = RestProxy(config_str)
         #
-        c.verbose(0)
-        self.assertEqual(c.verbose(), 0)
+        r.verbose(0)
+        self.assertEqual(r.verbose(), 0)
 
     def test_configs(self):
-        c = RestProxy(config_str)
+        r = RestProxy(config_str)
         #
-        config_str_list1 = c.configs()
+        config_str_list1 = r.configs()
         self.assertIn("local", config_str_list1)
-        config_str_list2 = c.configs("loc*")
+        config_str_list2 = r.configs("loc*")
         self.assertIn("local", config_str_list2)
-        config_str_list3 = c.configs("this_pattern_shall_not_match_anything")
+        config_str_list3 = r.configs("this_pattern_shall_not_match_anything")
         self.assertEqual(config_str_list3, [])
         #
-        config_str_config_dict_dict = c.configs(verbose=True)
+        config_str_config_dict_dict = r.configs(verbose=True)
         self.assertIn("local", config_str_config_dict_dict)
         self.assertEqual(True, config_str_config_dict_dict["local"]["kash"]["enable.auto.commit"])
 

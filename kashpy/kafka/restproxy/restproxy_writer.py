@@ -107,7 +107,6 @@ class RestProxyWriter(KafkaWriter):
         #payload_dict_generator = (payload_dict for payload_dict in payload_dict_list)
         def g():
             for x in payload_dict_list:
-#                time.sleep(0.1)
                 yield x
         payload_dict_generator = g()
 

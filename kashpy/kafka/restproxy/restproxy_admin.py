@@ -221,7 +221,7 @@ class RestProxyAdmin:
         rest_proxy_url_str = self.rest_proxy_config_dict["rest.proxy.url"]
         auth_str_tuple = self.get_auth_str_tuple()
         #
-        topic_str_list = self.topics(pattern_str_or_str_list)
+        topic_str_list = self.list_topics(pattern_str_or_str_list)
         #
         def kafkaTopicConfigList_dict_to_config_dict(kafkaTopicConfigList_dict):
             config_dict = {}
@@ -244,7 +244,7 @@ class RestProxyAdmin:
         rest_proxy_url_str = self.rest_proxy_config_dict["rest.proxy.url"]
         auth_str_tuple = self.get_auth_str_tuple()
         #
-        topic_str_list = self.topics(pattern_str_or_str_list)
+        topic_str_list = self.list_topics(pattern_str_or_str_list)
         #
         topic_str_config_dict_dict = {}
         for topic_str in topic_str_list:

@@ -37,13 +37,20 @@ def create_session(retries_int):
     return session
 
 
-def get(url_str, headers_dict, auth_str_tuple=None, retries=0):
+def get(url_str, headers_dict, payload_dict=None, auth_str_tuple=None, retries=0):
     session = create_session(retries)
-    response = session.get(url_str, headers=headers_dict, auth=auth_str_tuple)
+    if payload_dict is None:
+        response = session.get(url_str, headers=headers_dict, auth=auth_str_tuple)
+    else:
+        response = session.get(url_str, headers=headers_dict, json=payload_dict, auth=auth_str_tuple)
+    #
     if is_json(response.text):
         response_dict = response.json()
     else:
         response_dict = {"response": response.text}
+    #
+    if "error_code" in response_dict and response_dict["error_code"] > 400:
+        raise Exception(response_dict["message"])
     #
     if response.ok:
         return response_dict
@@ -58,6 +65,9 @@ def delete(url_str, headers_dict, auth_str_tuple=None, retries=10):
         response_dict = response.json()
     else:
         response_dict = {"response": response.text}
+    #
+    if "error_code" in response_dict and response_dict["error_code"] > 400:
+        raise Exception(response_dict["message"])
     #
     if response.ok:
         return response_dict
@@ -74,14 +84,26 @@ def post(url_str, headers_dict, payload_dict_or_generator, auth_str_tuple=None, 
     #
     if is_json(response.text):
         response_dict = response.json()
+        #
+        if "error_code" in response_dict and response_dict["error_code"] > 400:
+            raise Exception(response_dict["message"])
+        #
+        if response.ok:
+            return response_dict
+        else:
+            raise Exception(response_dict)
     else:
         response_text_list = "[" + response.text[:-2].replace("\r\n", ",") + "]"
-        response_dict = json.loads(response_text_list)
-    #
-    if response.ok:
-        return response_dict
-    else:
-        raise Exception(response_dict)
+        response_dict_list = json.loads(response_text_list)
+        #
+        for response_dict in response_dict_list:
+            if "error_code" in response_dict and response_dict["error_code"] > 400:
+                raise Exception(response_dict["message"])
+        #
+        if response.ok:
+            return response_dict_list
+        else:
+            raise Exception(response_dict_list)
 
 
 def get_auth_str_tuple(basic_auth_user_info):
@@ -129,3 +151,7 @@ def base64_encode(str_or_bytes_or_dict):
     elif isinstance(str_or_bytes_or_dict, dict):
         encoded_bytes = base64.b64encode(bytes(json.dumps(str_or_bytes_or_dict), encoding="utf-8"))
     return encoded_bytes
+
+
+def base64_decode(base64_str):
+    return base64.b64decode(bytes(base64_str, encoding="utf-8"))

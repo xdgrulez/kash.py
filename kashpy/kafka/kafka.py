@@ -104,7 +104,7 @@ class Kafka(Storage):
             self.consumer_request_timeout_ms(int(self.kash_config_dict["consumer.request.timeout.ms"]))
         #
         if "consume.num.attempts" not in self.kash_config_dict:
-            self.consume_num_attempts(5)
+            self.consume_num_attempts(3)
         else:
             self.consume_num_attempts(int(self.kash_config_dict["consume.num.attempts"]))
         #

@@ -1,6 +1,6 @@
 from kashpy.kafka.kafka_reader import KafkaReader
 
-from kashpy.helpers import get, delete, post
+from kashpy.helpers import get, delete, post, base64_decode
 
 #
 
@@ -11,16 +11,6 @@ class RestProxyReader(KafkaReader):
         self.rest_proxy_config_dict = restproxy_obj.rest_proxy_config_dict
         #
         self.cluster_id_str = restproxy_obj.cluster_id_str
-        #
-        for topic_str in self.topic_str_list:
-            key_type_str = self.key_type_dict[topic_str]
-            value_type_str = self.value_type_dict[topic_str]
-            #
-            if key_type_str != value_type_str:
-                raise f"Cannot set up consumer for topic '{topic_str}': Confluent REST Proxy requires and key and value types to be the same."
-        #
-        if len(set(list(self.key_type_dict.values()) + list(self.value_type_dict.values()))) > 1:
-            raise f"Cannot set up consumer for topics '{self.topic_str_list}'. Confluent REST Proxy requires all key types and value types of all the topics to be the same."
         #
         # Consumer Config
         #
@@ -64,13 +54,13 @@ class RestProxyReader(KafkaReader):
         #
         payload_dict1 = {"format": type_str}
         payload_dict1.update(self.consumer_config_dict)
-        response_dict = post(url_str1, headers_dict1, payload_dict1, auth_str_tuple=auth_str_tuple, retries=self.kash_config_dict["requests.num.retries"])
-        self.instance_id_str = response_dict["instance_id"]
+        response_dict1 = post(url_str1, headers_dict1, payload_dict1, auth_str_tuple=auth_str_tuple, retries=self.kash_config_dict["requests.num.retries"])
+        self.instance_id_str = response_dict1["instance_id"]
         #
         url_str2 = f"{rest_proxy_url_str}/consumers/{self.group_str}/instances/{self.instance_id_str}/subscription"
         headers_dict2 = {"Content-Type": "application/vnd.kafka.v2+json"}
         payload_dict2 = {"topics": self.topic_str_list}
-        response_dict = post(url_str2, headers_dict2, payload_dict2, auth_str_tuple=auth_str_tuple, retries=self.kash_config_dict["requests.num.retries"])
+        post(url_str2, headers_dict2, payload_dict2, auth_str_tuple=auth_str_tuple, retries=self.kash_config_dict["requests.num.retries"])
         #
         return self.topic_str_list, self.group_str
     
@@ -111,7 +101,8 @@ class RestProxyReader(KafkaReader):
         if max_bytes_int is None:
             max_bytes_int = 67108864
         #
-        value_type_str = self.key_type_dict[self.topic_str_list[0]]
+        key_type_str = self.key_type_dict[self.topic_str_list[0]]
+        value_type_str = self.value_type_dict[self.topic_str_list[0]]
         if value_type_str.lower() == "json":
             type_str = "json"
         elif value_type_str.lower() == "avro":
@@ -126,11 +117,25 @@ class RestProxyReader(KafkaReader):
         url_str = f"{rest_proxy_url_str}/consumers/{self.group_str}/instances/{self.instance_id_str}/records?timeout={timeout_int}&max_bytes={max_bytes_int}"
         headers_dict = {"Accept": f"application/vnd.kafka.{type_str}.v2+json"}
         #
+        def decode(key_or_value, key_bool=False):
+            if key_or_value is None:
+                return None
+            elif type_str in ["json", "avro", "protobuf", "jsonschema"]:
+                return key_or_value
+            elif type_str == "binary":
+                decoded_bytes = base64_decode(key_or_value)
+                type_str1 = key_type_str if key_bool else value_type_str
+                if type_str1 == "bytes":
+                    return decoded_bytes
+                elif type_str1 == "str":
+                    return decoded_bytes.decode(encoding="utf-8")
+
+        #
         message_dict_list = []
         for _ in range(0, self.kash_config_dict["consume.num.attempts"]):
             response_dict = get(url_str, headers_dict, auth_str_tuple=auth_str_tuple, retries=self.kash_config_dict["requests.num.retries"])
             #
-            message_dict_list += [{"headers": None, "topic": rest_message_dict["topic"], "partition": rest_message_dict["partition"], "offset": rest_message_dict["offset"], "timestamp": None, "key": rest_message_dict["key"], "value": rest_message_dict["value"]} for rest_message_dict in response_dict]
+            message_dict_list += [{"headers": None, "topic": rest_message_dict["topic"], "partition": rest_message_dict["partition"], "offset": rest_message_dict["offset"], "timestamp": None, "key": decode(rest_message_dict["key"], True), "value": decode(rest_message_dict["value"], False)} for rest_message_dict in response_dict]
         #
         return message_dict_list
 
