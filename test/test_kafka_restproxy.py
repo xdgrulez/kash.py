@@ -493,39 +493,39 @@ class Test(unittest.TestCase):
 
     # Shell.diff -> Shell.diff_fun -> Functional.zipfoldl -> ClusterReader.openr/read/close
     def test_diff(self):
-        c = RestProxy(config_str)
+        r = RestProxy(config_str)
         #
         topic_str1 = self.create_test_topic_name()
-        c.create(topic_str1)
-        w1 = c.openw(topic_str1, value_type="protobuf", value_schema=self.protobuf_schema_str)
+        r.create(topic_str1)
+        w1 = r.openw(topic_str1, value_type="protobuf", value_schema=self.protobuf_schema_str)
         w1.produce(self.snack_str_list)
         w1.close()
         #
         topic_str2 = self.create_test_topic_name()
-        c.create(topic_str2)
-        w2 = c.openw(topic_str2, value_type="avro", value_schema=self.avro_schema_str)
+        r.create(topic_str2)
+        w2 = r.openw(topic_str2, value_type="avro", value_schema=self.avro_schema_str)
         w2.produce(self.snack_ish_dict_list)
         w2.close()
         #
         group_str1 = self.create_test_group_name()
         group_str2 = self.create_test_group_name()
-        (message_dict_message_dict_tuple_list, message_counter_int1, message_counter_int2) = c.diff(topic_str1, c, topic_str2, group1=group_str1, group2=group_str2, value_type1="pb", value_type2="avro", n=3)
+        (message_dict_message_dict_tuple_list, message_counter_int1, message_counter_int2) = r.diff(topic_str1, r, topic_str2, group1=group_str1, group2=group_str2, type1="pb", type2="avro")
         self.assertEqual(3, len(message_dict_message_dict_tuple_list))
         self.assertEqual(3, message_counter_int1)
         self.assertEqual(3, message_counter_int2)
 
     # Shell.diff -> Shell.diff_fun -> Functional.flatmap -> Functional.foldl -> ClusterReader.open/Kafka.foldl/ClusterReader.close -> ClusterReader.consume 
     def test_grep(self):
-        c = RestProxy(config_str)
+        r = RestProxy(config_str)
         #
         topic_str = self.create_test_topic_name()
-        c.create(topic_str)
-        w = c.openw(topic_str, value_type="protobuf", value_schema=self.protobuf_schema_str)
+        r.create(topic_str)
+        w = r.openw(topic_str, value_type="protobuf", value_schema=self.protobuf_schema_str)
         w.produce(self.snack_str_list)
         w.close()
         #
         group_str = self.create_test_group_name()
-        (message_dict_message_dict_tuple_list, message_counter_int1, message_counter_int2) = c.grep(topic_str, ".*brown.*", group=group_str, value_type="pb", n=3)
+        (message_dict_message_dict_tuple_list, message_counter_int1, message_counter_int2) = r.grep(topic_str, ".*brown.*", group=group_str, type="pb")
         self.assertEqual(1, len(message_dict_message_dict_tuple_list))
         self.assertEqual(1, message_counter_int1)
         self.assertEqual(3, message_counter_int2)
@@ -533,50 +533,50 @@ class Test(unittest.TestCase):
     # Functional
 
     def test_foreach(self):
-        c = RestProxy(config_str)
+        r = RestProxy(config_str)
         #
         topic_str = self.create_test_topic_name()
-        c.create(topic_str)
-        w = c.openw(topic_str, value_type="jsonschema", value_schema=self.jsonschema_schema_str)
+        r.create(topic_str)
+        w = r.openw(topic_str, value_type="jsonschema", value_schema=self.jsonschema_schema_str)
         w.produce(self.snack_str_list)
         w.close()
         #
         colour_str_list = []
-        c.foreach(topic_str, foreach_function=lambda message_dict: colour_str_list.append(message_dict["value"]["colour"]), value_type="jsonschema")
+        r.foreach(topic_str, foreach_function=lambda message_dict: colour_str_list.append(message_dict["value"]["colour"]), type="jsonschema")
         self.assertEqual("brown", colour_str_list[0])
         self.assertEqual("white", colour_str_list[1])
         self.assertEqual("chocolate", colour_str_list[2])
 
     def test_filter(self):
-        c = RestProxy(config_str)
+        r = RestProxy(config_str)
         #
         topic_str = self.create_test_topic_name()
-        c.create(topic_str)
-        w = c.openw(topic_str, value_type="avro", value_schema=self.avro_schema_str)
+        r.create(topic_str)
+        w = r.openw(topic_str, value_type="avro", value_schema=self.avro_schema_str)
         w.produce(self.snack_str_list)
         w.close()
         #
-        (message_dict_list, message_counter_int) = c.filter(topic_str, filter_function=lambda message_dict: message_dict["value"]["calories"] > 100, value_type="avro")
+        (message_dict_list, message_counter_int) = r.filter(topic_str, filter_function=lambda message_dict: message_dict["value"]["calories"] > 100, type="avro")
         self.assertEqual(2, len(message_dict_list))
         self.assertEqual(3, message_counter_int)
 
     def test_filter_to(self):
-        c = RestProxy(config_str)
+        r = RestProxy(config_str)
         #
         topic_str1 = self.create_test_topic_name()
-        c.create(topic_str1)
-        w = c.openw(topic_str1, value_type="avro", value_schema=self.avro_schema_str)
+        r.create(topic_str1)
+        w = r.openw(topic_str1, value_type="avro", value_schema=self.avro_schema_str)
         w.produce(self.snack_str_list)
         w.close()
         #
         topic_str2 = self.create_test_topic_name()
         #
-        (read_n_int, written_n_int) = c.filter_to(topic_str1, c, topic_str2, filter_function=lambda message_dict: message_dict["value"]["calories"] > 100, source_value_type="avro", target_value_type="json")
+        (read_n_int, written_n_int) = r.filter_to(topic_str1, r, topic_str2, filter_function=lambda message_dict: message_dict["value"]["calories"] > 100, source_type="avro", target_type="json")
         self.assertEqual(3, read_n_int)
         self.assertEqual(2, written_n_int)
         #
         group_str = self.create_test_group_name()
-        (message_dict_list, n_int) = c.cat(topic_str2, group=group_str, value_type="json", n=2)
+        (message_dict_list, n_int) = r.cat(topic_str2, group=group_str, type="json")
         self.assertEqual(2, len(message_dict_list))
         self.assertEqual(2, n_int)
         self.assertEqual(500.0, message_dict_list[0]["value"]["calories"])

@@ -1,3 +1,5 @@
+import time
+
 # Constants
 
 ALL_MESSAGES = -1
@@ -6,8 +8,8 @@ ALL_MESSAGES = -1
 
 class Functional:
     def foldl(self, resource, foldl_function, initial_acc, n=ALL_MESSAGES, **kwargs):
-        verbose_int = self.kash_config_dict["verbose"]
-        progress_num_messages_int = self.kash_config_dict["progress.num.messages"]
+        verbose_int = self.verbose()
+        progress_num_messages_int = self.progress_num_messages()
         #
         reader = self.openr(resource, **kwargs)
         #
@@ -59,7 +61,7 @@ class Functional:
     #
 
     def flatmap_to(self, resource, target_storage, target_resource, flatmap_function, n=ALL_MESSAGES, **kwargs):
-        progress_num_messages_int = self.kash_config_dict["progress.num.messages"]
+        progress_num_messages_int = self.progress_num_messages()
         verbose_int = self.verbose()
         #
         def write_batch(batch_message_dict_list):
@@ -160,6 +162,10 @@ class Functional:
     def zip_foldl(self, resource1, storage2, resource2, zip_foldl_function, initial_acc, n=ALL_MESSAGES, **kwargs):
         n_int = n
         #
+        read_batch_size_int = kwargs["read_batch_size"] if "read_batch_size" in kwargs else self.read_batch_size()
+        if read_batch_size_int > n_int:
+            read_batch_size_int = n_int
+        #
         break_function = kwargs["break_function"] if "break_function" in kwargs else lambda _, _1: False
         #
         kwargs1 = kwargs.copy()
@@ -167,14 +173,14 @@ class Functional:
         kwargs1["offsets"] = kwargs1["offsets1"] if "offsets1" in kwargs1 else None
         kwargs1["key_type"] = kwargs1["key_type1"] if "key_type1" in kwargs1 else "bytes"
         kwargs1["value_type"] = kwargs1["value_type1"] if "value_type1" in kwargs1 else "bytes"
+        kwargs1["type"] = kwargs1["type1"] if "type1" in kwargs1 else "bytes"
         #
         kwargs2 = kwargs.copy()
         kwargs2["group"] = kwargs2["group2"] if "group2" in kwargs2 else None
         kwargs2["offsets"] = kwargs2["offsets2"] if "offsets2" in kwargs2 else None
         kwargs2["key_type"] = kwargs2["key_type2"] if "key_type2" in kwargs2 else "bytes"
         kwargs2["value_type"] = kwargs2["value_type2"] if "value_type2" in kwargs2 else "bytes"
-        #
-        read_batch_size_int = kwargs["read_batch_size"] if "read_batch_size" in kwargs else 1
+        kwargs2["type"] = kwargs2["type2"] if "type2" in kwargs2 else "bytes"
         #
         reader1 = self.openr(resource1, **kwargs1)
         reader2 = storage2.openr(resource2, **kwargs2)
@@ -187,26 +193,26 @@ class Functional:
             message_dict_list1 = []
             while True:
                 message_dict_list1 += reader1.read(n=read_batch_size_int)
-                if not message_dict_list1 or len(message_dict_list1) == read_batch_size_int:
+                if not message_dict_list1 or read_batch_size_int == ALL_MESSAGES or len(message_dict_list1) == read_batch_size_int:
                     break
             if not message_dict_list1:
                 break
             num_messages_int1 = len(message_dict_list1)
             message_counter_int1 += num_messages_int1
-            if self.verbose() > 0 and message_counter_int1 % self.kash_config_dict["progress.num.messages"] == 0:
+            if self.verbose() > 0 and message_counter_int1 % self.progress_num_messages() == 0:
                 print(f"Read (storage 1): {message_counter_int1}")
             #
             read_batch_size_int2 = num_messages_int1 if num_messages_int1 < read_batch_size_int else read_batch_size_int
             message_dict_list2 = []
             while True:
                 message_dict_list2 += reader2.read(n=read_batch_size_int2)
-                if not message_dict_list2 or len(message_dict_list2) == read_batch_size_int2:
+                if not message_dict_list2 or read_batch_size_int2 == ALL_MESSAGES or len(message_dict_list2) == read_batch_size_int2:
                     break
             if not message_dict_list2:
                 break
             num_messages_int2 = len(message_dict_list2)
             message_counter_int2 += num_messages_int2
-            if self.verbose() > 0 and message_counter_int2 % self.kash_config_dict["progress.num.messages"] == 0:
+            if self.verbose() > 0 and message_counter_int2 % self.progress_num_messages() == 0:
                 print(f"Read (storage 2): {message_counter_int2}")
             #
             if num_messages_int1 != num_messages_int2:

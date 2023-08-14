@@ -13,6 +13,10 @@ import tempfile
 from kashpy.kafka.kafka_reader import KafkaReader
 from kashpy.kafka.schemaregistry import SchemaRegistry
 
+# Constants
+
+ALL_MESSAGES = -1
+
 #
 
 class ClusterReader(KafkaReader):
@@ -79,7 +83,7 @@ class ClusterReader(KafkaReader):
     #
 
     def consume(self, **kwargs):
-        n_int = kwargs["n"] if "n" in kwargs else 1
+        n_int = kwargs["n"] if "n" in kwargs and kwargs["n"] != ALL_MESSAGES else 1
         #
         message_list = self.consumer.consume(n_int, self.kash_config_dict["consume.timeout"])
         #

@@ -33,7 +33,10 @@ class KafkaReader:
 
     def foldl(self, foldl_function, initial_acc, n=ALL_MESSAGES, **kwargs):
         n_int = n
-        read_batch_size_int = kwargs["read_batch_size"] if "read_batch_size" in kwargs else 1
+        #
+        read_batch_size_int = kwargs["read_batch_size"] if "read_batch_size" in kwargs else self.kash_config_dict["read.batch.size"]
+        if read_batch_size_int > n_int:
+            read_batch_size_int = n_int
         #
         break_function = kwargs["break_function"] if "break_function" in kwargs else lambda _, _1: False
         #
