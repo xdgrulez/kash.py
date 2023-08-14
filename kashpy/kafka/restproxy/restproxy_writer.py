@@ -13,8 +13,6 @@ class RestProxyWriter(KafkaWriter):
     def __init__(self, restproxy_obj, topic, **kwargs):
         super().__init__(restproxy_obj, topic, **kwargs)
         #
-        self.rest_proxy_config_dict = restproxy_obj.rest_proxy_config_dict
-        #
         self.cluster_id_str = restproxy_obj.cluster_id_str
 
     #
@@ -28,8 +26,7 @@ class RestProxyWriter(KafkaWriter):
         key = kwargs["key"] if "key" in kwargs else None
         partition_int = kwargs["partition"] if "partition" in kwargs else RD_KAFKA_PARTITION_UA
         #
-        rest_proxy_url_str = self.rest_proxy_config_dict["rest.proxy.url"]
-        auth_str_tuple = self.get_auth_str_tuple()
+        (rest_proxy_url_str, auth_str_tuple) = self.kafka_obj.get_url_str_auth_str_tuple_tuple()
         #
         url_str = f"{rest_proxy_url_str}/v3/clusters/{self.cluster_id_str}/topics/{self.topic_str}/records"
         #
@@ -111,16 +108,8 @@ class RestProxyWriter(KafkaWriter):
                 yield x
         payload_dict_generator = g()
 
-        post(url_str, headers_dict, payload_dict_generator, auth_str_tuple=auth_str_tuple, retries=self.kash_config_dict["requests.num.retries"])
+        post(url_str, headers_dict, payload_dict_generator, auth_str_tuple=auth_str_tuple, retries=self.kafka_obj.requests_num_retries())
         #
         self.produced_counter_int += len(payload_dict_list)
         #
         return key_list, value_list
-
-    #
-
-    def get_auth_str_tuple(self):
-        if "basic.auth.user.info" in self.rest_proxy_config_dict:
-            return tuple(self.rest_proxy_config_dict["basic.auth.user.info"].split(":"))
-        else:
-            return None

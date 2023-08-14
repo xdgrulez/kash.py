@@ -6,15 +6,10 @@ from minio import Minio
 from kashpy.filesystem.filesystem_writer import FileSystemWriter
 
 class S3Writer(FileSystemWriter):
-    def __init__(self, fileystem_obj, file, **kwargs):
-        self.s3_config_dict = fileystem_obj.s3_config_dict
-        self.kash_config_dict = fileystem_obj.kash_config_dict
+    def __init__(self, s3_obj, file, **kwargs):
+        super().__init__(s3_obj, file, **kwargs)
         #
-        self.file_str = file
-        #
-        (self.key_type_str, self.value_type_str) = fileystem_obj.get_key_value_type_tuple(**kwargs)
-        #
-        (self.key_value_separator_bytes, self.message_separator_bytes) = fileystem_obj.get_key_value_separator_message_separator_tuple(**kwargs)
+        self.bucket_name_str = s3_obj.s3_config_dict["bucket.name"]
         #
         temp_path_str = f"/{tempfile.gettempdir()}/kash.py/s3"
         os.makedirs(temp_path_str, exist_ok=True)
@@ -35,7 +30,7 @@ class S3Writer(FileSystemWriter):
     #
 
     def flush(self):
-        self.minio.fput_object(self.s3_config_dict["bucket.name"], self.file_str, self.temp_file_str)
+        self.minio.fput_object(self.bucket_name_str, self.file_str, self.temp_file_str)
         #
         return self.file_str
 

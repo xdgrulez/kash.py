@@ -6,16 +6,14 @@ from kashpy.helpers import get, delete, post, is_pattern
 
 class RestProxyAdmin:
     def __init__(self, restproxy_obj):
-        self.rest_proxy_config_dict = restproxy_obj.rest_proxy_config_dict
-        self.kash_config_dict = restproxy_obj.kash_config_dict
+        self.restproxy_obj = restproxy_obj
         #
         self.cluster_id_str = restproxy_obj.cluster_id_str
 
     # ACLs
 
     def acls(self, restype="any", name=None, resource_pattern_type="any", principal=None, host=None, operation="any", permission_type="any"):
-        rest_proxy_url_str = self.rest_proxy_config_dict["rest.proxy.url"]
-        auth_str_tuple = self.get_auth_str_tuple()
+        (rest_proxy_url_str, auth_str_tuple) = self.restproxy_obj.get_url_str_auth_str_tuple_tuple()
         #
         url_str = f"{rest_proxy_url_str}/v3/clusters/{self.cluster_id_str}/acls"
         headers_dict = {"Content-Type": "application/json"}
@@ -28,15 +26,14 @@ class RestProxyAdmin:
         if host is not None:
             payload_dict["host"] = host 
         #
-        response_dict = get(url_str, headers_dict, payload_dict=payload_dict, auth_str_tuple=auth_str_tuple, retries=self.kash_config_dict["requests.num.retries"])
+        response_dict = get(url_str, headers_dict, payload_dict=payload_dict, auth_str_tuple=auth_str_tuple, retries=self.restproxy_obj.requests_num_retries())
         kafkaAcl_dict_list = response_dict["data"]
         #
         dict_list = [kafkaAcl_dict_to_dict(kafkaAcl_dict) for kafkaAcl_dict in kafkaAcl_dict_list]
         return dict_list
 
     def create_acl(self, restype="any", name=None, resource_pattern_type="any", principal=None, host=None, operation="any", permission_type="any"):
-        rest_proxy_url_str = self.rest_proxy_config_dict["rest.proxy.url"]
-        auth_str_tuple = self.get_auth_str_tuple()
+        (rest_proxy_url_str, auth_str_tuple) = self.restproxy_obj.get_url_str_auth_str_tuple_tuple()
         #
         url_str = f"{rest_proxy_url_str}/v3/clusters/{self.cluster_id_str}/acls"
         headers_dict = {"Content-Type": "application/json"}
@@ -49,11 +46,10 @@ class RestProxyAdmin:
         if host is not None:
             payload_dict["host"] = host 
         #
-        post(url_str, headers_dict, payload_dict=payload_dict, auth_str_tuple=auth_str_tuple, retries=self.kash_config_dict["requests.num.retries"])
+        post(url_str, headers_dict, payload_dict=payload_dict, auth_str_tuple=auth_str_tuple, retries=self.restproxy_obj.requests_num_retries())
 
     def delete_acl(self, restype="any", name=None, resource_pattern_type="any", principal=None, host=None, operation="any", permission_type="any"):
-        rest_proxy_url_str = self.rest_proxy_config_dict["rest.proxy.url"]
-        auth_str_tuple = self.get_auth_str_tuple()
+        (rest_proxy_url_str, auth_str_tuple) = self.restproxy_obj.get_url_str_auth_str_tuple_tuple()
         #
         url_str = f"{rest_proxy_url_str}/v3/clusters/{self.cluster_id_str}/acls?resource_type={restype.upper()}&pattern_type={resource_pattern_type.upper()}&operation={operation.upper()}&permission={permission_type.upper()}"
         if name is not None:
@@ -64,7 +60,7 @@ class RestProxyAdmin:
             url_str += f"&host={host}"         
         #
         headers_dict = {"Content-Type": "application/json"}
-        response_dict = delete(url_str, headers_dict, auth_str_tuple=auth_str_tuple, retries=self.kash_config_dict["requests.num.retries"])
+        response_dict = delete(url_str, headers_dict, auth_str_tuple=auth_str_tuple, retries=self.restproxy_obj.requests_num_retries())
         kafkaAcl_dict_list = response_dict["data"]
         #
         dict_list = [kafkaAcl_dict_to_dict(kafkaAcl_dict) for kafkaAcl_dict in kafkaAcl_dict_list]
@@ -80,12 +76,11 @@ class RestProxyAdmin:
         else:
             pattern_str_list = [str(pattern_int_or_str) for pattern_int_or_str in pattern_int_or_str_list]
         #
-        rest_proxy_url_str = self.rest_proxy_config_dict["rest.proxy.url"]
-        auth_str_tuple = self.get_auth_str_tuple()
+        (rest_proxy_url_str, auth_str_tuple) = self.restproxy_obj.get_url_str_auth_str_tuple_tuple()
         #
         url_str = f"{rest_proxy_url_str}/v3/clusters/{self.cluster_id_str}/brokers"
         headers_dict = {"Content-Type": "application/json"}
-        response_dict = get(url_str, headers_dict, auth_str_tuple=auth_str_tuple, retries=self.kash_config_dict["requests.num.retries"])
+        response_dict = get(url_str, headers_dict, auth_str_tuple=auth_str_tuple, retries=self.restproxy_obj.requests_num_retries())
         kafkaBroker_dict_list = response_dict["data"]
         #
         broker_dict = {kafkaBroker_dict["broker_id"]: kafkaBroker_dict["host"] + ":" + str(kafkaBroker_dict["port"]) for kafkaBroker_dict in kafkaBroker_dict_list if any(fnmatch(str(kafkaBroker_dict["broker_id"]), pattern_str) for pattern_str in pattern_str_list)}
@@ -95,12 +90,11 @@ class RestProxyAdmin:
     def broker_config(self, pattern=None):
         broker_dict = self.brokers(pattern)
         #
-        rest_proxy_url_str = self.rest_proxy_config_dict["rest.proxy.url"]
-        auth_str_tuple = self.get_auth_str_tuple()
+        (rest_proxy_url_str, auth_str_tuple) = self.restproxy_obj.get_url_str_auth_str_tuple_tuple()
         #
         url_str = f"{rest_proxy_url_str}/v3/clusters/{self.cluster_id_str}/broker-configs"
         headers_dict = {"Content-Type": "application/json"}
-        response_dict = get(url_str, headers_dict, auth_str_tuple=auth_str_tuple, retries=self.kash_config_dict["requests.num.retries"])
+        response_dict = get(url_str, headers_dict, auth_str_tuple=auth_str_tuple, retries=self.restproxy_obj.requests_num_retries())
         kafkaClusterConfig_dict_list = response_dict["data"]
         #
         cluster_config_dict = {}
@@ -118,15 +112,14 @@ class RestProxyAdmin:
         config_dict = config
         broker_dict = self.brokers(pattern)
         #
-        rest_proxy_url_str = self.rest_proxy_config_dict["rest.proxy.url"]
-        auth_str_tuple = self.get_auth_str_tuple()
+        (rest_proxy_url_str, auth_str_tuple) = self.restproxy_obj.get_url_str_auth_str_tuple_tuple()
         #
         url_str = f"{rest_proxy_url_str}/v3/clusters/{self.cluster_id_str}/broker-configs:alter"
         headers_dict = {"Content-Type": "application/json"}
         #
         dict_list = [{"name": key_str, "value": value_str} for key_str, value_str in config_dict.items()]
         payload_dict = {"data": dict_list}
-        post(url_str, headers_dict, payload_dict, auth_str_tuple=auth_str_tuple, retries=self.kash_config_dict["requests.num.retries"])
+        post(url_str, headers_dict, payload_dict, auth_str_tuple=auth_str_tuple, retries=self.restproxy_obj.requests_num_retries())
         #
         broker_int_broker_config_dict_dict = {broker_int: config_dict for broker_int in broker_dict}
         #
@@ -142,13 +135,12 @@ class RestProxyAdmin:
         #
         group_str_group_description_dict_dict = {kafkaConsumerGroup_dict["consumer_group_id"]: {"group_id": kafkaConsumerGroup_dict["consumer_group_id"], "is_simple_consumer_group": kafkaConsumerGroup_dict["is_simple"], "partition_assignor": kafkaConsumerGroup_dict["partition_assignor"], "state": kafkaConsumerGroup_dict["state"].lower()} for kafkaConsumerGroup_dict in kafkaConsumerGroup_dict_list if any(fnmatch(kafkaConsumerGroup_dict["consumer_group_id"], pattern_str) for pattern_str in pattern_str_list) and any(fnmatch(kafkaConsumerGroup_dict["state"].lower(), state_pattern_str) for state_pattern_str in state_pattern_str_list)}
         #
-        rest_proxy_url_str = self.rest_proxy_config_dict["rest.proxy.url"]
-        auth_str_tuple = self.get_auth_str_tuple()
+        (rest_proxy_url_str, auth_str_tuple) = self.restproxy_obj.get_url_str_auth_str_tuple_tuple()
         #
         for group_str, group_description_dict in group_str_group_description_dict_dict.items():
             url_str = f"{rest_proxy_url_str}/v3/clusters/{self.cluster_id_str}/consumer-groups/{group_str}/consumers"
             headers_dict = {"Content-Type": "application/json"}
-            response_dict = get(url_str, headers_dict, auth_str_tuple=auth_str_tuple, retries=self.kash_config_dict["requests.num.retries"])
+            response_dict = get(url_str, headers_dict, auth_str_tuple=auth_str_tuple, retries=self.restproxy_obj.requests_num_retries())
             kafkaConsumer_dict_list = response_dict["data"]
             #
             dict_list = [{"member_id": kafkaConsumer_dict["consumer_id"], "client_id": kafkaConsumer_dict["client_id"], "host": kafkaConsumer_dict["cluster_id"], "group_instance_id": kafkaConsumer_dict["instance_id"]} for kafkaConsumer_dict in kafkaConsumer_dict_list]
@@ -156,7 +148,7 @@ class RestProxyAdmin:
                 consumer_id_str = dict["member_id"]
                 url_str = f"{rest_proxy_url_str}/v3/clusters/{self.cluster_id_str}/consumer-groups/{group_str}/consumers/{consumer_id_str}/assignments"
                 headers_dict = {"Content-Type": "application/json"}
-                response_dict = get(url_str, headers_dict, auth_str_tuple=auth_str_tuple, retries=self.kash_config_dict["requests.num.retries"])
+                response_dict = get(url_str, headers_dict, auth_str_tuple=auth_str_tuple, retries=self.restproxy_obj.requests_num_retries())
                 kafkaConsumerAssignment_dict_list = response_dict["data"]
                 #
                 dict["topic_partitions"] = [{"error": None, "metadata": None, "offset": None, "partition": kafkaConsumerAssignment_dict["partition_id"], "topic": kafkaConsumerAssignment_dict["topic_name"]} for kafkaConsumerAssignment_dict in kafkaConsumerAssignment_dict_list]
@@ -184,14 +176,13 @@ class RestProxyAdmin:
         #
         group_str_list = [kafkaConsumerGroup_dict["consumer_group_id"] for kafkaConsumerGroup_dict in kafkaConsumerGroup_dict_list if any(fnmatch(kafkaConsumerGroup_dict["consumer_group_id"], pattern_str) for pattern_str in pattern_str_list) and any(fnmatch(kafkaConsumerGroup_dict["state"], state_pattern_str.upper()) for state_pattern_str in state_pattern_str_list)]
         #
-        rest_proxy_url_str = self.rest_proxy_config_dict["rest.proxy.url"]
-        auth_str_tuple = self.get_auth_str_tuple()
+        (rest_proxy_url_str, auth_str_tuple) = self.restproxy_obj.get_url_str_auth_str_tuple_tuple()
         #
         group_offsets = {}
         headers_dict = {"Content-Type": "application/json"}
         for group_str in group_str_list:
             url_str = f"{rest_proxy_url_str}/v3/clusters/{self.cluster_id_str}/consumer-groups/{group_str}/lags"
-            response_dict = get(url_str, headers_dict, auth_str_tuple=auth_str_tuple, retries=self.kash_config_dict["requests.num.retries"])
+            response_dict = get(url_str, headers_dict, auth_str_tuple=auth_str_tuple, retries=self.restproxy_obj.requests_num_retries())
             kafkaConsumerLag_dict_list = response_dict["data"]
             #
             if group_str in group_offsets:
@@ -218,8 +209,7 @@ class RestProxyAdmin:
     # Topics
 
     def config(self, pattern_str_or_str_list):
-        rest_proxy_url_str = self.rest_proxy_config_dict["rest.proxy.url"]
-        auth_str_tuple = self.get_auth_str_tuple()
+        (rest_proxy_url_str, auth_str_tuple) = self.restproxy_obj.get_url_str_auth_str_tuple_tuple()
         #
         topic_str_list = self.list_topics(pattern_str_or_str_list)
         #
@@ -236,13 +226,12 @@ class RestProxyAdmin:
             return config_dict
 
         #
-        topic_str_config_dict_dict = {topic_str: kafkaTopicConfigList_dict_to_config_dict(get(f"{rest_proxy_url_str}/v3/clusters/{self.cluster_id_str}/topics/{topic_str}/configs", None, auth_str_tuple=auth_str_tuple, retries=self.kash_config_dict["requests.num.retries"])) for topic_str in topic_str_list}
+        topic_str_config_dict_dict = {topic_str: kafkaTopicConfigList_dict_to_config_dict(get(f"{rest_proxy_url_str}/v3/clusters/{self.cluster_id_str}/topics/{topic_str}/configs", None, auth_str_tuple=auth_str_tuple, retries=self.restproxy_obj.requests_num_retries())) for topic_str in topic_str_list}
         #
         return topic_str_config_dict_dict
     
     def set_config(self, pattern_str_or_str_list, config_dict, test=False):
-        rest_proxy_url_str = self.rest_proxy_config_dict["rest.proxy.url"]
-        auth_str_tuple = self.get_auth_str_tuple()
+        (rest_proxy_url_str, auth_str_tuple) = self.restproxy_obj.get_url_str_auth_str_tuple_tuple()
         #
         topic_str_list = self.list_topics(pattern_str_or_str_list)
         #
@@ -252,7 +241,7 @@ class RestProxyAdmin:
             headers_dict = {"Content-Type": "application/json"}
             key_str_value_str_dict_list = [{"name": config_key_str, "value": config_value_str} for config_key_str, config_value_str in config_dict.items()]
             payload_dict = {"data": key_str_value_str_dict_list}
-            post(url_str, headers_dict, payload_dict, auth_str_tuple=auth_str_tuple, retries=self.kash_config_dict["requests.num.retries"])
+            post(url_str, headers_dict, payload_dict, auth_str_tuple=auth_str_tuple, retries=self.restproxy_obj.requests_num_retries())
             #
             topic_str_config_dict_dict[topic_str] = config_dict
         #
@@ -261,8 +250,7 @@ class RestProxyAdmin:
     #
 
     def create(self, topic_str, partitions=1, config={}, block=True):
-        rest_proxy_url_str = self.rest_proxy_config_dict["rest.proxy.url"]
-        auth_str_tuple = self.get_auth_str_tuple()
+        (rest_proxy_url_str, auth_str_tuple) = self.restproxy_obj.get_url_str_auth_str_tuple_tuple()
         #
         partitions_int = partitions
         config_dict = config
@@ -273,13 +261,12 @@ class RestProxyAdmin:
         headers_dict = {"Content-Type": "application/json"}
         configs_dict_list = [{"name": config_key_str, "value": config_value_str} for config_key_str, config_value_str in config_dict.items()]
         payload_dict = {"topic_name": topic_str, "partitions_count": partitions_int, "configs": configs_dict_list}
-        post(url_str, headers_dict, payload_dict, auth_str_tuple=auth_str_tuple, retries=self.kash_config_dict["requests.num.retries"])
+        post(url_str, headers_dict, payload_dict, auth_str_tuple=auth_str_tuple, retries=self.restproxy_obj.requests_num_retries())
         #
         return topic_str
 
     def delete(self, pattern_str_or_str_list, block=True):
-        rest_proxy_url_str = self.rest_proxy_config_dict["rest.proxy.url"]
-        auth_str_tuple = self.get_auth_str_tuple()
+        (rest_proxy_url_str, auth_str_tuple) = self.restproxy_obj.get_url_str_auth_str_tuple_tuple()
         #
         topic_str_list = self.list_topics(pattern_str_or_str_list)
         #
@@ -287,7 +274,7 @@ class RestProxyAdmin:
             for topic_str in topic_str_list:
                 url_str = f"{rest_proxy_url_str}/v3/clusters/{self.cluster_id_str}/topics/{topic_str}"
                 headers_dict = {"Content-Type": "application/json"}
-                delete(url_str, headers_dict, auth_str_tuple=auth_str_tuple, retries=self.kash_config_dict["requests.num.retries"])
+                delete(url_str, headers_dict, auth_str_tuple=auth_str_tuple, retries=self.restproxy_obj.requests_num_retries())
         #
         return topic_str_list
 
@@ -296,12 +283,11 @@ class RestProxyAdmin:
     def list_topics(self, pattern=None):
         pattern_str_or_str_list = pattern
         #
-        rest_proxy_url_str = self.rest_proxy_config_dict["rest.proxy.url"]
-        auth_str_tuple = self.get_auth_str_tuple()
+        (rest_proxy_url_str, auth_str_tuple) = self.restproxy_obj.get_url_str_auth_str_tuple_tuple()
         #
         url_str = f"{rest_proxy_url_str}/v3/clusters/{self.cluster_id_str}/topics"
         headers_dict = {"Content-Type": "application/json"}
-        response_dict = get(url_str, headers_dict, auth_str_tuple=auth_str_tuple, retries=self.kash_config_dict["requests.num.retries"])
+        response_dict = get(url_str, headers_dict, auth_str_tuple=auth_str_tuple, retries=self.restproxy_obj.requests_num_retries())
         kafkaTopic_dict_list = response_dict["data"]
         topic_str_list = [kafkaTopic_dict["topic_name"] for kafkaTopic_dict in kafkaTopic_dict_list]
         #
@@ -323,12 +309,11 @@ class RestProxyAdmin:
         #
         verbose_bool = verbose
         #
-        rest_proxy_url_str = self.rest_proxy_config_dict["rest.proxy.url"]
-        auth_str_tuple = self.get_auth_str_tuple()
+        (rest_proxy_url_str, auth_str_tuple) = self.restproxy_obj.get_url_str_auth_str_tuple_tuple()
         #
         url_str = f"{rest_proxy_url_str}/v3/clusters/{self.cluster_id_str}/topics"
         headers_dict = {"Content-Type": "application/json"}
-        response_dict = get(url_str, headers_dict, auth_str_tuple=auth_str_tuple, retries=self.kash_config_dict["requests.num.retries"])
+        response_dict = get(url_str, headers_dict, auth_str_tuple=auth_str_tuple, retries=self.restproxy_obj.requests_num_retries())
         kafkaTopic_dict_list = response_dict["data"]
         #
         topic_str_num_partitions_int_dict = {kafkaTopic_dict["topic_name"]: kafkaTopic_dict["partitions_count"] for kafkaTopic_dict in kafkaTopic_dict_list if any(fnmatch(kafkaTopic_dict["topic_name"], pattern_str) for pattern_str in pattern_str_or_str_list)}
@@ -340,7 +325,7 @@ class RestProxyAdmin:
                 for partition_int in range(topic_str_num_partitions_int_dict[topic_str]):
                     url_str = f"{rest_proxy_url_str}/v3/clusters/{self.cluster_id_str}/topics/{topic_str}/partitions/{partition_int}/replicas"
                     headers_dict = {"Content-Type": "application/json"}
-                    response_dict = get(url_str, headers_dict, auth_str_tuple=auth_str_tuple, retries=self.kash_config_dict["requests.num.retries"])
+                    response_dict = get(url_str, headers_dict, auth_str_tuple=auth_str_tuple, retries=self.restproxy_obj.requests_num_retries())
                     kafkaReplica_dict_list = response_dict["data"]
                     #
                     if partition_int in partition_int_partition_dict_dict:
@@ -381,8 +366,7 @@ class RestProxyAdmin:
             return topic_str_num_partitions_int_dict
 
     def watermarks(self, pattern, timeout=-1.0):
-        rest_proxy_url_str = self.rest_proxy_config_dict["rest.proxy.url"]
-        auth_str_tuple = self.get_auth_str_tuple()
+        (rest_proxy_url_str, auth_str_tuple) = self.restproxy_obj.get_url_str_auth_str_tuple_tuple()
         #
         topic_str_num_partitions_int_dict = self.partitions(pattern)
         #
@@ -392,34 +376,25 @@ class RestProxyAdmin:
             for partition_int in range(num_partitions_int):
                 url_str = f"{rest_proxy_url_str}/topics/{topic_str}/partitions/{partition_int}/offsets"
                 headers_dict = {"Content-Type": "application/vnd.kafka.v2+json"}
-                response_dict = get(url_str, headers_dict, auth_str_tuple=auth_str_tuple, retries=self.kash_config_dict["requests.num.retries"])
+                response_dict = get(url_str, headers_dict, auth_str_tuple=auth_str_tuple, retries=self.restproxy_obj.requests_num_retries())
                 topic_str_partition_int_offsets_tuple_dict_dict[topic_str][partition_int] = (response_dict["beginning_offset"], response_dict["end_offset"])
         #
         return topic_str_partition_int_offsets_tuple_dict_dict
 
     #
 
-    def get_auth_str_tuple(self):
-        if "basic.auth.user.info" in self.rest_proxy_config_dict:
-            return tuple(self.rest_proxy_config_dict["basic.auth.user.info"].split(":"))
-        else:
-            return None
-
-    #
-
     def get_kafkaConsumerGroup_dict_list(self, pattern_str_list):
-        rest_proxy_url_str = self.rest_proxy_config_dict["rest.proxy.url"]
-        auth_str_tuple = self.get_auth_str_tuple()
+        (rest_proxy_url_str, auth_str_tuple) = self.restproxy_obj.get_url_str_auth_str_tuple_tuple()
         #
         headers_dict = {"Content-Type": "application/json"}
         #
         if len(pattern_str_list) == 1 and not(is_pattern(pattern_str_list[0])):
             url_str = f"{rest_proxy_url_str}/v3/clusters/{self.cluster_id_str}/consumer-groups/{pattern_str_list[0]}"
-            response_dict = get(url_str, headers_dict, auth_str_tuple=auth_str_tuple, retries=self.kash_config_dict["requests.num.retries"])
+            response_dict = get(url_str, headers_dict, auth_str_tuple=auth_str_tuple, retries=self.restproxy_obj.requests_num_retries())
             kafkaConsumerGroup_dict_list = [response_dict]
         else:
             url_str = f"{rest_proxy_url_str}/v3/clusters/{self.cluster_id_str}/consumer-groups"
-            response_dict = get(url_str, headers_dict, auth_str_tuple=auth_str_tuple, retries=self.kash_config_dict["requests.num.retries"])
+            response_dict = get(url_str, headers_dict, auth_str_tuple=auth_str_tuple, retries=self.restproxy_obj.requests_num_retries())
             kafkaConsumerGroup_dict_list = response_dict["data"]
         #
         return kafkaConsumerGroup_dict_list

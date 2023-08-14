@@ -196,10 +196,10 @@ class Kafka(Storage):
             topic_str_total_size_int_size_dict_tuple_dict[topic_str] = (total_size_int, size_dict)
         return topic_str_total_size_int_size_dict_tuple_dict
 
-    def topics(self, pattern=None, size=False, partitions=False):
+    def topics(self, pattern=None, size=False, **kwargs):
         pattern_str_or_str_list = pattern
         size_bool = size
-        partitions_bool = partitions
+        partitions_bool = "partitions" in kwargs and kwargs["partitions"]
         #
         if size_bool:
             topic_str_total_size_int_size_dict_tuple_dict = self.size(pattern_str_or_str_list)
@@ -219,8 +219,8 @@ class Kafka(Storage):
 
     ls = topics
 
-    def l(self, pattern=None, size=True, partitions=False):
-        return self.topics(pattern=pattern, size=size, partitions=partitions)
+    def l(self, pattern=None, size=True, **kwargs):
+        return self.topics(pattern=pattern, size=size, **kwargs)
 
     ll = l
 

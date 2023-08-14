@@ -55,3 +55,8 @@ class RestProxy(Kafka):
             return tuple(self.rest_proxy_config_dict["basic.auth.user.info"].split(":"))
         else:
             return None
+        
+    #
+
+    def get_url_str_auth_str_tuple_tuple(self):
+        return (self.rest_proxy_config_dict["rest.proxy.url"], self.get_auth_str_tuple())

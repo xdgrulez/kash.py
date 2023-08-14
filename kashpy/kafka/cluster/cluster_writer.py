@@ -26,21 +26,16 @@ class ClusterWriter(KafkaWriter):
     def __init__(self, cluster_obj, topic, **kwargs):
         super().__init__(cluster_obj, topic, **kwargs)
         #
-        self.kafka_config_dict = cluster_obj.kafka_config_dict
-        self.config_str = cluster_obj.config_str
-        #
         self.schema_hash_int_generalizedProtocolMessageType_dict = {}
         #
         self.on_delivery_function = kwargs["on_delivery"] if "on_delivery" in kwargs else None
         #
-        if "schema.registry.url" in self.schema_registry_config_dict:
-            self.schemaRegistry = SchemaRegistry(self.schema_registry_config_dict, self.kash_config_dict)
+        if "schema.registry.url" in self.kafka_obj.schema_registry_config_dict:
+            self.schemaRegistry = SchemaRegistry(self.kafka_obj.schema_registry_config_dict, self.kafka_obj.kash_config_dict)
         else:
             self.schemaRegistry = None
         #
-        self.kafka_config_dict.pop("group.id", None)
-        #
-        self.producer = Producer(self.kafka_config_dict)
+        self.producer = Producer(self.kafka_obj.kafka_config_dict)
 
     def __del__(self):
         self.flush()
@@ -54,7 +49,7 @@ class ClusterWriter(KafkaWriter):
     #
 
     def flush(self):
-        self.producer.flush(self.kash_config_dict["flush.timeout"])
+        self.producer.flush(self.kafka_obj.flush_timeout())
         #
         return self.topic_str
 
@@ -157,7 +152,7 @@ class ClusterWriter(KafkaWriter):
         return generalizedProtocolMessageType
 
     def schema_id_int_and_schema_str_to_generalizedProtocolMessageType(self, schema_id_int, schema_str):
-        path_str = f"/{tempfile.gettempdir()}/kash.py/clusters/{self.config_str}"
+        path_str = f"/{tempfile.gettempdir()}/kash.py/clusters/{self.kafka_obj.config_str}"
         os.makedirs(path_str, exist_ok=True)
         file_str = f"schema_{schema_id_int}.proto"
         file_path_str = f"{path_str}/{file_str}"

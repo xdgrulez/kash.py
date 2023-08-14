@@ -1,4 +1,15 @@
 class FileSystemWriter():
+    def __init__(self, filesystem_obj, file, **kwargs):
+        self.filesystem_obj = filesystem_obj
+        #
+        self.file_str = file
+        #
+        (self.key_type_str, self.value_type_str) = filesystem_obj.get_key_value_type_tuple(**kwargs)
+        #
+        (self.key_value_separator_bytes, self.message_separator_bytes) = filesystem_obj.get_key_value_separator_message_separator_tuple(**kwargs)
+
+    #
+
     def write(self, value, key=None, **kwargs):
         keys = key if isinstance(key, list) else [key]
         values = value if isinstance(value, list) else [value]

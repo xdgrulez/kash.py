@@ -7,10 +7,21 @@ ALL_MESSAGES = -1
 #
 
 class FileSystemReader():
+    def __init__(self, filesystem_obj, file, **kwargs):
+        self.filesystem_obj = filesystem_obj
+        #
+        self.file_str = file
+        #
+        (self.key_type_str, self.value_type_str) = filesystem_obj.get_key_value_type_tuple(**kwargs)
+        #
+        (self.key_value_separator_bytes, self.message_separator_bytes) = filesystem_obj.get_key_value_separator_message_separator_tuple(**kwargs)
+
+    #
+    
     def foldl(self, foldl_function, initial_acc, n=ALL_MESSAGES, **kwargs):
         n_int = n
         #
-        read_batch_size_int = kwargs["read_batch_size"] if "read_batch_size" in kwargs else self.kash_config_dict["read.batch.size"]
+        read_batch_size_int = kwargs["read_batch_size"] if "read_batch_size" in kwargs else self.filesystem_obj.read_batch_size()
         if read_batch_size_int > n_int:
             read_batch_size_int = n_int
         #

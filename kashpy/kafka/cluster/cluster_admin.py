@@ -6,10 +6,9 @@ from confluent_kafka.admin import AclBinding, AclBindingFilter, AclOperation, Ac
 
 class ClusterAdmin():
     def __init__(self, cluster_obj):
-        self.kafka_config_dict = cluster_obj.kafka_config_dict
-        self.kash_config_dict = cluster_obj.kash_config_dict
+        self.cluster_obj = cluster_obj
         #
-        self.adminClient = AdminClient(self.kafka_config_dict)
+        self.adminClient = AdminClient(self.cluster_obj.kafka_config_dict)
 
     # ACLs
 
@@ -206,9 +205,9 @@ class ClusterAdmin():
                     return True
             #
             num_retries_int += 1
-            if num_retries_int >= self.kash_config_dict["block.num.retries"]:
+            if num_retries_int >= self.cluster_obj.block_num_retries():
                 break
-            time.sleep(self.kash_config_dict["block.interval"])
+            time.sleep(self.cluster_obj.block_interval())
         return False
 
     #
@@ -243,7 +242,7 @@ class ClusterAdmin():
         config_dict = config
         block_bool = block
         #
-        config_dict["retention.ms"] = self.kash_config_dict["retention.ms"]
+        config_dict["retention.ms"] = self.cluster_obj.retention_ms()
         #
         newTopic = NewTopic(topic_str, partitions_int, config=config_dict)
         self.adminClient.create_topics([newTopic])
@@ -294,7 +293,7 @@ class ClusterAdmin():
             #
             topicPartition_list = [TopicPartition(topic_str, partition_int, timestamp_int) for partition_int, timestamp_int in partition_int_timestamp_int_dict.items()]
             if topicPartition_list:
-                config_dict = self.kafka_config_dict
+                config_dict = self.cluster_obj.kafka_config_dict.copy()
                 config_dict["group.id"] = "dummy_group_id"
                 consumer = Consumer(config_dict)
                 topicPartition_list1 = consumer.offsets_for_times(topicPartition_list, timeout=timeout)
@@ -351,7 +350,7 @@ class ClusterAdmin():
         pattern_str_or_str_list = pattern
         timeout_float = timeout
         #
-        config_dict = self.kafka_config_dict
+        config_dict = self.cluster_obj.kafka_config_dict.copy()
         config_dict["group.id"] = "dummy_group_id"
         consumer = Consumer(config_dict)
         #

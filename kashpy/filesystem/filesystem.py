@@ -58,22 +58,32 @@ class FileSystem(Storage):
 
     #
 
-    def ls(self, pattern=None):
-        return self.list(pattern, size=False)
+    def ls(self, pattern=None, **kwargs):
+        return self.files(pattern, size=False, **kwargs)
     
-    def l(self, pattern=None):
-        return self.list(pattern, size=True)
+    def l(self, pattern=None, **kwargs):
+        return self.files(pattern, size=True, **kwargs)
 
     ll = l
 
-    def list(self, pattern, size):
-        return self.admin.list(pattern, size)
+    def files(self, pattern=None, size=False, **kwargs):
+        return self.admin.files(pattern, size, **kwargs)
 
     def exists(self, file):
         file_str = file
         #
-        return self.list(file_str) != []
+        return self.files(file_str) != []
     #
+
+    def create(self, file, **kwargs):
+        file_str = file
+        #
+        writer = self.openw(file_str, **kwargs)
+        writer.close()
+        #
+        return file_str
+    
+    touch = create
 
     def delete(self, pattern):
         return self.admin.delete(pattern)

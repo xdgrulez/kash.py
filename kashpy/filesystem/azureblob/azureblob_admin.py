@@ -5,20 +5,20 @@ from azure.storage.blob import BlobServiceClient
 #
 
 class AzureBlobAdmin:
-    def __init__(self, filesystem_obj):
-        self.azure_blob_config_dict = filesystem_obj.azure_blob_config_dict
-        self.kash_config_dict = filesystem_obj.kash_config_dict
+    def __init__(self, azureblob_obj):
+        self.azureblob_obj = azureblob_obj
         #
-        blobServiceClient = BlobServiceClient.from_connection_string(self.azure_blob_config_dict["connection.string"])
-        self.containerClient = blobServiceClient.get_container_client(self.azure_blob_config_dict["container.name"])
+        blobServiceClient = BlobServiceClient.from_connection_string(azureblob_obj.azure_blob_config_dict["connection.string"])
+        self.containerClient = blobServiceClient.get_container_client(azureblob_obj.azure_blob_config_dict["container.name"])
 
     #
 
-    def list(self, pattern=None, size=False):
+    def files(self, pattern=None, size=False, **kwargs):
         pattern_str_or_str_list = "*" if pattern is None else pattern
         pattern_str_list = [pattern_str_or_str_list] if isinstance(pattern_str_or_str_list, str) else pattern_str_or_str_list
+        size_bool = size
         #
-        if size:
+        if size_bool:
             blobProperties_dict_itemPaged = self.containerClient.list_blobs()
             #
             blob_str_size_int_tuple_list = [(blobProperties_dict["name"], blobProperties_dict["size"]) for blobProperties_dict in blobProperties_dict_itemPaged if any(fnmatch(blobProperties_dict["name"], pattern_str) for pattern_str in pattern_str_list)]

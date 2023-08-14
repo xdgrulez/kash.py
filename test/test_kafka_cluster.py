@@ -105,9 +105,9 @@ class Test(unittest.TestCase):
         topic_str = self.create_test_topic_name()
         c.create(topic_str)
         w = c.openw(topic_str)
-        w.produce("message 1")
-        w.produce("message 2")
-        w.produce("message 3")
+        w.write("message 1")
+        w.write("message 2")
+        w.write("message 3")
         w.close()
         #
         group_str = self.create_test_group_name()
@@ -133,9 +133,9 @@ class Test(unittest.TestCase):
         topic_str = self.create_test_topic_name()
         c.create(topic_str)
         w = c.openw(topic_str)
-        w.produce("message 1")
-        w.produce("message 2")
-        w.produce("message 3")
+        w.write("message 1")
+        w.write("message 2")
+        w.write("message 3")
         w.close()
         #
         group_str = self.create_test_group_name()
@@ -167,9 +167,9 @@ class Test(unittest.TestCase):
         topic_str = self.create_test_topic_name()
         c.create(topic_str)
         w = c.openw(topic_str)
-        w.produce("message 1")
-        w.produce("message 2")
-        w.produce("message 3")
+        w.write("message 1")
+        w.write("message 2")
+        w.write("message 3")
         w.close()
         #
         group_str = self.create_test_group_name()
@@ -189,8 +189,8 @@ class Test(unittest.TestCase):
         topic_str = self.create_test_topic_name()
         c.create(topic_str, partitions=2)
         w = c.openw(topic_str)
-        w.produce("message 1", partition=0)
-        w.produce("message 2", partition=1)
+        w.write("message 1", partition=0)
+        w.write("message 2", partition=1)
         w.close()
         #
         group_str = self.create_test_group_name()
@@ -218,9 +218,9 @@ class Test(unittest.TestCase):
         topic_str = self.create_test_topic_name()
         c.create(topic_str)
         w = c.openw(topic_str)
-        w.produce("message 1")
-        w.produce("message 2")
-        w.produce("message 3")
+        w.write("message 1")
+        w.write("message 2")
+        w.write("message 3")
         w.close()
         #
         group_str = self.create_test_group_name()
@@ -268,19 +268,19 @@ class Test(unittest.TestCase):
         #
         w = c.openw(topic_str)
         w.produce("message 1", on_delivery=lambda kafkaError, message: print(kafkaError, message))
-        w.produce("message 2")
+        w.write("message 2")
         w.produce("message 3")
         w.close()
         #
-        topic_str_size_int_dict_l = c.l(pattern=topic_str)
-        topic_str_size_int_dict_ll = c.ll(pattern=topic_str)
-        self.assertEqual(topic_str_size_int_dict_l, topic_str_size_int_dict_ll)
-        size_int = topic_str_size_int_dict_l[topic_str]
-        self.assertEqual(size_int, 3)
+        topic_str_total_size_int_dict_l = c.l(pattern=topic_str)
+        topic_str_total_size_int_dict_ll = c.ll(pattern=topic_str)
+        self.assertEqual(topic_str_total_size_int_dict_l, topic_str_total_size_int_dict_ll)
+        total_size_int = topic_str_total_size_int_dict_l[topic_str]
+        self.assertEqual(total_size_int, 3)
         topic_str_total_size_int_size_dict_tuple_dict = c.topics(pattern=topic_str, size=True, partitions=True)
         self.assertEqual(topic_str_total_size_int_size_dict_tuple_dict[topic_str][0], 3)
         self.assertEqual(topic_str_total_size_int_size_dict_tuple_dict[topic_str][1][0], 3)
-        topic_str_total_size_int_size_dict_tuple_dict = c.topics(pattern=topic_str, size=False, partitions=True)
+        topic_str_total_size_int_size_dict_tuple_dict = c.l(pattern=topic_str, size=False, partitions=True)
         self.assertEqual(topic_str_total_size_int_size_dict_tuple_dict[topic_str][0], 3)
 
     def test_offsets_for_times(self):
@@ -291,9 +291,9 @@ class Test(unittest.TestCase):
         topic_str = self.create_test_topic_name()
         c.create(topic_str)
         w = c.openw(topic_str)
-        w.produce("message 1")
+        w.write("message 1")
         time.sleep(1)
-        w.produce("message 2")
+        w.write("message 2")
         w.close()
         #
         self.assertEqual(c.l(topic_str, partitions=True)[topic_str][1][0], 2)
@@ -345,7 +345,7 @@ class Test(unittest.TestCase):
         c.create(topic_str)
         # Upon produce, the types "bytes" and "string" trigger the conversion of bytes, strings and dictionaries to bytes on Kafka.
         w = c.openw(topic_str, key_type="bytes", value_type="str")
-        w.produce(self.snack_str_list, key=self.snack_str_list)
+        w.write(self.snack_str_list, key=self.snack_str_list)
         w.close()
         self.assertEqual(c.size(topic_str)[topic_str][0], 3)
         #
@@ -366,7 +366,7 @@ class Test(unittest.TestCase):
         c.create(topic_str)
         # Upon produce, the types "str" and "json" trigger the conversion of bytes, strings and dictionaries to bytes on Kafka.
         w = c.openw(topic_str, key_type="str", value_type="json")
-        w.produce(self.snack_dict_list, key=self.snack_str_list)
+        w.write(self.snack_dict_list, key=self.snack_str_list)
         w.close()
         self.assertEqual(c.size(topic_str)[topic_str][0], 3)
         #
@@ -387,7 +387,7 @@ class Test(unittest.TestCase):
         c.create(topic_str)
         # Upon produce, the type "protobuf" (alias = "pb") triggers the conversion of bytes, strings and dictionaries into Protobuf-encoded bytes on Kafka.
         w = c.openw(topic_str, key_type="protobuf", value_type="pb", key_schema=self.protobuf_schema_str, value_schema=self.protobuf_schema_str)
-        w.produce(self.snack_dict_list, key=self.snack_str_list)
+        w.write(self.snack_dict_list, key=self.snack_str_list)
         w.close()
         self.assertEqual(c.size(topic_str)[topic_str][0], 3)
         #
@@ -408,7 +408,7 @@ class Test(unittest.TestCase):
         c.create(topic_str)
         # Upon produce, the type "protobuf" (alias = "pb") triggers the conversion of bytes, strings and dictionaries into Protobuf-encoded bytes on Kafka, and "avro" into Avro-encoded bytes.
         w = c.openw(topic_str, key_type="protobuf", value_type="avro", key_schema=self.protobuf_schema_str, value_schema=self.avro_schema_str)
-        w.produce(self.snack_dict_list, key=self.snack_bytes_list)
+        w.write(self.snack_dict_list, key=self.snack_bytes_list)
         w.close()
         self.assertEqual(c.size(topic_str)[topic_str][0], 3)
         #
@@ -429,7 +429,7 @@ class Test(unittest.TestCase):
         c.create(topic_str)
         # Upon produce, the type "str" triggers the conversion of bytes, strings and dictionaries into bytes on Kafka, and "jsonschema" (alias = "json_sr") into JSONSchema-encoded bytes on Kafka.
         w = c.openw(topic_str, key_type="str", value_type="jsonschema", value_schema=self.jsonschema_schema_str)
-        w.produce(self.snack_dict_list, key=self.snack_str_list)
+        w.write(self.snack_dict_list, key=self.snack_str_list)
         w.close()
         self.assertEqual(c.size(topic_str)[topic_str][0], 3)
         #
@@ -449,9 +449,9 @@ class Test(unittest.TestCase):
         topic_str = self.create_test_topic_name()
         c.create(topic_str)
         w = c.openw(topic_str)
-        w.produce("message 1")
-        w.produce("message 2")
-        w.produce("message 3")
+        w.write("message 1")
+        w.write("message 2")
+        w.write("message 3")
         w.close()
         #
         group_str = self.create_test_group_name()
@@ -467,9 +467,9 @@ class Test(unittest.TestCase):
         topic_str = self.create_test_topic_name()
         c.create(topic_str)
         w = c.openw(topic_str)
-        w.produce("message 1")
-        w.produce("message 2")
-        w.produce("message 3")
+        w.write("message 1")
+        w.write("message 2")
+        w.write("message 3")
         w.close()
         #
         group_str = self.create_test_group_name()
@@ -511,7 +511,7 @@ class Test(unittest.TestCase):
         topic_str = self.create_test_topic_name()
         c.create(topic_str)
         w = c.openw(topic_str)
-        w.produce(self.snack_str_list)
+        w.write(self.snack_str_list)
         w.close()
         #
         group_str1 = self.create_test_group_name()
@@ -534,7 +534,7 @@ class Test(unittest.TestCase):
         topic_str = self.create_test_topic_name()
         c.create(topic_str)
         w = c.openw(topic_str, value_type="avro", value_schema=self.avro_schema_str)
-        w.produce(self.snack_str_list)
+        w.write(self.snack_str_list)
         w.close()
         #
         group_str1 = self.create_test_group_name()
@@ -557,7 +557,7 @@ class Test(unittest.TestCase):
         topic_str = self.create_test_topic_name()
         c.create(topic_str)
         w = c.openw(topic_str, value_type="protobuf", value_schema=self.protobuf_schema_str)
-        w.produce(self.snack_dict_list)
+        w.write(self.snack_dict_list)
         w.close()
         #
         group_str1 = self.create_test_group_name()
@@ -580,7 +580,7 @@ class Test(unittest.TestCase):
         topic_str1 = self.create_test_topic_name()
         c.create(topic_str1)
         w = c.openw(topic_str1, value_type="json_sr", value_schema=self.jsonschema_schema_str)
-        w.produce(self.snack_bytes_list)
+        w.write(self.snack_bytes_list)
         w.close()
         topic_str2 = self.create_test_topic_name()
         #
@@ -605,7 +605,7 @@ class Test(unittest.TestCase):
         topic_str = self.create_test_topic_name()
         c.create(topic_str)
         w = c.openw(topic_str, value_type="protobuf", value_schema=self.protobuf_schema_str)
-        w.produce(self.snack_dict_list)
+        w.write(self.snack_dict_list)
         w.close()
         #
         group_str1 = self.create_test_group_name()
@@ -621,13 +621,13 @@ class Test(unittest.TestCase):
         topic_str1 = self.create_test_topic_name()
         c.create(topic_str1)
         w1 = c.openw(topic_str1, value_type="protobuf", value_schema=self.protobuf_schema_str)
-        w1.produce(self.snack_str_list)
+        w1.write(self.snack_str_list)
         w1.close()
         #
         topic_str2 = self.create_test_topic_name()
         c.create(topic_str2)
         w2 = c.openw(topic_str2, value_type="avro", value_schema=self.avro_schema_str)
-        w2.produce(self.snack_ish_dict_list)
+        w2.write(self.snack_ish_dict_list)
         w2.close()
         #
         group_str1 = self.create_test_group_name()
@@ -644,7 +644,7 @@ class Test(unittest.TestCase):
         topic_str = self.create_test_topic_name()
         c.create(topic_str)
         w = c.openw(topic_str, value_type="protobuf", value_schema=self.protobuf_schema_str)
-        w.produce(self.snack_str_list)
+        w.write(self.snack_str_list)
         w.close()
         #
         group_str = self.create_test_group_name()
@@ -661,7 +661,7 @@ class Test(unittest.TestCase):
         topic_str = self.create_test_topic_name()
         c.create(topic_str)
         w = c.openw(topic_str, value_type="jsonschema", value_schema=self.jsonschema_schema_str)
-        w.produce(self.snack_str_list)
+        w.write(self.snack_str_list)
         w.close()
         #
         colour_str_list = []
@@ -676,7 +676,7 @@ class Test(unittest.TestCase):
         topic_str = self.create_test_topic_name()
         c.create(topic_str)
         w = c.openw(topic_str, value_type="avro", value_schema=self.avro_schema_str)
-        w.produce(self.snack_str_list)
+        w.write(self.snack_str_list)
         w.close()
         #
         (message_dict_list, message_counter_int) = c.filter(topic_str, filter_function=lambda message_dict: message_dict["value"]["calories"] > 100, value_type="avro")
@@ -689,7 +689,7 @@ class Test(unittest.TestCase):
         topic_str1 = self.create_test_topic_name()
         c.create(topic_str1)
         w = c.openw(topic_str1, value_type="avro", value_schema=self.avro_schema_str)
-        w.produce(self.snack_str_list)
+        w.write(self.snack_str_list)
         w.close()
         #
         topic_str2 = self.create_test_topic_name()

@@ -8,8 +8,7 @@ ALL_MESSAGES = -1
 
 class KafkaReader:
     def __init__(self, kafka_obj, *topics, **kwargs):
-        self.schema_registry_config_dict = kafka_obj.schema_registry_config_dict
-        self.kash_config_dict = kafka_obj.kash_config_dict
+        self.kafka_obj = kafka_obj
         #
         # Topics
         #
@@ -34,7 +33,7 @@ class KafkaReader:
     def foldl(self, foldl_function, initial_acc, n=ALL_MESSAGES, **kwargs):
         n_int = n
         #
-        read_batch_size_int = kwargs["read_batch_size"] if "read_batch_size" in kwargs else self.kash_config_dict["read.batch.size"]
+        read_batch_size_int = kwargs["read_batch_size"] if "read_batch_size" in kwargs else self.kafka_obj.read_batch_size()
         if read_batch_size_int > n_int:
             read_batch_size_int = n_int
         #
@@ -81,10 +80,7 @@ class KafkaReader:
         if "group" in kwargs:
             return kwargs["group"]
         else:
-            if "consumer.group.prefix" in self.kash_config_dict:
-                prefix_str = self.kash_config_dict["consumer.group.prefix"]
-            else:
-                prefix_str = ""
+            prefix_str = self.kafka_obj.consumer_group_prefix()
             return prefix_str + str(get_millis())
 
     def get_offsets_dict(self, topic_str_list, **kwargs):
