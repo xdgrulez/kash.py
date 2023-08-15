@@ -32,6 +32,11 @@ class Test(unittest.TestCase):
         self.protobuf_schema_str = 'message Snack { required string name = 1; required float calories = 2; optional string colour = 3; }'
         self.jsonschema_schema_str = '{ "title": "abc", "definitions" : { "record:myrecord" : { "type" : "object", "required" : [ "name", "calories" ], "additionalProperties" : false, "properties" : { "name" : {"type" : "string"}, "calories" : {"type" : "number"}, "colour" : {"type" : "string"} } } }, "$ref" : "#/definitions/record:myrecord" }'
         #
+        self.headers_str_bytes_tuple_list = [("header_field1", b"header_value1"), ("header_field2", b"header_value2")]
+        self.headers_str_bytes_dict = {"header_field1": b"header_value1", "header_field2": b"header_value2"}
+        self.headers_str_str_tuple_list = [("header_field1", "header_value1"), ("header_field2", "header_value2")]
+        self.headers_str_str_dict = {"header_field1": "header_value1", "header_field2": "header_value2"}
+        #
         self.topic_str_list = []
         self.group_str_list = []
         #
@@ -511,7 +516,7 @@ class Test(unittest.TestCase):
         topic_str = self.create_test_topic_name()
         c.create(topic_str)
         w = c.openw(topic_str)
-        w.write(self.snack_str_list)
+        w.write(self.snack_str_list, headers=self.headers_str_str_dict)
         w.close()
         #
         group_str1 = self.create_test_group_name()
@@ -520,12 +525,14 @@ class Test(unittest.TestCase):
         self.assertEqual(3, n_int1)
         value_str_list1 = [message_dict["value"] for message_dict in message_dict_list1]
         self.assertEqual(value_str_list1, self.snack_str_list)
+        self.assertEqual(message_dict_list1[0]["headers"], self.headers_str_bytes_tuple_list)
         #
         group_str2 = self.create_test_group_name()
         (message_dict_list2, n_int2) = c.cat(topic_str, group=group_str2, offsets={0:1}, n=1)
         self.assertEqual(1, len(message_dict_list2))
         self.assertEqual(1, n_int2)
         self.assertEqual(message_dict_list2[0]["value"], self.snack_str_list[1])
+        self.assertEqual(message_dict_list2[0]["headers"], self.headers_str_bytes_tuple_list)
 
     # Shell.head -> Shell.cat
     def test_head(self):
@@ -534,7 +541,7 @@ class Test(unittest.TestCase):
         topic_str = self.create_test_topic_name()
         c.create(topic_str)
         w = c.openw(topic_str, value_type="avro", value_schema=self.avro_schema_str)
-        w.write(self.snack_str_list)
+        w.write(self.snack_str_list, headers=self.headers_str_str_tuple_list)
         w.close()
         #
         group_str1 = self.create_test_group_name()
@@ -543,12 +550,14 @@ class Test(unittest.TestCase):
         self.assertEqual(3, n_int1)
         value_dict_list1 = [message_dict["value"] for message_dict in message_dict_list1]
         self.assertEqual(value_dict_list1, self.snack_dict_list)
+        self.assertEqual(message_dict_list1[0]["headers"], self.headers_str_bytes_tuple_list)
         #
         group_str2 = self.create_test_group_name()
         (message_dict_list2, n_int2) = c.head(topic_str, group=group_str2, offsets={0:1}, value_type="avro", n=1)
         self.assertEqual(1, len(message_dict_list2))
         self.assertEqual(1, n_int2)
         self.assertEqual(message_dict_list2[0]["value"], self.snack_dict_list[1])
+        self.assertEqual(message_dict_list2[0]["headers"], self.headers_str_bytes_tuple_list)
 
     # Shell.tail -> Functional.map -> Functional.flatmap -> Functional.foldl -> ClusterReader.openr/KafkaReader.foldl/ClusterReader.close -> ClusterReader.consume
     def test_tail(self):
@@ -557,7 +566,7 @@ class Test(unittest.TestCase):
         topic_str = self.create_test_topic_name()
         c.create(topic_str)
         w = c.openw(topic_str, value_type="protobuf", value_schema=self.protobuf_schema_str)
-        w.write(self.snack_dict_list)
+        w.write(self.snack_dict_list, headers=self.headers_str_bytes_dict)
         w.close()
         #
         group_str1 = self.create_test_group_name()
@@ -566,12 +575,14 @@ class Test(unittest.TestCase):
         self.assertEqual(3, n_int1)
         value_dict_list1 = [message_dict["value"] for message_dict in message_dict_list1]
         self.assertEqual(value_dict_list1, self.snack_dict_list)
+        self.assertEqual(message_dict_list1[0]["headers"], self.headers_str_bytes_tuple_list)
         #
         group_str2 = self.create_test_group_name()
         (message_dict_list2, n_int2) = c.tail(topic_str, group=group_str2, value_type="pb", n=1)
         self.assertEqual(1, len(message_dict_list2))
         self.assertEqual(1, n_int2)
         self.assertEqual(message_dict_list2[0]["value"], self.snack_dict_list[2])
+        self.assertEqual(message_dict_list2[0]["headers"], self.headers_str_bytes_tuple_list)
 
     # Shell.cp -> Functional.map_to -> Functional.flatmap_to -> ClusterReader.openw/Functional.foldl/ClusterReader.close -> ClusterReader.openr/KafkaReader.foldl/ClusterReader.close -> ClusterReader.consume
     def test_cp(self):
@@ -580,7 +591,7 @@ class Test(unittest.TestCase):
         topic_str1 = self.create_test_topic_name()
         c.create(topic_str1)
         w = c.openw(topic_str1, value_type="json_sr", value_schema=self.jsonschema_schema_str)
-        w.write(self.snack_bytes_list)
+        w.write(self.snack_bytes_list, headers=self.headers_str_bytes_tuple_list)
         w.close()
         topic_str2 = self.create_test_topic_name()
         #
@@ -598,6 +609,7 @@ class Test(unittest.TestCase):
         self.assertEqual(1, len(message_dict_list2))
         self.assertEqual(1, n_int2)
         self.assertEqual(message_dict_list2[0]["value"], self.snack_ish_dict_list[0])
+        self.assertEqual(message_dict_list2[0]["headers"], self.headers_str_bytes_tuple_list)
 
     def test_wc(self):
         c = Cluster(config_str)

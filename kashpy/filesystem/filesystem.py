@@ -90,13 +90,14 @@ class FileSystem(Storage):
 
     rm = delete
 
-    # Shared
+    # Helpers
 
-    def get_key_value_separator_message_separator_tuple(self, **kwargs):
-        key_value_separator_bytes = bytes(kwargs["key_value_separator"], encoding="utf-8") if "key_value_separator" in kwargs else b"::"
+    def get_payload_separator_message_separator_null_indicator_tuple(self, **kwargs):
+        payload_separator_bytes = bytes(kwargs["payload_separator"], encoding="utf-8") if "payload_separator" in kwargs else b"::"
         message_separator_bytes = bytes(kwargs["message_separator"], encoding="utf-8") if "message_separator" in kwargs else b"\n"
+        null_indicator_bytes = bytes(kwargs["null_indicator"], encoding="utf-8") if "null_indicator" in kwargs else b"NULL"
         #
-        return (key_value_separator_bytes, message_separator_bytes)
+        return (payload_separator_bytes, message_separator_bytes, null_indicator_bytes)
 
     # Open
     def openr(self, file, **kwargs):

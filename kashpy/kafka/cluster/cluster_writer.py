@@ -65,7 +65,8 @@ class ClusterWriter(KafkaWriter):
         #
         partition_int_list = partition if isinstance(partition, list) else [partition for _ in value_list]
         timestamp_int_list = timestamp if isinstance(timestamp, list) else [timestamp for _ in value_list]
-        headers_str_bytes_tuple_list_list = headers if isinstance(headers, list) else [headers for _ in value_list]
+        headers_list = headers if isinstance(headers, list) and len(headers) == len(value_list) else [headers for _ in value_list]
+        headers_str_bytes_tuple_list_list = [self.kafka_obj.headers_to_headers_str_bytes_tuple_list(headers) for headers in headers_list]
         #
 
         def serialize(key_bool, normalize_schemas=False):

@@ -1,7 +1,6 @@
 import os
 import sys
 import tempfile
-import time
 import unittest
 import warnings
 sys.path.insert(1, "..")
@@ -89,9 +88,9 @@ class Test(unittest.TestCase):
         self.assertEqual(total_size_int, 3)
         file_str_size_int_filesize_int_tuple_dict = l.files(pattern=file_str, size=True, filesize=True)
         self.assertEqual(file_str_size_int_filesize_int_tuple_dict[file_str][0], 3)
-        self.assertEqual(file_str_size_int_filesize_int_tuple_dict[file_str][1], 30)
+        self.assertEqual(file_str_size_int_filesize_int_tuple_dict[file_str][1], 42)
         file_str_filesize_int_dict = l.files(pattern=file_str, size=False, filesize=True)
-        self.assertEqual(file_str_filesize_int_dict[file_str], 30)
+        self.assertEqual(file_str_filesize_int_dict[file_str], 42)
 
     def test_exists(self):
         l = self.get_local()

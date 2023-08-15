@@ -1,4 +1,6 @@
-import json
+import ast
+
+from kashpy.helpers import bytes_to_dict, bytes_to_str
 
 # Constants
 
@@ -14,7 +16,7 @@ class FileSystemReader():
         #
         (self.key_type_str, self.value_type_str) = filesystem_obj.get_key_value_type_tuple(**kwargs)
         #
-        (self.key_value_separator_bytes, self.message_separator_bytes) = filesystem_obj.get_key_value_separator_message_separator_tuple(**kwargs)
+        (self.payload_separator_bytes, self.message_separator_bytes, self.null_indicator_bytes) = filesystem_obj.get_payload_separator_message_separator_null_indicator_tuple(**kwargs)
 
     #
     
@@ -34,14 +36,62 @@ class FileSystemReader():
         offset_int = 0
         #
         size_int = self.file_size_int
+        #
+        def split_payload(message_bytes, payload_separator_bytes):
+            value_bytes = b""
+            key_bytes = None
+            headers_bytes = None
+            #
+            if message_bytes:
+                if payload_separator_bytes is not None:
+                    split_bytes_list = message_bytes.split(payload_separator_bytes)
+                    if len(split_bytes_list) == 3:
+                        headers_bytes = split_bytes_list[0]
+                        key_bytes = split_bytes_list[1]
+                        value_bytes = split_bytes_list[2]
+                    elif len(split_bytes_list) == 2:
+                        key_bytes = split_bytes_list[0]
+                        value_bytes = split_bytes_list[1]
+                    else:
+                        value_bytes = split_bytes_list[0]
+                else:
+                    value_bytes = message_bytes
+            #
+            return headers_bytes, key_bytes, value_bytes
+        #
+
+        def bytes_to_headers(headers_bytes):
+            if headers_bytes is not None and len(headers_bytes) > len(b'[("", b"")]') and headers_bytes[0:2] == b"[(" and headers_bytes[-2:] == b")]":
+                headers = ast.literal_eval(str(headers_bytes))
+            else:
+                headers = None
+            #
+            return headers
+        #
+
+        def bytes_to_key_or_value(key_or_value_bytes, type_str):
+            if key_or_value_bytes == self.null_indicator_bytes:
+                key_or_value = None
+            else:
+                if type_str == "bytes":
+                    key_or_value = key_or_value_bytes
+                elif type_str == "str":
+                    key_or_value = bytes_to_str(key_or_value_bytes)
+                elif type_str == "json" or type_str == "dict":
+                    key_or_value = bytes_to_dict(key_or_value_bytes)
+            #
+            return key_or_value
+
+
         while True:
             def acc_bytes_to_acc(acc, bytes, break_bool, message_counter_int):
-                key_bytes_value_bytes_tuple = split_key_value(bytes, self.key_value_separator_bytes)
+                (headers_bytes, key_bytes, value_bytes) = split_payload(bytes, self.payload_separator_bytes)
                 #
-                key = bytes_to_payload(key_bytes_value_bytes_tuple[0], self.key_type_str)
-                value = bytes_to_payload(key_bytes_value_bytes_tuple[1], self.value_type_str)
+                headers = bytes_to_headers(headers_bytes)
+                key = bytes_to_key_or_value(key_bytes, self.key_type_str)
+                value = bytes_to_key_or_value(value_bytes, self.value_type_str)
                 #
-                message_dict = {"headers": None, "partition": 0, "offset": message_counter_int, "timestamp": None, "key": key, "value": value}
+                message_dict = {"headers": headers, "partition": 0, "offset": message_counter_int, "timestamp": None, "key": key, "value": value}
                 #
                 if break_function(acc, message_dict):
                     break_bool = True
@@ -94,49 +144,3 @@ class FileSystemReader():
         #
         return self.foldl(foldl_function, [], n)
 
-#
-
-def bytes_to_str(bytes):
-    if bytes is None:
-        str = None
-    else:
-        str = bytes.decode("utf-8")
-    #
-    return str
-
-def bytes_to_dict(bytes):
-    if bytes is None:
-        dict = None
-    else:
-        dict = json.loads(bytes.decode("utf-8"))
-    #
-    return dict
-
-def bytes_to_payload(key_or_value_bytes, type_str):
-    if type_str == "bytes":
-        key_or_value = key_or_value_bytes
-    elif type_str == "str":
-        key_or_value = bytes_to_str(key_or_value_bytes)
-    elif type_str == "json" or type_str == "dict":
-        key_or_value = bytes_to_dict(key_or_value_bytes)
-    #
-    return key_or_value
-
-#
-
-def split_key_value(message_bytes, key_value_separator_bytes):
-    key_bytes = None
-    value_bytes = b""
-    #
-    if message_bytes:
-        if key_value_separator_bytes is not None:
-            split_bytes_list = message_bytes.split(key_value_separator_bytes)
-            if len(split_bytes_list) == 2:
-                key_bytes = split_bytes_list[0]
-                value_bytes = split_bytes_list[1]
-            else:
-                value_bytes = message_bytes
-        else:
-            value_bytes = message_bytes
-    #
-    return key_bytes, value_bytes 

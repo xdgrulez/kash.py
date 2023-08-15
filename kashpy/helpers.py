@@ -155,3 +155,48 @@ def base64_encode(str_or_bytes_or_dict):
 
 def base64_decode(base64_str):
     return base64.b64decode(bytes(base64_str, encoding="utf-8"))
+
+
+def bytes_or_str_to_bytes(bytes_or_str):
+    if isinstance(bytes_or_str, bytes):
+        return_bytes = bytes_or_str
+    elif isinstance(bytes_or_str, str):
+        return_bytes = bytes(bytes_or_str, encoding="utf-8")
+    #
+    return return_bytes
+
+
+def bytes_to_str(bytes):
+    if bytes is None:
+        str = None
+    else:
+        str = bytes.decode("utf-8")
+    #
+    return str
+
+
+def bytes_to_dict(bytes):
+    if bytes is None:
+        dict = None
+    else:
+        dict = json.loads(bytes.decode("utf-8"))
+    #
+    return dict
+
+
+def str_to_bytes(str):
+    if str is None:
+        bytes = None
+    else:
+        bytes = str.encode("utf-8")
+    #
+    return bytes
+
+
+def dict_to_bytes(dict):
+    if dict is None:
+        bytes = None
+    else:
+        bytes = str(dict).encode("utf-8")
+    #
+    return bytes
