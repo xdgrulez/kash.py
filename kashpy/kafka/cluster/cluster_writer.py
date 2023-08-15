@@ -69,11 +69,10 @@ class ClusterWriter(KafkaWriter):
         headers_str_bytes_tuple_list_list = [self.kafka_obj.headers_to_headers_str_bytes_tuple_list(headers) for headers in headers_list]
         #
 
-        def serialize(key_bool, normalize_schemas=False):
+        def serialize(payload, key_bool, normalize_schemas=False):
             type_str = self.key_type_str if key_bool else self.value_type_str
             schema_str = self.key_schema_str if key_bool else self.value_schema_str
             schema_id_int = self.key_schema_id_int if key_bool else self.value_schema_id_int
-            payload = key if key_bool else value
             messageField = MessageField.KEY if key_bool else MessageField.VALUE
             #
 
@@ -123,8 +122,8 @@ class ClusterWriter(KafkaWriter):
         key_str_or_bytes_list = []
         value_str_or_bytes_list = []
         for value, key, partition_int, timestamp_int, headers_str_bytes_tuple_list in zip(value_list, key_list, partition_int_list, timestamp_int_list, headers_str_bytes_tuple_list_list):
-            key_str_or_bytes = serialize(key_bool=True)
-            value_str_or_bytes = serialize(key_bool=False)
+            key_str_or_bytes = serialize(key, key_bool=True)
+            value_str_or_bytes = serialize(value, key_bool=False)
             #
             self.producer.produce(self.topic_str, value_str_or_bytes, key_str_or_bytes, partition=partition_int, timestamp=timestamp_int, headers=headers_str_bytes_tuple_list, on_delivery=self.on_delivery_function)
             #

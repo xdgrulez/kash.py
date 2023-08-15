@@ -3,7 +3,7 @@ import sys
 import tempfile
 import unittest
 import warnings
-sys.path.insert(1, "..")
+sys.path.insert(1, ".")
 from kashpy.filesystem.local.local import *
 from kashpy.helpers import *
 
@@ -23,6 +23,11 @@ class Test(unittest.TestCase):
             snack_dict1 = snack_dict.copy()
             snack_dict1["colour"] += "ish"
             self.snack_ish_dict_list.append(snack_dict1)
+        #
+        self.headers_str_bytes_tuple_list = [("header_field1", b"header_value1"), ("header_field2", b"header_value2")]
+        self.headers_str_bytes_dict = {"header_field1": b"header_value1", "header_field2": b"header_value2"}
+        self.headers_str_str_tuple_list = [("header_field1", "header_value1"), ("header_field2", "header_value2")]
+        self.headers_str_str_dict = {"header_field1": "header_value1", "header_field2": "header_value2"}
         #
         self.file_str_list = []
         #
@@ -75,7 +80,7 @@ class Test(unittest.TestCase):
         new_file_str_list = l.ls(["test_*"])
         self.assertIn(file_str, new_file_str_list)
         #
-        w = l.openw(file_str, overwrite=False, payload_separator="")
+        w = l.openw(file_str, overwrite=False)
         w.write("message 1")
         w.write("message 2")
         w.write("message 3")
@@ -88,9 +93,9 @@ class Test(unittest.TestCase):
         self.assertEqual(total_size_int, 3)
         file_str_size_int_filesize_int_tuple_dict = l.files(pattern=file_str, size=True, filesize=True)
         self.assertEqual(file_str_size_int_filesize_int_tuple_dict[file_str][0], 3)
-        self.assertEqual(file_str_size_int_filesize_int_tuple_dict[file_str][1], 30)
+        self.assertEqual(file_str_size_int_filesize_int_tuple_dict[file_str][1], 243)
         file_str_filesize_int_dict = l.l(pattern=file_str, size=False, filesize=True)
-        self.assertEqual(file_str_filesize_int_dict[file_str], 30)
+        self.assertEqual(file_str_filesize_int_dict[file_str], 243)
 
     def test_exists(self):
         l = self.get_local()
@@ -103,33 +108,36 @@ class Test(unittest.TestCase):
     # Write/Read
 
     def test_write_read_bytes_str(self):
-        l = Local(config_str)
+        l = self.get_local()
         #
         file_str = self.create_test_file_name()
+        print(file_str)
         l.create(file_str)
-        # Upon write, bytes, strings and dictionaries are converted into bytes in the file.
+        # Upon write, the type "bytes" triggers conversion into bytes, "str" into a string.
         w = l.openw(file_str, key_type="bytes", value_type="str")
-        w.write(self.snack_str_list, key=self.snack_str_list)
+        w.write(self.snack_str_list, key=self.snack_str_list, headers=self.headers_str_bytes_tuple_list)
         w.close()
         self.assertEqual(l.l(file_str)[file_str], 3)
         #
-        # Upon read, the type "str" triggers the conversion into a string, and "bytes" into bytes.
+        # Upon read, the type "str" triggers conversion into a string, "bytes" into bytes.
         r = l.openr(file_str, key_type="str", value_type="bytes")
         message_dict_list = r.read(n=3)
         key_str_list = [message_dict["key"] for message_dict in message_dict_list]
         value_bytes_list = [message_dict["value"] for message_dict in message_dict_list]
+        headers_list = [message_dict["headers"] for message_dict in message_dict_list]
         self.assertEqual(key_str_list, self.snack_str_list)
         self.assertEqual(value_bytes_list, self.snack_bytes_list)
+        self.assertEqual(headers_list[0], self.headers_str_bytes_tuple_list)
         r.close()
     
     def test_write_read_str_json(self):
-        l = Local(config_str)
+        l = self.get_local()
         #
         file_str = self.create_test_file_name()
         l.create(file_str)
-        # Upon write, bytes, strings and dictionaries are converted into bytes in the file.
+        # Upon write, the type "str" triggers conversion into a string, "json" into a dictionary.
         w = l.openw(file_str, key_type="str", value_type="json")
-        w.write(self.snack_dict_list, key=self.snack_str_list)
+        w.write(self.snack_dict_list, key=self.snack_str_list, headers=self.headers_str_bytes_dict)
         w.close()
         self.assertEqual(l.l(file_str, filesize=True)[file_str][0], 3)
         #
@@ -138,131 +146,25 @@ class Test(unittest.TestCase):
         message_dict_list = r.read(n=3)
         key_dict_list = [message_dict["key"] for message_dict in message_dict_list]
         value_str_list = [message_dict["value"] for message_dict in message_dict_list]
+        headers_list = [message_dict["headers"] for message_dict in message_dict_list]
         self.assertEqual(key_dict_list, self.snack_dict_list)
         self.assertEqual(value_str_list, self.snack_str_list)
+        self.assertEqual(headers_list[1], self.headers_str_bytes_tuple_list)
         r.close()
-
-    def test_produce_consume_protobuf(self):
-        c = Local(config_str)
-        #
-        file_str = self.create_test_file_name()
-        c.create(file_str)
-        # Upon produce, the type "protobuf" (alias = "pb") triggers the conversion of bytes, strings and dictionaries into Protobuf-encoded bytes on Kafka.
-        w = c.openw(file_str, key_type="protobuf", value_type="pb", key_schema=self.protobuf_schema_str, value_schema=self.protobuf_schema_str)
-        w.produce(self.snack_dict_list, key=self.snack_str_list)
-        w.close()
-        self.assertEqual(c.size(file_str)[file_str][0], 3)
-        #
-        group_str = self.create_test_group_name()
-        # Upon consume, the type "protobuf" (alias = "pb") triggers the conversion into a dictionary.
-        r = c.openr(file_str, group=group_str, key_type="pb", value_type="protobuf")
-        message_dict_list = r.read(n=3)
-        key_dict_list = [message_dict["key"] for message_dict in message_dict_list]
-        value_dict_list = [message_dict["value"] for message_dict in message_dict_list]
-        self.assertEqual(key_dict_list, self.snack_dict_list)
-        self.assertEqual(value_dict_list, self.snack_dict_list)
-        r.close()
-
-    def test_produce_consume_protobuf_avro(self):
-        c = Local(config_str)
-        #
-        file_str = self.create_test_file_name()
-        c.create(file_str)
-        # Upon produce, the type "protobuf" (alias = "pb") triggers the conversion of bytes, strings and dictionaries into Protobuf-encoded bytes on Kafka, and "avro" into Avro-encoded bytes.
-        w = c.openw(file_str, key_type="protobuf", value_type="avro", key_schema=self.protobuf_schema_str, value_schema=self.avro_schema_str)
-        w.produce(self.snack_dict_list, key=self.snack_bytes_list)
-        w.close()
-        self.assertEqual(c.size(file_str)[file_str][0], 3)
-        #
-        group_str = self.create_test_group_name()
-        # Upon consume, the types "protobuf" (alias = "pb") and "avro" trigger the conversion into a dictionary.
-        r = c.openr(file_str, group=group_str, key_type="pb", value_type="avro")
-        message_dict_list = r.read(n=3)
-        key_dict_list = [message_dict["key"] for message_dict in message_dict_list]
-        value_dict_list = [message_dict["value"] for message_dict in message_dict_list]
-        self.assertEqual(key_dict_list, self.snack_dict_list)
-        self.assertEqual(value_dict_list, self.snack_dict_list)
-        r.close()
-
-    def test_produce_consume_str_jsonschema(self):
-        c = Local(config_str)
-        #
-        file_str = self.create_test_file_name()
-        c.create(file_str)
-        # Upon produce, the type "str" triggers the conversion of bytes, strings and dictionaries into bytes on Kafka, and "jsonschema" (alias = "json_sr") into JSONSchema-encoded bytes on Kafka.
-        w = c.openw(file_str, key_type="str", value_type="jsonschema", value_schema=self.jsonschema_schema_str)
-        w.produce(self.snack_dict_list, key=self.snack_str_list)
-        w.close()
-        self.assertEqual(c.size(file_str)[file_str][0], 3)
-        #
-        group_str = self.create_test_group_name()
-        # Upon consume, the types "json" and "jsonschema" (alias = "json_sr") trigger the conversion into a dictionary.
-        r = c.openr(file_str, group=group_str, key_type="json", value_type="json_sr")
-        message_dict_list = r.read(n=3)
-        key_dict_list = [message_dict["key"] for message_dict in message_dict_list]
-        value_dict_list = [message_dict["value"] for message_dict in message_dict_list]
-        self.assertEqual(key_dict_list, self.snack_dict_list)
-        self.assertEqual(value_dict_list, self.snack_dict_list)
-        r.close()
-
-    def test_consume_from_offsets(self):
-        c = Local(config_str)
-        #
-        file_str = self.create_test_file_name()
-        c.create(file_str)
-        w = c.openw(file_str)
-        w.produce("message 1")
-        w.produce("message 2")
-        w.produce("message 3")
-        w.close()
-        #
-        group_str = self.create_test_group_name()
-        r = c.openr(file_str, group=group_str, offsets={0: 2})
-        message_dict_list = r.consume()
-        self.assertEqual(len(message_dict_list), 1)
-        self.assertEqual(message_dict_list[0]["value"], "message 3")
-        r.close()
-
-    def test_commit(self):
-        c = Local(config_str)
-        #
-        file_str = self.create_test_file_name()
-        c.create(file_str)
-        w = c.openw(file_str)
-        w.produce("message 1")
-        w.produce("message 2")
-        w.produce("message 3")
-        w.close()
-        #
-        group_str = self.create_test_group_name()
-        r = c.openr(file_str, group=group_str, config={"enable.auto.commit": "False"})
-        r.consume()
-        offsets_dict = r.offsets()
-        self.assertEqual(offsets_dict[file_str][0], OFFSET_INVALID)
-        r.commit()
-        offsets_dict1 = r.offsets()
-        self.assertEqual(offsets_dict1[file_str][0], 1)
-        r.close()
-    
-    def test_cluster_settings(self):
-        c = Local(config_str)
-        #
-        c.verbose(0)
-        self.assertEqual(c.verbose(), 0)
 
     def test_configs(self):
-        c = Local(config_str)
+        l = self.get_local()
         #
-        config_str_list1 = c.configs()
+        config_str_list1 = l.configs()
         self.assertIn("local", config_str_list1)
-        config_str_list2 = c.configs("loc*")
+        config_str_list2 = l.configs("loc*")
         self.assertIn("local", config_str_list2)
-        config_str_list3 = c.configs("this_pattern_shall_not_match_anything")
+        config_str_list3 = l.configs("this_pattern_shall_not_match_anything")
         self.assertEqual(config_str_list3, [])
         #
-        config_str_config_dict_dict = c.configs(verbose=True)
+        config_str_config_dict_dict = l.configs(verbose=True)
         self.assertIn("local", config_str_config_dict_dict)
-        self.assertEqual(True, config_str_config_dict_dict["local"]["kash"]["enable.auto.commit"])
+        self.assertEqual(".", config_str_config_dict_dict["local"]["local"]["root.dir"])
 
     # Shell
 

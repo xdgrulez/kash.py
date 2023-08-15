@@ -1,4 +1,5 @@
 import ast
+import json
 
 from kashpy.helpers import bytes_to_dict, bytes_to_str
 
@@ -15,8 +16,6 @@ class FileSystemReader():
         self.file_str = file
         #
         (self.key_type_str, self.value_type_str) = filesystem_obj.get_key_value_type_tuple(**kwargs)
-        #
-        (self.payload_separator_bytes, self.message_separator_bytes, self.null_indicator_bytes) = filesystem_obj.get_payload_separator_message_separator_null_indicator_tuple(**kwargs)
 
     #
     
@@ -37,86 +36,32 @@ class FileSystemReader():
         #
         size_int = self.file_size_int
         #
-        def split_payload(message_bytes, payload_separator_bytes):
-            value_bytes = b""
-            key_bytes = None
-            headers_bytes = None
+        def acc_bytes_to_acc(acc, bytes, break_bool, message_counter_int):
+            serialized_message_dict = ast.literal_eval(bytes.decode("utf-8"))
             #
-            if message_bytes:
-                if payload_separator_bytes is not None:
-                    split_bytes_list = message_bytes.split(payload_separator_bytes)
-                    if len(split_bytes_list) == 3:
-                        headers_bytes = split_bytes_list[0]
-                        key_bytes = split_bytes_list[1]
-                        value_bytes = split_bytes_list[2]
-                    elif len(split_bytes_list) == 2:
-                        key_bytes = split_bytes_list[0]
-                        value_bytes = split_bytes_list[1]
-                    else:
-                        value_bytes = split_bytes_list[0]
-                else:
-                    value_bytes = message_bytes
+            deserialized_message_dict = self.deserialize(serialized_message_dict, self.key_type_str, self.value_type_str)
             #
-            return headers_bytes, key_bytes, value_bytes
+            acc = foldl_function(acc, deserialized_message_dict)
+            #
+            message_counter_int += 1
+            #
+            return (acc, break_bool, message_counter_int)
         #
-
-        def bytes_to_headers(headers_bytes):
-            if headers_bytes is not None and len(headers_bytes) > len(b'[("", b"")]') and headers_bytes[0:2] == b"[(" and headers_bytes[-2:] == b")]":
-                headers = ast.literal_eval(str(headers_bytes))
-            else:
-                headers = None
-            #
-            return headers
-        #
-
-        def bytes_to_key_or_value(key_or_value_bytes, type_str):
-            if key_or_value_bytes == self.null_indicator_bytes:
-                key_or_value = None
-            else:
-                if type_str == "bytes":
-                    key_or_value = key_or_value_bytes
-                elif type_str == "str":
-                    key_or_value = bytes_to_str(key_or_value_bytes)
-                elif type_str == "json" or type_str == "dict":
-                    key_or_value = bytes_to_dict(key_or_value_bytes)
-            #
-            return key_or_value
-
-
+        
         while True:
-            def acc_bytes_to_acc(acc, bytes, break_bool, message_counter_int):
-                (headers_bytes, key_bytes, value_bytes) = split_payload(bytes, self.payload_separator_bytes)
-                #
-                headers = bytes_to_headers(headers_bytes)
-                key = bytes_to_key_or_value(key_bytes, self.key_type_str)
-                value = bytes_to_key_or_value(value_bytes, self.value_type_str)
-                #
-                message_dict = {"headers": headers, "partition": 0, "offset": message_counter_int, "timestamp": None, "key": key, "value": value}
-                #
-                if break_function(acc, message_dict):
-                    break_bool = True
-                    return (acc, break_bool)
-                #
-                acc = foldl_function(acc, message_dict)
-                #
-                message_counter_int += 1
-                #
-                return (acc, break_bool, message_counter_int)
-            #
-
             if offset_int > size_int:
                 batch_bytes = b""
             else:
                 batch_bytes = self.read_bytes(offset_int, read_batch_size_int)
                 offset_int += read_batch_size_int
-            #
+                
             if batch_bytes == b"":
                 if buffer_bytes != b"":
                     (acc, break_bool, message_counter_int) = acc_bytes_to_acc(acc, buffer_bytes, break_bool, message_counter_int)
                 break
             #
             buffer_bytes += batch_bytes
-            message_bytes_list = buffer_bytes.split(self.message_separator_bytes)
+            message_bytes_list = buffer_bytes.split(b"\n")
             for message_bytes in message_bytes_list[:-1]:
                 (acc, break_bool, message_counter_int) = acc_bytes_to_acc(acc, message_bytes, break_bool, message_counter_int)
                 if break_bool:
@@ -133,6 +78,54 @@ class FileSystemReader():
             buffer_bytes = message_bytes_list[-1]
         #
         return acc
+    #
+
+    def deserialize(self, message_dict, key_type, value_type):
+        key_type_str = key_type
+        value_type_str = value_type
+        #
+
+        def to_str(x):
+            if isinstance(x, bytes):
+                return x.decode("utf-8")
+            elif isinstance(x, dict):
+                return str(x)
+            else:
+                return x
+        #
+
+        def to_bytes(x):
+            if isinstance(x, str):
+                return x.encode("utf-8")
+            elif isinstance(x, dict):
+                return str(x).encode("utf-8")
+            else:
+                return x
+        #
+
+        def to_dict(x):
+            if isinstance(x, bytes) or isinstance(x, str):
+                return json.loads(x)
+            else:
+                return x
+        #
+
+        if key_type_str.lower() == "str":
+            decode_key = to_str
+        elif key_type_str.lower() == "bytes":
+            decode_key = to_bytes
+        elif key_type_str.lower() == "json":
+            decode_key = to_dict
+        #
+        if value_type_str.lower() == "str":
+            decode_value = to_str
+        elif value_type_str.lower() == "bytes":
+            decode_value = to_bytes
+        elif value_type_str.lower() == "json":
+            decode_value = to_dict
+        #
+        return_message_dict = {"headers": message_dict["headers"], "timestamp": message_dict["timestamp"], "key": decode_key(message_dict["key"]), "value": decode_value(message_dict["value"])}
+        return return_message_dict
 
     #
 
@@ -143,4 +136,3 @@ class FileSystemReader():
             return message_dict_list
         #
         return self.foldl(foldl_function, [], n)
-

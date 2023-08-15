@@ -95,9 +95,9 @@ class Test(unittest.TestCase):
             self.assertEqual(broker_dict, broker_dict1)
             broker_dict2 = c.brokers([broker_int])
             self.assertEqual(broker_dict1, broker_dict2)
-            broker_int = list(broker_dict.keys())[0]
             old_background_threads_str = c.broker_config(broker_int)[broker_int]["background.threads"]
             c.set_broker_config({"background.threads": 5}, broker_int)
+            time.sleep(0.5)
             new_background_threads_str = c.broker_config(broker_int)[broker_int]["background.threads"]
             self.assertEqual(new_background_threads_str, "5")
             c.set_broker_config({"background.threads": old_background_threads_str}, broker_int)

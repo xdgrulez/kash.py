@@ -84,9 +84,9 @@ class ClusterReader(KafkaReader):
         #
         message_list = self.consumer.consume(n_int, self.kafka_obj.consume_timeout())
         #
-        message_dict_list = [self.message_to_message_dict(message, key_type=self.key_type_dict[message.topic()], value_type=self.value_type_dict[message.topic()]) for message in message_list]
+        deserialized_message_dict_list = [self.deserialize(message, key_type=self.key_type_dict[message.topic()], value_type=self.value_type_dict[message.topic()]) for message in message_list]
         #
-        return message_dict_list
+        return deserialized_message_dict_list
 
     #
 
@@ -128,7 +128,7 @@ class ClusterReader(KafkaReader):
 
     #
 
-    def message_to_message_dict(self, message, key_type, value_type):
+    def deserialize(self, message, key_type, value_type):
         key_type_str = key_type
         value_type_str = value_type
         #
@@ -143,15 +143,17 @@ class ClusterReader(KafkaReader):
         def bytes_to_bytes(bytes):
             return bytes
         #
+
+        def bytes_to_dict(bytes):
+            return json.loads(bytes)
+        #
+
         if key_type_str.lower() == "str":
             decode_key = bytes_to_str
         elif key_type_str.lower() == "bytes":
             decode_key = bytes_to_bytes
         elif key_type_str.lower() == "json":
-            def decode_key(bytes):
-                str = bytes_to_str(bytes)
-                dict = json.loads(str)
-                return dict
+            decode_key = bytes_to_dict
         elif key_type_str.lower() in ["pb", "protobuf"]:
             def decode_key(bytes):
                 return self.bytes_protobuf_to_dict(bytes)
@@ -167,8 +169,7 @@ class ClusterReader(KafkaReader):
         elif value_type_str.lower() == "bytes":
             decode_value = bytes_to_bytes
         elif value_type_str.lower() == "json":
-            def decode_value(bytes):
-                return json.loads(bytes_to_str(bytes))
+            decode_value = bytes_to_dict
         elif value_type_str.lower() in ["pb", "protobuf"]:
             def decode_value(bytes):
                 return self.bytes_protobuf_to_dict(bytes)
@@ -179,8 +180,8 @@ class ClusterReader(KafkaReader):
             def decode_value(bytes):
                 return self.bytes_jsonschema_to_dict(bytes)
         #
-        message_dict = {"headers": message.headers(), "topic": message.topic(), "partition": message.partition(), "offset": message.offset(), "timestamp": message.timestamp(), "key": decode_key(message.key()), "value": decode_value(message.value())}
-        return message_dict
+        deserialized_message_dict_list = {"headers": message.headers(), "topic": message.topic(), "partition": message.partition(), "offset": message.offset(), "timestamp": message.timestamp(), "key": decode_key(message.key()), "value": decode_value(message.value())}
+        return deserialized_message_dict_list
 
     def schema_id_int_to_generalizedProtocolMessageType_protobuf_schema_str_tuple(self, schema_id_int):
         schema_dict = self.schemaRegistry.get_schema(schema_id_int)
