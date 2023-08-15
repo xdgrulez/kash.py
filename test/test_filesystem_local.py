@@ -100,43 +100,41 @@ class Test(unittest.TestCase):
         l.create(file_str)
         self.assertTrue(l.exists(file_str))
 
-    # Produce/Consume
+    # Write/Read
 
-    def test_produce_consume_bytes_str(self):
-        c = Local(config_str)
+    def test_write_read_bytes_str(self):
+        l = Local(config_str)
         #
         file_str = self.create_test_file_name()
-        c.create(file_str)
-        # Upon produce, the types "bytes" and "string" trigger the conversion of bytes, strings and dictionaries to bytes on Kafka.
-        w = c.openw(file_str, key_type="bytes", value_type="str")
-        w.produce(self.snack_str_list, key=self.snack_str_list)
+        l.create(file_str)
+        # Upon write, bytes, strings and dictionaries are converted into bytes in the file.
+        w = l.openw(file_str, key_type="bytes", value_type="str")
+        w.write(self.snack_str_list, key=self.snack_str_list)
         w.close()
-        self.assertEqual(c.size(file_str)[file_str][0], 3)
+        self.assertEqual(l.l(file_str)[file_str], 3)
         #
-        group_str = self.create_test_group_name()
-        # Upon consume, the type "str" triggers the conversion into a string, and "bytes" into bytes.
-        r = c.openr(file_str, group=group_str, key_type="str", value_type="bytes")
-        message_dict_list = r.consume(n=3)
+        # Upon read, the type "str" triggers the conversion into a string, and "bytes" into bytes.
+        r = l.openr(file_str, key_type="str", value_type="bytes")
+        message_dict_list = r.read(n=3)
         key_str_list = [message_dict["key"] for message_dict in message_dict_list]
         value_bytes_list = [message_dict["value"] for message_dict in message_dict_list]
         self.assertEqual(key_str_list, self.snack_str_list)
         self.assertEqual(value_bytes_list, self.snack_bytes_list)
         r.close()
     
-    def test_produce_consume_json(self):
-        c = Local(config_str)
+    def test_write_read_str_json(self):
+        l = Local(config_str)
         #
         file_str = self.create_test_file_name()
-        c.create(file_str)
-        # Upon produce, the types "str" and "json" trigger the conversion of bytes, strings and dictionaries to bytes on Kafka.
-        w = c.openw(file_str, key_type="str", value_type="json")
-        w.produce(self.snack_dict_list, key=self.snack_str_list)
+        l.create(file_str)
+        # Upon write, bytes, strings and dictionaries are converted into bytes in the file.
+        w = l.openw(file_str, key_type="str", value_type="json")
+        w.write(self.snack_dict_list, key=self.snack_str_list)
         w.close()
-        self.assertEqual(c.size(file_str)[file_str][0], 3)
+        self.assertEqual(l.l(file_str, filesize=True)[file_str][0], 3)
         #
-        group_str = self.create_test_group_name()
-        # Upon consume, the type "json" triggers the conversion into a dictionary, and "str" into a string.
-        r = c.openr(file_str, group=group_str, key_type="json", value_type="str")
+        # Upon read, the type "json" triggers the conversion into a dictionary, and "str" into a string.
+        r = l.openr(file_str, key_type="json", value_type="str")
         message_dict_list = r.read(n=3)
         key_dict_list = [message_dict["key"] for message_dict in message_dict_list]
         value_str_list = [message_dict["value"] for message_dict in message_dict_list]

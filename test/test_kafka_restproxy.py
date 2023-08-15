@@ -62,7 +62,7 @@ class Test(unittest.TestCase):
         #
         return group_str
 
-    ### ClusterAdmin
+    ### RestProxyAdmin
     # ACLs
 
     def test_acls(self):
@@ -406,7 +406,7 @@ class Test(unittest.TestCase):
 
     # Shell
 
-    # Shell.cat -> Functional.map -> Functional.flatmap -> Functional.foldl -> ClusterReader.openr/KafkaReader.foldl/ClusterReader.close -> ClusterReader.consume
+    # Shell.cat -> Functional.map -> Functional.flatmap -> Functional.foldl -> RestProxyReader.openr/KafkaReader.foldl/RestProxyReader.close -> RestProxyReader.consume
     def test_cat(self):
         r = RestProxy(config_str)
         #
@@ -440,7 +440,7 @@ class Test(unittest.TestCase):
         value_dict_list = [message_dict["value"] for message_dict in message_dict_list]
         self.assertEqual(value_dict_list, self.snack_dict_list)
 
-    # Shell.tail -> Functional.map -> Functional.flatmap -> Functional.foldl -> ClusterReader.openr/KafkaReader.foldl/ClusterReader.close -> ClusterReader.consume
+    # Shell.tail -> Functional.map -> Functional.flatmap -> Functional.foldl -> RestProxyReader.openr/KafkaReader.foldl/RestProxyReader.close -> RestProxyReader.consume
     def test_tail(self):
         r = RestProxy(config_str)
         #
@@ -457,7 +457,7 @@ class Test(unittest.TestCase):
         value_dict_list = [message_dict["value"] for message_dict in message_dict_list]
         self.assertEqual(value_dict_list, self.snack_dict_list)
 
-    # Shell.cp -> Functional.map_to -> Functional.flatmap_to -> ClusterReader.openw/Functional.foldl/ClusterReader.close -> ClusterReader.openr/KafkaReader.foldl/ClusterReader.close -> ClusterReader.consume
+    # Shell.cp -> Functional.map_to -> Functional.flatmap_to -> RestProxyReader.openw/Functional.foldl/RestProxyReader.close -> RestProxyReader.openr/KafkaReader.foldl/RestProxyReader.close -> RestProxyReader.consume
     def test_cp(self):
         r = RestProxy(config_str)
         #
@@ -499,7 +499,7 @@ class Test(unittest.TestCase):
         self.assertEqual(18, acc_num_words_int)
         self.assertEqual(169, acc_num_bytes_int)
 
-    # Shell.diff -> Shell.diff_fun -> Functional.zipfoldl -> ClusterReader.openr/read/close
+    # Shell.diff -> Shell.diff_fun -> Functional.zipfoldl -> RestProxyReader.openr/read/close
     def test_diff(self):
         r = RestProxy(config_str)
         #
@@ -522,7 +522,7 @@ class Test(unittest.TestCase):
         self.assertEqual(3, message_counter_int1)
         self.assertEqual(3, message_counter_int2)
 
-    # Shell.diff -> Shell.diff_fun -> Functional.flatmap -> Functional.foldl -> ClusterReader.open/Kafka.foldl/ClusterReader.close -> ClusterReader.consume 
+    # Shell.diff -> Shell.diff_fun -> Functional.flatmap -> Functional.foldl -> RestProxyReader.open/Kafka.foldl/RestProxyReader.close -> RestProxyReader.consume 
     def test_grep(self):
         r = RestProxy(config_str)
         #
