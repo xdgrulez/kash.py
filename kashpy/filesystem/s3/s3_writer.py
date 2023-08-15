@@ -16,7 +16,7 @@ class S3Writer(FileSystemWriter):
         self.temp_file_str = f"{temp_path_str}/{self.file_str}"
         self.bufferedWriter = open(self.temp_file_str, "wb")
         #
-        self.minio = Minio(self.s3_config_dict["endpoint"], access_key=self.s3_config_dict["access.key"], secret_key=self.s3_config_dict["secret.key"], secure=False)
+        self.minio = Minio(s3_obj.s3_config_dict["endpoint"], access_key=s3_obj.s3_config_dict["access.key"], secret_key=s3_obj.s3_config_dict["secret.key"], secure=False)
 
     def __del__(self):
         self.close()
