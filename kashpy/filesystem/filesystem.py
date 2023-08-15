@@ -58,11 +58,11 @@ class FileSystem(Storage):
 
     #
 
-    def ls(self, pattern=None, **kwargs):
-        return self.files(pattern, size=False, **kwargs)
+    def ls(self, pattern=None, size=False, **kwargs):
+        return self.files(pattern, size=size, **kwargs)
     
-    def l(self, pattern=None, **kwargs):
-        return self.files(pattern, size=True, **kwargs)
+    def l(self, pattern=None, size=True, **kwargs):
+        return self.files(pattern, size=size, **kwargs)
 
     ll = l
 

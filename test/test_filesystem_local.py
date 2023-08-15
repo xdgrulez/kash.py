@@ -53,7 +53,7 @@ class Test(unittest.TestCase):
 
     ### LocalAdmin
 
-    def test_list(self):
+    def test_create_delete(self):
         l = self.get_local()
         #
         file_str = self.create_test_file_name()
@@ -75,7 +75,7 @@ class Test(unittest.TestCase):
         new_file_str_list = l.ls(["test_*"])
         self.assertIn(file_str, new_file_str_list)
         #
-        w = l.openw(file_str, overwrite=False)
+        w = l.openw(file_str, overwrite=False, payload_separator="")
         w.write("message 1")
         w.write("message 2")
         w.write("message 3")
@@ -88,9 +88,9 @@ class Test(unittest.TestCase):
         self.assertEqual(total_size_int, 3)
         file_str_size_int_filesize_int_tuple_dict = l.files(pattern=file_str, size=True, filesize=True)
         self.assertEqual(file_str_size_int_filesize_int_tuple_dict[file_str][0], 3)
-        self.assertEqual(file_str_size_int_filesize_int_tuple_dict[file_str][1], 42)
-        file_str_filesize_int_dict = l.files(pattern=file_str, size=False, filesize=True)
-        self.assertEqual(file_str_filesize_int_dict[file_str], 42)
+        self.assertEqual(file_str_size_int_filesize_int_tuple_dict[file_str][1], 30)
+        file_str_filesize_int_dict = l.l(pattern=file_str, size=False, filesize=True)
+        self.assertEqual(file_str_filesize_int_dict[file_str], 30)
 
     def test_exists(self):
         l = self.get_local()

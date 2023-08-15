@@ -41,6 +41,7 @@ class FileSystemWriter():
                 return_bytes = b""
             #
             return return_bytes
+        #
 
         message_bytes = b""
         for value, key, headers_str_bytes_tuple_list in zip(value_list, key_list, headers_str_bytes_tuple_list_list):
