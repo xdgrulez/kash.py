@@ -4,7 +4,12 @@ import sys
 import time
 import unittest
 import warnings
-sys.path.insert(1, "..")
+
+if os.path.basename(os.getcwd()) == "test":
+    sys.path.insert(1, "..")
+else:
+    sys.path.insert(1, ".")
+
 from kashpy.kash001 import *
 
 from confluent_kafka.admin import _ConsumerGroupTopicPartitions

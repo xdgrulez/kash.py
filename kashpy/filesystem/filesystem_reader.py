@@ -23,18 +23,16 @@ class FileSystemReader():
         n_int = n
         #
         read_batch_size_int = kwargs["read_batch_size"] if "read_batch_size" in kwargs else self.filesystem_obj.read_batch_size()
-        if read_batch_size_int > n_int:
-            read_batch_size_int = n_int
         #
-        break_function = kwargs["break_function"] if "break_function" in kwargs else lambda _, _1: False
+        size_int = self.file_size_int
+        if read_batch_size_int > size_int:
+            read_batch_size_int = size_int
         #
         buffer_bytes = b""
         message_counter_int = 0
         break_bool = False
         acc = initial_acc
-        offset_int = 0
-        #
-        size_int = self.file_size_int
+        file_offset_int = 0
         #
         def acc_bytes_to_acc(acc, bytes, break_bool, message_counter_int):
             serialized_message_dict = ast.literal_eval(bytes.decode("utf-8"))
@@ -49,11 +47,11 @@ class FileSystemReader():
         #
         
         while True:
-            if offset_int > size_int:
+            if file_offset_int > size_int:
                 batch_bytes = b""
             else:
-                batch_bytes = self.read_bytes(offset_int, read_batch_size_int)
-                offset_int += read_batch_size_int
+                batch_bytes = self.read_bytes(read_batch_size_int, file_offset_int=file_offset_int, **kwargs)
+                file_offset_int += len(batch_bytes)
                 
             if batch_bytes == b"":
                 if buffer_bytes != b"":

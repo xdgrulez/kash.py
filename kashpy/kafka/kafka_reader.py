@@ -34,7 +34,7 @@ class KafkaReader:
         n_int = n
         #
         read_batch_size_int = kwargs["read_batch_size"] if "read_batch_size" in kwargs else self.kafka_obj.read_batch_size()
-        if read_batch_size_int > n_int:
+        if n != ALL_MESSAGES and read_batch_size_int > n_int:
             read_batch_size_int = n_int
         #
         break_function = kwargs["break_function"] if "break_function" in kwargs else lambda _, _1: False

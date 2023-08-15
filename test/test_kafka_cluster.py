@@ -1,10 +1,18 @@
+import os
 import sys
 import time
 import unittest
 import warnings
-sys.path.insert(1, "..")
+
+if os.path.basename(os.getcwd()) == "test":
+    sys.path.insert(1, "..")
+else:
+    sys.path.insert(1, ".")
+
 from kashpy.kafka.cluster.cluster import *
 from kashpy.helpers import *
+
+#
 
 config_str = "local"
 principal_str = None
@@ -352,7 +360,7 @@ class Test(unittest.TestCase):
         w = c.openw(topic_str, key_type="bytes", value_type="str")
         w.write(self.snack_str_list, key=self.snack_str_list)
         w.close()
-        self.assertEqual(c.size(topic_str)[topic_str][0], 3)
+        self.assertEqual(c.topics(topic_str, size=True, partitions=True)[topic_str][0], 3)
         #
         group_str = self.create_test_group_name()
         # Upon consume, the type "str" triggers the conversion into a string, and "bytes" into bytes.
@@ -373,7 +381,7 @@ class Test(unittest.TestCase):
         w = c.openw(topic_str, key_type="str", value_type="json")
         w.write(self.snack_dict_list, key=self.snack_str_list)
         w.close()
-        self.assertEqual(c.size(topic_str)[topic_str][0], 3)
+        self.assertEqual(c.topics(topic_str, size=True, partitions=True)[topic_str][0], 3)
         #
         group_str = self.create_test_group_name()
         # Upon consume, the type "json" triggers the conversion into a dictionary, and "str" into a string.
@@ -394,7 +402,7 @@ class Test(unittest.TestCase):
         w = c.openw(topic_str, key_type="protobuf", value_type="pb", key_schema=self.protobuf_schema_str, value_schema=self.protobuf_schema_str)
         w.write(self.snack_dict_list, key=self.snack_str_list)
         w.close()
-        self.assertEqual(c.size(topic_str)[topic_str][0], 3)
+        self.assertEqual(c.topics(topic_str, size=True, partitions=True)[topic_str][0], 3)
         #
         group_str = self.create_test_group_name()
         # Upon consume, the type "protobuf" (alias = "pb") triggers the conversion into a dictionary.
@@ -415,7 +423,7 @@ class Test(unittest.TestCase):
         w = c.openw(topic_str, key_type="protobuf", value_type="avro", key_schema=self.protobuf_schema_str, value_schema=self.avro_schema_str)
         w.write(self.snack_dict_list, key=self.snack_bytes_list)
         w.close()
-        self.assertEqual(c.size(topic_str)[topic_str][0], 3)
+        self.assertEqual(c.topics(topic_str, size=True, partitions=True)[topic_str][0], 3)
         #
         group_str = self.create_test_group_name()
         # Upon consume, the types "protobuf" (alias = "pb") and "avro" trigger the conversion into a dictionary.
@@ -436,7 +444,7 @@ class Test(unittest.TestCase):
         w = c.openw(topic_str, key_type="str", value_type="jsonschema", value_schema=self.jsonschema_schema_str)
         w.write(self.snack_dict_list, key=self.snack_str_list)
         w.close()
-        self.assertEqual(c.size(topic_str)[topic_str][0], 3)
+        self.assertEqual(c.topics(topic_str, size=True, partitions=True)[topic_str][0], 3)
         #
         group_str = self.create_test_group_name()
         # Upon consume, the types "json" and "jsonschema" (alias = "json_sr") trigger the conversion into a dictionary.
@@ -677,7 +685,8 @@ class Test(unittest.TestCase):
         w.close()
         #
         colour_str_list = []
-        c.foreach(topic_str, foreach_function=lambda message_dict: colour_str_list.append(message_dict["value"]["colour"]), value_type="jsonschema")
+        group_str = self.create_test_group_name()
+        c.foreach(topic_str, group=group_str, foreach_function=lambda message_dict: colour_str_list.append(message_dict["value"]["colour"]), value_type="jsonschema")
         self.assertEqual("brown", colour_str_list[0])
         self.assertEqual("white", colour_str_list[1])
         self.assertEqual("chocolate", colour_str_list[2])
@@ -691,7 +700,8 @@ class Test(unittest.TestCase):
         w.write(self.snack_str_list)
         w.close()
         #
-        (message_dict_list, message_counter_int) = c.filter(topic_str, filter_function=lambda message_dict: message_dict["value"]["calories"] > 100, value_type="avro")
+        group_str = self.create_test_group_name()
+        (message_dict_list, message_counter_int) = c.filter(topic_str, group=group_str, filter_function=lambda message_dict: message_dict["value"]["calories"] > 100, value_type="avro")
         self.assertEqual(2, len(message_dict_list))
         self.assertEqual(3, message_counter_int)
 
@@ -706,12 +716,13 @@ class Test(unittest.TestCase):
         #
         topic_str2 = self.create_test_topic_name()
         #
-        (read_n_int, written_n_int) = c.filter_to(topic_str1, c, topic_str2, filter_function=lambda message_dict: message_dict["value"]["calories"] > 100, source_value_type="avro", target_value_type="json")
+        group_str1 = self.create_test_group_name()
+        (read_n_int, written_n_int) = c.filter_to(topic_str1, c, topic_str2, group=group_str1, filter_function=lambda message_dict: message_dict["value"]["calories"] > 100, source_value_type="avro", target_value_type="json")
         self.assertEqual(3, read_n_int)
         self.assertEqual(2, written_n_int)
         #
-        group_str = self.create_test_group_name()
-        (message_dict_list, n_int) = c.cat(topic_str2, group=group_str, value_type="json", n=2)
+        group_str2 = self.create_test_group_name()
+        (message_dict_list, n_int) = c.cat(topic_str2, group=group_str2, value_type="json", n=2)
         self.assertEqual(2, len(message_dict_list))
         self.assertEqual(2, n_int)
         self.assertEqual(500.0, message_dict_list[0]["value"]["calories"])

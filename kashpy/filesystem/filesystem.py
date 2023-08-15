@@ -73,6 +73,13 @@ class FileSystem(Storage):
         file_str = file
         #
         return self.files(file_str) != []
+
+    # Shell.tail
+    def get_offsets(self, file_str, n_int):
+        offset_int = self.files(file_str, size=True)[file_str] - n_int
+        #
+        return offset_int, "offset"
+
     #
 
     def create(self, file, **kwargs):

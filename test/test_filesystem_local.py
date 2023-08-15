@@ -3,9 +3,16 @@ import sys
 import tempfile
 import unittest
 import warnings
-sys.path.insert(1, ".")
+
+if os.path.basename(os.getcwd()) == "test":
+    sys.path.insert(1, "..")
+else:
+    sys.path.insert(1, ".")
+
 from kashpy.filesystem.local.local import *
 from kashpy.helpers import *
+
+#
 
 config_str = "local"
 
@@ -111,7 +118,6 @@ class Test(unittest.TestCase):
         l = self.get_local()
         #
         file_str = self.create_test_file_name()
-        print(file_str)
         l.create(file_str)
         # Upon write, the type "bytes" triggers conversion into bytes, "str" into a string.
         w = l.openw(file_str, key_type="bytes", value_type="str")
@@ -168,83 +174,77 @@ class Test(unittest.TestCase):
 
     # Shell
 
-    # Shell.cat -> Functional.map -> Functional.flatmap -> Functional.foldl -> ClusterReader.openr/KafkaReader.foldl/ClusterReader.close -> ClusterReader.consume
+    # Shell.cat -> Functional.map -> Functional.flatmap -> Functional.foldl -> LocalReader.openr/FilesystemReader.foldl/LocalReader.close -> LocalReader.consume
     def test_cat(self):
-        c = Local(config_str)
+        l = self.get_local()
         #
         file_str = self.create_test_file_name()
-        c.create(file_str)
-        w = c.openw(file_str)
-        w.produce(self.snack_str_list)
+        l.create(file_str)
+        w = l.openw(file_str)
+        w.write(self.snack_str_list)
         w.close()
         #
-        group_str1 = self.create_test_group_name()
-        (message_dict_list1, n_int1) = c.cat(file_str, group=group_str1)
+        (message_dict_list1, n_int1) = l.cat(file_str)
         self.assertEqual(3, len(message_dict_list1))
         self.assertEqual(3, n_int1)
         value_str_list1 = [message_dict["value"] for message_dict in message_dict_list1]
         self.assertEqual(value_str_list1, self.snack_str_list)
         #
-        group_str2 = self.create_test_group_name()
-        (message_dict_list2, n_int2) = c.cat(file_str, group=group_str2, offsets={0:1}, n=1)
+        (message_dict_list2, n_int2) = l.cat(file_str, offset=1, n=1)
         self.assertEqual(1, len(message_dict_list2))
         self.assertEqual(1, n_int2)
         self.assertEqual(message_dict_list2[0]["value"], self.snack_str_list[1])
 
     # Shell.head -> Shell.cat
     def test_head(self):
-        c = Local(config_str)
+        l = self.get_local()
         #
         file_str = self.create_test_file_name()
-        c.create(file_str)
-        w = c.openw(file_str, value_type="avro", value_schema=self.avro_schema_str)
-        w.produce(self.snack_str_list)
+        l.create(file_str)
+        w = l.openw(file_str, value_type="json")
+        w.write(self.snack_str_list)
         w.close()
         #
-        group_str1 = self.create_test_group_name()
-        (message_dict_list1, n_int1) = c.head(file_str, group=group_str1, value_type="avro", n=3)
+        (message_dict_list1, n_int1) = l.head(file_str, value_type="str", n=3)
         self.assertEqual(3, len(message_dict_list1))
         self.assertEqual(3, n_int1)
-        value_dict_list1 = [message_dict["value"] for message_dict in message_dict_list1]
-        self.assertEqual(value_dict_list1, self.snack_dict_list)
+        value_str_list1 = [message_dict["value"] for message_dict in message_dict_list1]
+        self.assertEqual(value_str_list1, self.snack_str_list)
         #
-        group_str2 = self.create_test_group_name()
-        (message_dict_list2, n_int2) = c.head(file_str, group=group_str2, offsets={0:1}, value_type="avro", n=1)
-        self.assertEqual(1, len(message_dict_list2))
-        self.assertEqual(1, n_int2)
-        self.assertEqual(message_dict_list2[0]["value"], self.snack_dict_list[1])
-
-    # Shell.tail -> Functional.map -> Functional.flatmap -> Functional.foldl -> ClusterReader.openr/KafkaReader.foldl/ClusterReader.close -> ClusterReader.consume
-    def test_tail(self):
-        c = Local(config_str)
-        #
-        file_str = self.create_test_file_name()
-        c.create(file_str)
-        w = c.openw(file_str, value_type="protobuf", value_schema=self.protobuf_schema_str)
-        w.produce(self.snack_dict_list)
-        w.close()
-        #
-        group_str1 = self.create_test_group_name()
-        (message_dict_list1, n_int1) = c.tail(file_str, group=group_str1, value_type="pb", n=3)
-        self.assertEqual(3, len(message_dict_list1))
-        self.assertEqual(3, n_int1)
-        value_dict_list1 = [message_dict["value"] for message_dict in message_dict_list1]
-        self.assertEqual(value_dict_list1, self.snack_dict_list)
-        #
-        group_str2 = self.create_test_group_name()
-        (message_dict_list2, n_int2) = c.tail(file_str, group=group_str2, value_type="pb", n=1)
+        (message_dict_list2, n_int2) = l.head(file_str, offset=2, value_type="json", n=1)
         self.assertEqual(1, len(message_dict_list2))
         self.assertEqual(1, n_int2)
         self.assertEqual(message_dict_list2[0]["value"], self.snack_dict_list[2])
 
-    # Shell.cp -> Functional.map_to -> Functional.flatmap_to -> ClusterReader.openw/Functional.foldl/ClusterReader.close -> ClusterReader.openr/KafkaReader.foldl/ClusterReader.close -> ClusterReader.consume
+    # Shell.tail -> Functional.map -> Functional.flatmap -> Functional.foldl -> LocalReader.openr/FilesystemReader.foldl/LocalReader.close -> LocalReader.consume
+    def test_tail(self):
+        l = self.get_local()
+        #
+        file_str = self.create_test_file_name()
+        l.create(file_str)
+        w = l.openw(file_str, value_type="bytes")
+        w.write(self.snack_dict_list)
+        w.close()
+        #
+        (message_dict_list1, n_int1) = l.tail(file_str, type="json", n=3)
+        self.assertEqual(3, len(message_dict_list1))
+        self.assertEqual(3, n_int1)
+        value_dict_list1 = [message_dict["value"] for message_dict in message_dict_list1]
+        self.assertEqual(value_dict_list1, self.snack_dict_list)
+        #
+        (message_dict_list2, n_int2) = l.tail(file_str, value_type="json", n=1)
+        self.assertEqual(1, len(message_dict_list2))
+        self.assertEqual(1, n_int2)
+        self.assertEqual(message_dict_list2[0]["value"], self.snack_dict_list[2])
+
+    # Shell.cp -> Functional.map_to -> Functional.flatmap_to -> LocalReader.openw/Functional.foldl/LocalReader.close -> LocalReader.openr/FilesystemReader.foldl/LocalReader.close -> LocalReader.consume
     def test_cp(self):
-        c = Local(config_str)
+        l = self.get_local()
         #
         file_str1 = self.create_test_file_name()
-        c.create(file_str1)
-        w = c.openw(file_str1, value_type="json_sr", value_schema=self.jsonschema_schema_str)
-        w.produce(self.snack_bytes_list)
+        l.create(file_str1)
+        w = l.openw(file_str1, value_type="json")
+        w.write(self.snack_bytes_list)
         w.close()
         file_str2 = self.create_test_file_name()
         #
@@ -252,67 +252,61 @@ class Test(unittest.TestCase):
             message_dict["value"]["colour"] += "ish"
             return message_dict
         #
-        group_str1 = self.create_test_group_name()
-        (read_n_int, written_n_int) = c.cp(file_str1, c, file_str2, group=group_str1, source_value_type="jsonschema", target_value_type="json", write_batch_size=2, map_function=map_ish, n=3)
+        (read_n_int, written_n_int) = l.cp(file_str1, l, file_str2, source_value_type="json", target_value_type="json", write_batch_size=2, map_function=map_ish, n=3)
         self.assertEqual(3, read_n_int)
         self.assertEqual(3, written_n_int)
         #
-        group_str2 = self.create_test_group_name()
-        (message_dict_list2, n_int2) = c.cat(file_str2, group=group_str2, value_type="json", n=1)
+        (message_dict_list2, n_int2) = l.cat(file_str2, value_type="json", n=1)
         self.assertEqual(1, len(message_dict_list2))
         self.assertEqual(1, n_int2)
         self.assertEqual(message_dict_list2[0]["value"], self.snack_ish_dict_list[0])
 
     def test_wc(self):
-        c = Local(config_str)
+        l = self.get_local()
         #
         file_str = self.create_test_file_name()
-        c.create(file_str)
-        w = c.openw(file_str, value_type="protobuf", value_schema=self.protobuf_schema_str)
-        w.produce(self.snack_dict_list)
+        l.create(file_str)
+        w = l.openw(file_str, value_type="bytes")
+        w.write(self.snack_dict_list)
         w.close()
         #
-        group_str1 = self.create_test_group_name()
-        (num_messages_int, acc_num_words_int, acc_num_bytes_int) = c.wc(file_str, group=group_str1, value_type="pb", n=2)
+        (num_messages_int, acc_num_words_int, acc_num_bytes_int) = l.wc(file_str, value_type="str", n=2)
         self.assertEqual(2, num_messages_int)
         self.assertEqual(12, acc_num_words_int)
         self.assertEqual(110, acc_num_bytes_int)
 
-    # Shell.diff -> Shell.diff_fun -> Functional.zipfoldl -> ClusterReader.openr/read/close
+    # Shell.diff -> Shell.diff_fun -> Functional.zipfoldl -> LocalReader.openr/read/close
     def test_diff(self):
-        c = Local(config_str)
+        l = self.get_local()
         #
         file_str1 = self.create_test_file_name()
-        c.create(file_str1)
-        w1 = c.openw(file_str1, value_type="protobuf", value_schema=self.protobuf_schema_str)
-        w1.produce(self.snack_str_list)
+        l.create(file_str1)
+        w1 = l.openw(file_str1, value_type="str")
+        w1.write(self.snack_str_list)
         w1.close()
         #
         file_str2 = self.create_test_file_name()
-        c.create(file_str2)
-        w2 = c.openw(file_str2, value_type="avro", value_schema=self.avro_schema_str)
-        w2.produce(self.snack_ish_dict_list)
+        l.create(file_str2)
+        w2 = l.openw(file_str2, value_type="str")
+        w2.write(self.snack_ish_dict_list)
         w2.close()
         #
-        group_str1 = self.create_test_group_name()
-        group_str2 = self.create_test_group_name()
-        (message_dict_message_dict_tuple_list, message_counter_int1, message_counter_int2) = c.diff(file_str1, c, file_str2, group1=group_str1, group2=group_str2, value_type1="pb", value_type2="avro", n=3)
+        (message_dict_message_dict_tuple_list, message_counter_int1, message_counter_int2) = l.diff(file_str1, l, file_str2, value_type1="json", value_type2="json", n=3)
         self.assertEqual(3, len(message_dict_message_dict_tuple_list))
         self.assertEqual(3, message_counter_int1)
         self.assertEqual(3, message_counter_int2)
 
-    # Shell.diff -> Shell.diff_fun -> Functional.flatmap -> Functional.foldl -> ClusterReader.open/Kafka.foldl/ClusterReader.close -> ClusterReader.consume 
+    # Shell.diff -> Shell.diff_fun -> Functional.flatmap -> Functional.foldl -> LocalReader.open/Kafka.foldl/LocalReader.close -> LocalReader.consume 
     def test_grep(self):
-        c = Local(config_str)
+        l = self.get_local()
         #
         file_str = self.create_test_file_name()
-        c.create(file_str)
-        w = c.openw(file_str, value_type="protobuf", value_schema=self.protobuf_schema_str)
-        w.produce(self.snack_str_list)
+        l.create(file_str)
+        w = l.openw(file_str, value_type="json")
+        w.write(self.snack_str_list)
         w.close()
         #
-        group_str = self.create_test_group_name()
-        (message_dict_message_dict_tuple_list, message_counter_int1, message_counter_int2) = c.grep(file_str, ".*brown.*", group=group_str, value_type="pb", n=3)
+        (message_dict_message_dict_tuple_list, message_counter_int1, message_counter_int2) = l.grep(file_str, ".*brown.*", value_type="str", n=3)
         self.assertEqual(1, len(message_dict_message_dict_tuple_list))
         self.assertEqual(1, message_counter_int1)
         self.assertEqual(3, message_counter_int2)
@@ -320,50 +314,49 @@ class Test(unittest.TestCase):
     # Functional
 
     def test_foreach(self):
-        c = Local(config_str)
+        l = self.get_local()
         #
         file_str = self.create_test_file_name()
-        c.create(file_str)
-        w = c.openw(file_str, value_type="jsonschema", value_schema=self.jsonschema_schema_str)
-        w.produce(self.snack_str_list)
+        l.create(file_str)
+        w = l.openw(file_str, value_type="json")
+        w.write(self.snack_str_list)
         w.close()
         #
         colour_str_list = []
-        c.foreach(file_str, foreach_function=lambda message_dict: colour_str_list.append(message_dict["value"]["colour"]), value_type="jsonschema")
+        l.foreach(file_str, foreach_function=lambda message_dict: colour_str_list.append(message_dict["value"]["colour"]), value_type="json")
         self.assertEqual("brown", colour_str_list[0])
         self.assertEqual("white", colour_str_list[1])
         self.assertEqual("chocolate", colour_str_list[2])
 
     def test_filter(self):
-        c = Local(config_str)
+        l = self.get_local()
         #
         file_str = self.create_test_file_name()
-        c.create(file_str)
-        w = c.openw(file_str, value_type="avro", value_schema=self.avro_schema_str)
-        w.produce(self.snack_str_list)
+        l.create(file_str)
+        w = l.openw(file_str, value_type="bytes")
+        w.write(self.snack_str_list)
         w.close()
         #
-        (message_dict_list, message_counter_int) = c.filter(file_str, filter_function=lambda message_dict: message_dict["value"]["calories"] > 100, value_type="avro")
+        (message_dict_list, message_counter_int) = l.filter(file_str, filter_function=lambda message_dict: message_dict["value"]["calories"] > 100, value_type="json")
         self.assertEqual(2, len(message_dict_list))
         self.assertEqual(3, message_counter_int)
 
     def test_filter_to(self):
-        c = Local(config_str)
+        l = self.get_local()
         #
         file_str1 = self.create_test_file_name()
-        c.create(file_str1)
-        w = c.openw(file_str1, value_type="avro", value_schema=self.avro_schema_str)
-        w.produce(self.snack_str_list)
+        l.create(file_str1)
+        w = l.openw(file_str1, value_type="json")
+        w.write(self.snack_str_list)
         w.close()
         #
         file_str2 = self.create_test_file_name()
         #
-        (read_n_int, written_n_int) = c.filter_to(file_str1, c, file_str2, filter_function=lambda message_dict: message_dict["value"]["calories"] > 100, source_value_type="avro", target_value_type="json")
+        (read_n_int, written_n_int) = l.filter_to(file_str1, l, file_str2, filter_function=lambda message_dict: message_dict["value"]["calories"] > 100, source_value_type="json", target_value_type="bytes")
         self.assertEqual(3, read_n_int)
         self.assertEqual(2, written_n_int)
         #
-        group_str = self.create_test_group_name()
-        (message_dict_list, n_int) = c.cat(file_str2, group=group_str, value_type="json", n=2)
+        (message_dict_list, n_int) = l.cat(file_str2, value_type="json", n=2)
         self.assertEqual(2, len(message_dict_list))
         self.assertEqual(2, n_int)
         self.assertEqual(500.0, message_dict_list[0]["value"]["calories"])

@@ -200,3 +200,16 @@ def dict_to_bytes(dict):
         bytes = str(dict).encode("utf-8")
     #
     return bytes
+
+
+def find_file_offset_of_line(path_file_str, line_int):
+    file_offset_int = 0
+    #
+    with open(path_file_str, 'rb') as bufferedReader:
+        for _ in range(line_int):
+            line_str = bufferedReader.readline()
+            if not line_str:
+                break
+            file_offset_int += len(line_str)
+    #
+    return file_offset_int

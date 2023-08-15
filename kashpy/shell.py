@@ -24,8 +24,8 @@ class Shell(Functional):
         def map_function(message_dict):
             return message_dict
         #
-        partition_int_offset_int_dict = self.size(resource)[resource][1]
-        kwargs["offsets"] = {partition_int: offset_int - n_int for partition_int, offset_int in partition_int_offset_int_dict.items()}
+        (offsets, offsets_arg_str) = self.get_offsets(resource, n_int)
+        kwargs[offsets_arg_str] = offsets
         #
         return self.map(resource, map_function, n, **kwargs)
 

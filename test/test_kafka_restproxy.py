@@ -1,8 +1,13 @@
+import os
 import sys
-import time
 import unittest
 import warnings
-sys.path.insert(1, "..")
+
+if os.path.basename(os.getcwd()) == "test":
+    sys.path.insert(1, "..")
+else:
+    sys.path.insert(1, ".")
+
 from kashpy.kafka.restproxy.restproxy import *
 from kashpy.helpers import *
 
@@ -67,15 +72,15 @@ class Test(unittest.TestCase):
 
     def test_acls(self):
         if principal_str:
-            c = RestProxy(config_str)
+            r = RestProxy(config_str)
             topic_str = self.create_test_topic_name()
-            c.create(topic_str)
-            c.create_acl(restype="topic", name=topic_str, resource_pattern_type="literal", principal=principal_str, host="*", operation="read", permission_type="allow")
-            acl_dict_list = c.acls()
+            r.create(topic_str)
+            r.create_acl(restype="topic", name=topic_str, resource_pattern_type="literal", principal=principal_str, host="*", operation="read", permission_type="allow")
+            acl_dict_list = r.acls()
             self.assertIn({"restype": "topic", "name": topic_str, "resource_pattern_type": "literal", 'principal': principal_str, 'host': '*', 'operation': 'read', 'permission_type': 'ALLOW'}, acl_dict_list)
-            c.delete_acl(restype="topic", name=topic_str, resource_pattern_type="literal", principal=principal_str, host="*", operation="read", permission_type="allow")
+            r.delete_acl(restype="topic", name=topic_str, resource_pattern_type="literal", principal=principal_str, host="*", operation="read", permission_type="allow")
             self.assertIn({"restype": "topic", "name": topic_str, "resource_pattern_type": "literal", 'principal': principal_str, 'host': '*', 'operation': 'read', 'permission_type': 'ALLOW'}, acl_dict_list)
-            c.delete(topic_str)
+            r.delete(topic_str)
 
     # Brokers
     
@@ -259,67 +264,67 @@ class Test(unittest.TestCase):
     # Produce/Consume
 
     def test_produce_consume_bytes_str(self):
-        c = RestProxy(config_str)
+        r = RestProxy(config_str)
         #
         topic_str = self.create_test_topic_name()
-        c.create(topic_str)
+        r.create(topic_str)
         # Upon produce, the types "bytes" and "string" trigger the conversion of bytes, strings and dictionaries to bytes on Kafka.
-        w = c.openw(topic_str, key_type="bytes", value_type="str")
+        w = r.openw(topic_str, key_type="bytes", value_type="str")
         w.write(self.snack_str_list, key=self.snack_str_list)
         w.close()
-        self.assertEqual(c.size(topic_str)[topic_str][0], 3)
+        self.assertEqual(r.topics(topic_str, size=True, partitions=True)[topic_str][0], 3)
         #
         group_str = self.create_test_group_name()
         # Upon consume, the type "str" triggers the conversion into a string, and "bytes" into bytes.
-        r = c.openr(topic_str, group=group_str, key_type="str", value_type="bytes")
-        message_dict_list = r.consume(n=3)
+        reader = r.openr(topic_str, group=group_str, key_type="str", value_type="bytes")
+        message_dict_list = reader.consume(n=3)
         key_str_list = [message_dict["key"] for message_dict in message_dict_list]
         value_bytes_list = [message_dict["value"] for message_dict in message_dict_list]
         self.assertEqual(key_str_list, self.snack_str_list)
         self.assertEqual(value_bytes_list, self.snack_bytes_list)
-        r.close()
+        reader.close()
 
     def test_produce_consume_json(self):
-        c = RestProxy(config_str)
+        r = RestProxy(config_str)
         #
         topic_str = self.create_test_topic_name()
-        c.create(topic_str)
+        r.create(topic_str)
         # Upon produce, the type "json" triggers the conversion of bytes, strings and dictionaries to bytes on Kafka.
-        w = c.openw(topic_str, key_type="json", value_type="json")
+        w = r.openw(topic_str, key_type="json", value_type="json")
         w.write(self.snack_dict_list, key=self.snack_str_list)
         w.close()
-        self.assertEqual(c.size(topic_str)[topic_str][0], 3)
+        self.assertEqual(r.topics(topic_str, size=True, partitions=True)[topic_str][0], 3)
         #
         group_str = self.create_test_group_name()
         # Upon consume, the type "json" triggers the conversion into a dictionary.
-        r = c.openr(topic_str, group=group_str, key_type="json", value_type="json")
-        message_dict_list = r.read(n=3)
+        reader = r.openr(topic_str, group=group_str, key_type="json", value_type="json")
+        message_dict_list = reader.read(n=3)
         key_dict_list = [message_dict["key"] for message_dict in message_dict_list]
         value_dict_list = [message_dict["value"] for message_dict in message_dict_list]
         self.assertEqual(key_dict_list, self.snack_dict_list)
         self.assertEqual(value_dict_list, self.snack_dict_list)
-        r.close()
+        reader.close()
 
     def test_produce_consume_protobuf(self):
-        c = RestProxy(config_str)
+        r = RestProxy(config_str)
         #
         topic_str = self.create_test_topic_name()
-        c.create(topic_str)
+        r.create(topic_str)
         # Upon produce, the type "protobuf" (alias = "pb") triggers the conversion of bytes, strings and dictionaries into Protobuf-encoded bytes on Kafka.
-        w = c.openw(topic_str, key_type="protobuf", value_type="pb", key_schema=self.protobuf_schema_str, value_schema=self.protobuf_schema_str)
+        w = r.openw(topic_str, key_type="protobuf", value_type="pb", key_schema=self.protobuf_schema_str, value_schema=self.protobuf_schema_str)
         w.write(self.snack_dict_list, key=self.snack_str_list)
         w.close()
-        self.assertEqual(c.size(topic_str)[topic_str][0], 3)
+        self.assertEqual(r.topics(topic_str, size=True, partitions=True)[topic_str][0], 3)
         #
         group_str = self.create_test_group_name()
         # Upon consume, the type "protobuf" (alias = "pb") triggers the conversion into a dictionary.
-        r = c.openr(topic_str, group=group_str, key_type="pb", value_type="protobuf")
-        message_dict_list = r.read(n=3)
+        reader = r.openr(topic_str, group=group_str, key_type="pb", value_type="protobuf")
+        message_dict_list = reader.read(n=3)
         key_dict_list = [message_dict["key"] for message_dict in message_dict_list]
         value_dict_list = [message_dict["value"] for message_dict in message_dict_list]
         self.assertEqual(key_dict_list, self.snack_dict_list)
         self.assertEqual(value_dict_list, self.snack_dict_list)
-        r.close()
+        reader.close()
 
     def test_produce_consume_avro(self):
         r = RestProxy(config_str)
@@ -330,7 +335,7 @@ class Test(unittest.TestCase):
         w = r.openw(topic_str, key_type="avro", value_type="avro", key_schema=self.avro_schema_str, value_schema=self.avro_schema_str)
         w.write(self.snack_dict_list, key=self.snack_bytes_list)
         w.close()
-        self.assertEqual(r.size(topic_str)[topic_str][0], 3)
+        self.assertEqual(r.topics(topic_str, size=True, partitions=True)[topic_str][0], 3)
         #
         group_str = self.create_test_group_name()
         # Upon consume, the types "protobuf" (alias = "pb") and "avro" trigger the conversion into a dictionary.
@@ -351,7 +356,7 @@ class Test(unittest.TestCase):
         w = r.openw(topic_str, key_type="json_sr", value_type="jsonschema", key_schema=self.jsonschema_schema_str, value_schema=self.jsonschema_schema_str)
         w.write(self.snack_dict_list, key=self.snack_str_list)
         w.close()
-        self.assertEqual(r.size(topic_str)[topic_str][0], 3)
+        self.assertEqual(r.topics(topic_str, size=True, partitions=True)[topic_str][0], 3)
         #
         group_str = self.create_test_group_name()
         # Upon consume, the type "jsonschema" (alias = "json_sr") triggers the conversion into a dictionary.
@@ -550,7 +555,8 @@ class Test(unittest.TestCase):
         w.close()
         #
         colour_str_list = []
-        r.foreach(topic_str, foreach_function=lambda message_dict: colour_str_list.append(message_dict["value"]["colour"]), type="jsonschema")
+        group_str = self.create_test_group_name()
+        r.foreach(topic_str, group=group_str, foreach_function=lambda message_dict: colour_str_list.append(message_dict["value"]["colour"]), type="jsonschema")
         self.assertEqual("brown", colour_str_list[0])
         self.assertEqual("white", colour_str_list[1])
         self.assertEqual("chocolate", colour_str_list[2])
@@ -564,7 +570,8 @@ class Test(unittest.TestCase):
         w.write(self.snack_str_list)
         w.close()
         #
-        (message_dict_list, message_counter_int) = r.filter(topic_str, filter_function=lambda message_dict: message_dict["value"]["calories"] > 100, type="avro")
+        group_str = self.create_test_group_name()
+        (message_dict_list, message_counter_int) = r.filter(topic_str, group=group_str, filter_function=lambda message_dict: message_dict["value"]["calories"] > 100, type="avro")
         self.assertEqual(2, len(message_dict_list))
         self.assertEqual(3, message_counter_int)
 
@@ -579,12 +586,13 @@ class Test(unittest.TestCase):
         #
         topic_str2 = self.create_test_topic_name()
         #
-        (read_n_int, written_n_int) = r.filter_to(topic_str1, r, topic_str2, filter_function=lambda message_dict: message_dict["value"]["calories"] > 100, source_type="avro", target_type="json")
+        group_str1 = self.create_test_group_name()
+        (read_n_int, written_n_int) = r.filter_to(topic_str1, r, topic_str2, group=group_str1, filter_function=lambda message_dict: message_dict["value"]["calories"] > 100, source_type="avro", target_type="json")
         self.assertEqual(3, read_n_int)
         self.assertEqual(2, written_n_int)
         #
-        group_str = self.create_test_group_name()
-        (message_dict_list, n_int) = r.cat(topic_str2, group=group_str, type="json")
+        group_str2 = self.create_test_group_name()
+        (message_dict_list, n_int) = r.cat(topic_str2, group=group_str2, type="json")
         self.assertEqual(2, len(message_dict_list))
         self.assertEqual(2, n_int)
         self.assertEqual(500.0, message_dict_list[0]["value"]["calories"])
