@@ -1,6 +1,6 @@
 from azure.storage.blob import BlobClient
 
-from kashpy.filesystem.filesystem_reader import FileSystemReader
+from kashpy.fs.fs_reader import FSReader
 
 # Constants
 
@@ -8,7 +8,7 @@ ALL_MESSAGES = -1
 
 #
 
-class AzureBlobReader(FileSystemReader):
+class AzureBlobReader(FSReader):
     def __init__(self, azureblob_obj, file, **kwargs):
         super().__init__(azureblob_obj, file, **kwargs)
         #
@@ -16,6 +16,8 @@ class AzureBlobReader(FileSystemReader):
         #
         blobProperties_dict = self.blobClient.get_blob_properties()
         self.file_size_int = blobProperties_dict["size"]
+        #
+        self.file_offset_int = self.find_file_offset_by_offset(**kwargs)
 
     #
 

@@ -1,11 +1,11 @@
-from kashpy.filesystem.filesystem import FileSystem
-from kashpy.filesystem.local.local_admin import LocalAdmin
-from kashpy.filesystem.local.local_reader import LocalReader
-from kashpy.filesystem.local.local_writer import LocalWriter
+from kashpy.fs.fs import FS
+from kashpy.fs.local.local_admin import LocalAdmin
+from kashpy.fs.local.local_reader import LocalReader
+from kashpy.fs.local.local_writer import LocalWriter
 
 #
 
-class Local(FileSystem):
+class Local(FS):
     def __init__(self, config_str):
         super().__init__("locals", config_str, ["local"], [])
     

@@ -112,6 +112,29 @@ class Storage(Shell):
             config_str_list.sort()
             return config_str_list
 
+    def is_headers_tuple_list(self, headers):
+        return isinstance(headers, list) and len(headers) > 0 and all(isinstance(header_tuple, tuple) and len(header_tuple) == 2 and isinstance(header_tuple[0], str) for header_tuple in headers)
+
+
+    def is_headers_dict(self, headers):
+        return isinstance(headers, dict) and len(headers) > 0 and all(isinstance(header_key, str) for header_key in headers.keys())
+
+
+    def is_headers(self, headers):
+        return self.is_headers_tuple_list(headers) or self.is_headers_dict(headers)
+
+    def headers_to_headers_str_bytes_tuple_list(self, headers):
+        if headers is None:
+            headers_str_bytes_tuple_list = None
+        elif self.is_headers_tuple_list(headers):
+            headers_str_bytes_tuple_list = [(header_tuple[0], bytes_or_str_to_bytes(header_tuple[1])) for header_tuple in headers]
+        elif self.is_headers_dict(headers):
+            headers_str_bytes_tuple_list = [(header_key_str, bytes_or_str_to_bytes(header_value_str_or_bytes)) for header_key_str, header_value_str_or_bytes in headers.items()]
+        else:
+            raise Exception("Type error: Headers must either be a list of tuples of strings and bytes, or a dictionary of strings and bytes.")
+        #
+        return headers_str_bytes_tuple_list
+
     # Helpers
 
     def get_key_value_type_tuple(self, **kwargs):
@@ -129,28 +152,3 @@ class Storage(Shell):
             value_type = kwargs["value_type"]
         #
         return (key_type, value_type)
-
-
-    def is_headers_tuple_list(self, headers):
-        return isinstance(headers, list) and len(headers) > 0 and all(isinstance(header_tuple, tuple) and len(header_tuple) == 2 and isinstance(header_tuple[0], str) for header_tuple in headers)
-
-
-    def is_headers_dict(self, headers):
-        return isinstance(headers, dict) and len(headers) > 0 and all(isinstance(header_key, str) for header_key in headers.keys())
-
-
-    def is_headers(self, headers):
-        return self.is_headers_tuple_list(headers) or self.is_headers_dict(headers)
-
-    
-    def headers_to_headers_str_bytes_tuple_list(self, headers):
-        if headers is None:
-            headers_str_bytes_tuple_list = None
-        elif self.is_headers_tuple_list(headers):
-            headers_str_bytes_tuple_list = [(header_tuple[0], bytes_or_str_to_bytes(header_tuple[1])) for header_tuple in headers]
-        elif self.is_headers_dict(headers):
-            headers_str_bytes_tuple_list = [(header_key_str, bytes_or_str_to_bytes(header_value_str_or_bytes)) for header_key_str, header_value_str_or_bytes in headers.items()]
-        else:
-            raise Exception("Type error: Headers must either be a list of tuples of strings and bytes, or a dictionary of strings and bytes.")
-        #
-        return headers_str_bytes_tuple_list

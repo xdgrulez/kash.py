@@ -1,5 +1,5 @@
 azure-storage-blob
-confluent_kafka>=2.0.2
+confluent_kafka>=2.2.0
 fastavro
 grpcio-tools
 jsonschema

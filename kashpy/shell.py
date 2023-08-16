@@ -19,13 +19,15 @@ class Shell(Functional):
         return self.cat(resource, n, **kwargs)
 
     def tail(self, resource, n=10, **kwargs):
+        resource_str = resource
         n_int = n
         #
         def map_function(message_dict):
             return message_dict
         #
-        (offsets, offsets_arg_str) = self.get_offsets(resource, n_int)
-        kwargs[offsets_arg_str] = offsets
+        partitions_int = self.partitions(resource_str)[resource_str]
+        partition_int_offset_int_dict = {partition_int: -n_int for partition_int in range(partitions_int)}
+        kwargs["offsets"] = partition_int_offset_int_dict
         #
         return self.map(resource, map_function, n, **kwargs)
 
@@ -36,7 +38,7 @@ class Shell(Functional):
 
     #
 
-    def wc(self, topic_str, **kwargs):
+    def wc(self, resource, **kwargs):
         def foldl_function(acc, message_dict):
             if message_dict["key"] is None:
                 key_str = ""
@@ -56,7 +58,7 @@ class Shell(Functional):
             acc_num_bytes_int = acc[1] + num_bytes_key_int + num_bytes_value_int
             return (acc_num_words_int, acc_num_bytes_int)
         #
-        ((acc_num_words_int, acc_num_bytes_int), num_messages_int) = self.foldl(topic_str, foldl_function, (0, 0), **kwargs)
+        ((acc_num_words_int, acc_num_bytes_int), num_messages_int) = self.foldl(resource, foldl_function, (0, 0), **kwargs)
         return (num_messages_int, acc_num_words_int, acc_num_bytes_int)
 
     #
@@ -84,7 +86,7 @@ class Shell(Functional):
 
     #
 
-    def grep_fun(self, topic_str, match_function, n=ALL_MESSAGES, **kwargs):
+    def grep_fun(self, resource, match_function, n=ALL_MESSAGES, **kwargs):
         def flatmap_function(message_dict):
             if match_function(message_dict):
                 if self.verbose() > 0:
@@ -95,15 +97,18 @@ class Shell(Functional):
             else:
                 return []
         #
-        (matching_message_dict_list, message_counter_int) = self.flatmap(topic_str, flatmap_function, n=n, **kwargs)
+        (matching_message_dict_list, message_counter_int) = self.flatmap(resource, flatmap_function, n=n, **kwargs)
         #
         return matching_message_dict_list, len(matching_message_dict_list), message_counter_int
 
-    def grep(self, topic_str, re_pattern_str, n=ALL_MESSAGES, **kwargs):
+    def grep(self, resource, re_pattern_str, n=ALL_MESSAGES, **kwargs):
         def match_function(message_dict):
             pattern = re.compile(re_pattern_str)
             key_str = str(message_dict["key"])
             value_str = str(message_dict["value"])
             return pattern.match(key_str) is not None or pattern.match(value_str) is not None
         #
-        return self.grep_fun(topic_str, match_function, n=n, **kwargs)
+        return self.grep_fun(resource, match_function, n=n, **kwargs)
+
+    def stat(self, resource, **kwargs):
+        return self.cat(resource, **kwargs)[1]

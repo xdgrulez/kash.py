@@ -3,10 +3,10 @@ import tempfile
 
 from azure.storage.blob import BlobClient
 
-from kashpy.filesystem.filesystem_writer import FileSystemWriter
+from kashpy.fs.fs_writer import FSWriter
 
 
-class AzureBlobWriter(FileSystemWriter):
+class AzureBlobWriter(FSWriter):
     def __init__(self, azureblob_obj, file, **kwargs):
         super().__init__(azureblob_obj, file, **kwargs)
         #

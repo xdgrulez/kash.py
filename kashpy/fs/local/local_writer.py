@@ -1,9 +1,9 @@
 import os
 
-from kashpy.filesystem.filesystem_writer import FileSystemWriter
+from kashpy.fs.fs_writer import FSWriter
 
 
-class LocalWriter(FileSystemWriter):
+class LocalWriter(FSWriter):
     def __init__(self, local_obj, file, **kwargs):
         super().__init__(local_obj, file, **kwargs)
         #

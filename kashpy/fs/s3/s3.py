@@ -1,11 +1,11 @@
-from kashpy.filesystem.filesystem import FileSystem
-from kashpy.filesystem.s3.s3_admin import S3Admin
-from kashpy.filesystem.s3.s3_reader import S3Reader
-from kashpy.filesystem.s3.s3_writer import S3Writer
+from kashpy.fs.fs import FS
+from kashpy.fs.s3.s3_admin import S3Admin
+from kashpy.fs.s3.s3_reader import S3Reader
+from kashpy.fs.s3.s3_writer import S3Writer
 
 #
 
-class S3(FileSystem):
+class S3(FS):
     def __init__(self, config_str):
         super().__init__("s3s", config_str, ["s3"], [])
     

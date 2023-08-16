@@ -13,10 +13,10 @@ class RestProxyReader(KafkaReader):
         # Consumer Config
         #
         self.consumer_config_dict = {}
-        self.consumer_config_dict["auto.offset.reset"] = self.kafka_obj.auto_offset_reset()
-        self.consumer_config_dict["auto.commit.enable"] = self.kafka_obj.auto_commit_enable()
-        self.consumer_config_dict["fetch.min.bytes"] = self.kafka_obj.fetch_min_bytes()
-        self.consumer_config_dict["consumer.request.timeout.ms"] = self.kafka_obj.consumer_request_timeout_ms()
+        self.consumer_config_dict["auto.offset.reset"] = restproxy_obj.auto_offset_reset()
+        self.consumer_config_dict["auto.commit.enable"] = restproxy_obj.auto_commit_enable()
+        self.consumer_config_dict["fetch.min.bytes"] = restproxy_obj.fetch_min_bytes()
+        self.consumer_config_dict["consumer.request.timeout.ms"] = restproxy_obj.consumer_request_timeout_ms()
         if "config" in kwargs:
             for key_str, value in kwargs["config"].items():
                 if key_str == "enable.auto.commit":
@@ -32,7 +32,7 @@ class RestProxyReader(KafkaReader):
     #
 
     def subscribe(self):
-        (rest_proxy_url_str, auth_str_tuple) = self.kafka_obj.get_url_str_auth_str_tuple_tuple()
+        (rest_proxy_url_str, auth_str_tuple) = self.storage_obj.get_url_str_auth_str_tuple_tuple()
         #
         url_str1 = f"{rest_proxy_url_str}/consumers/{self.group_str}"
         headers_dict1 = {"Content-Type": "application/vnd.kafka.v2+json"}
@@ -51,33 +51,33 @@ class RestProxyReader(KafkaReader):
         #
         payload_dict1 = {"format": type_str}
         payload_dict1.update(self.consumer_config_dict)
-        response_dict1 = post(url_str1, headers_dict1, payload_dict1, auth_str_tuple=auth_str_tuple, retries=self.kafka_obj.requests_num_retries())
+        response_dict1 = post(url_str1, headers_dict1, payload_dict1, auth_str_tuple=auth_str_tuple, retries=self.storage_obj.requests_num_retries())
         self.instance_id_str = response_dict1["instance_id"]
         #
         url_str2 = f"{rest_proxy_url_str}/consumers/{self.group_str}/instances/{self.instance_id_str}/subscription"
         headers_dict2 = {"Content-Type": "application/vnd.kafka.v2+json"}
         payload_dict2 = {"topics": self.topic_str_list}
-        post(url_str2, headers_dict2, payload_dict2, auth_str_tuple=auth_str_tuple, retries=self.kafka_obj.requests_num_retries())
+        post(url_str2, headers_dict2, payload_dict2, auth_str_tuple=auth_str_tuple, retries=self.storage_obj.requests_num_retries())
         #
         return self.topic_str_list, self.group_str
     
     def unsubscribe(self):
-        (rest_proxy_url_str, auth_str_tuple) = self.kafka_obj.get_url_str_auth_str_tuple_tuple()
+        (rest_proxy_url_str, auth_str_tuple) = self.storage_obj.get_url_str_auth_str_tuple_tuple()
         #
         url_str = f"{rest_proxy_url_str}/consumers/{self.group_str}/instances/{self.instance_id_str}/subscription"
         headers_dict = {"Content-Type": "application/vnd.kafka.v2+json"}
-        delete(url_str, headers_dict, auth_str_tuple=auth_str_tuple, retries=self.kafka_obj.requests_num_retries())
+        delete(url_str, headers_dict, auth_str_tuple=auth_str_tuple, retries=self.storage_obj.requests_num_retries())
         #
         return self.topic_str_list, self.group_str
 
     def close(self):
         self.unsubscribe()
         #
-        (rest_proxy_url_str, auth_str_tuple) = self.kafka_obj.get_url_str_auth_str_tuple_tuple()
+        (rest_proxy_url_str, auth_str_tuple) = self.storage_obj.get_url_str_auth_str_tuple_tuple()
         #
         url_str = f"{rest_proxy_url_str}/consumers/{self.group_str}/instances/{self.instance_id_str}"
         headers_dict = {"Content-Type": "application/vnd.kafka.v2+json"}
-        delete(url_str, headers_dict, auth_str_tuple=auth_str_tuple, retries=self.kafka_obj.requests_num_retries())
+        delete(url_str, headers_dict, auth_str_tuple=auth_str_tuple, retries=self.storage_obj.requests_num_retries())
         #
         return self.topic_str_list, self.group_str
 
@@ -87,7 +87,7 @@ class RestProxyReader(KafkaReader):
         timeout_int = kwargs["timeout"] if "timeout" in kwargs else None
         max_bytes_int = kwargs["max_bytes"] if "max_bytes" in kwargs else None 
         #
-        (rest_proxy_url_str, auth_str_tuple) = self.kafka_obj.get_url_str_auth_str_tuple_tuple()
+        (rest_proxy_url_str, auth_str_tuple) = self.storage_obj.get_url_str_auth_str_tuple_tuple()
         #
         if timeout_int is None:
             timeout_int = self.consumer_config_dict["consumer.request.timeout.ms"]
@@ -126,8 +126,8 @@ class RestProxyReader(KafkaReader):
 
         #
         message_dict_list = []
-        for _ in range(0, self.kafka_obj.consume_num_attempts()):
-            response_dict = get(url_str, headers_dict, auth_str_tuple=auth_str_tuple, retries=self.kafka_obj.requests_num_retries())
+        for _ in range(0, self.storage_obj.consume_num_attempts()):
+            response_dict = get(url_str, headers_dict, auth_str_tuple=auth_str_tuple, retries=self.storage_obj.requests_num_retries())
             #
             message_dict_list += [{"headers": None, "topic": rest_message_dict["topic"], "partition": rest_message_dict["partition"], "offset": rest_message_dict["offset"], "timestamp": None, "key": decode(rest_message_dict["key"], True), "value": decode(rest_message_dict["value"], False)} for rest_message_dict in response_dict]
         #
@@ -138,7 +138,7 @@ class RestProxyReader(KafkaReader):
     def commit(self, offsets=None):
         offsets_dict = offsets
         #
-        (rest_proxy_url_str, auth_str_tuple) = self.kafka_obj.get_url_str_auth_str_tuple_tuple()
+        (rest_proxy_url_str, auth_str_tuple) = self.storage_obj.get_url_str_auth_str_tuple_tuple()
         #
         headers_dict = {"Content-Type": "application/vnd.kafka.v2+json"}
         #
@@ -149,20 +149,20 @@ class RestProxyReader(KafkaReader):
             payload_dict = {"offsets": rest_offsets_dict_list}
         #
         url_str = f"{rest_proxy_url_str}/consumers/{self.group_str}/instances/{self.instance_id_str}/offsets"
-        response_dict = post(url_str, headers_dict, payload_dict, auth_str_tuple=auth_str_tuple, retries=self.kafka_obj.requests_num_retries())
+        response_dict = post(url_str, headers_dict, payload_dict, auth_str_tuple=auth_str_tuple, retries=self.storage_obj.requests_num_retries())
         #
         return response_dict
 
     def offsets(self):
-        (rest_proxy_url_str, auth_str_tuple) = self.kafka_obj.get_url_str_auth_str_tuple_tuple()
+        (rest_proxy_url_str, auth_str_tuple) = self.storage_obj.get_url_str_auth_str_tuple_tuple()
         #
         url_str1 = f"{rest_proxy_url_str}/consumers/{self.group_str}/instances/{self.instance_id_str}/assignments"
         headers_dict1 = {"Accept": "application/vnd.kafka.v2+json"}
-        response_dict1 = get(url_str1, headers_dict1, auth_str_tuple=auth_str_tuple, retries=self.kafka_obj.requests_num_retries())
+        response_dict1 = get(url_str1, headers_dict1, auth_str_tuple=auth_str_tuple, retries=self.storage_obj.requests_num_retries())
         #
         url_str2 = f"{rest_proxy_url_str}/consumers/{self.group_str}/instances/{self.instance_id_str}/offsets"
         headers_dict2 = {"Content-Type": "application/vnd.kafka.v2+json"}
-        response_dict2 = get(url_str2, headers_dict2, response_dict1, auth_str_tuple=auth_str_tuple, retries=self.kafka_obj.requests_num_retries())
+        response_dict2 = get(url_str2, headers_dict2, response_dict1, auth_str_tuple=auth_str_tuple, retries=self.storage_obj.requests_num_retries())
         #
         offsets_dict = {}
         for rest_topic_partition_offset_dict in response_dict2["offsets"]:

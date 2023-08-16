@@ -8,13 +8,13 @@ CURRENT_TIME = 0
 
 #
 
-class FileSystemWriter():
-    def __init__(self, filesystem_obj, file, **kwargs):
-        self.filesystem_obj = filesystem_obj
+class FSWriter():
+    def __init__(self, fs_obj, file, **kwargs):
+        self.fs_obj = fs_obj
         #
         self.file_str = file
         #
-        (self.key_type_str, self.value_type_str) = filesystem_obj.get_key_value_type_tuple(**kwargs)
+        (self.key_type_str, self.value_type_str) = fs_obj.get_key_value_type_tuple(**kwargs)
 
     #
 
@@ -29,7 +29,7 @@ class FileSystemWriter():
         #
         timestamp_int_list = timestamp if isinstance(timestamp, list) else [timestamp for _ in value_list]
         headers_list = headers if isinstance(headers, list) and len(headers) == len(value_list) else [headers for _ in value_list]
-        headers_str_bytes_tuple_list_list = [self.filesystem_obj.headers_to_headers_str_bytes_tuple_list(headers) for headers in headers_list]
+        headers_str_bytes_tuple_list_list = [self.fs_obj.headers_to_headers_str_bytes_tuple_list(headers) for headers in headers_list]
         #
         def serialize(payload, key_bool):
             type_str = self.key_type_str if key_bool else self.value_type_str

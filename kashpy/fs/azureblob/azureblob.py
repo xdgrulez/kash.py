@@ -1,11 +1,11 @@
-from kashpy.filesystem.filesystem import FileSystem
-from kashpy.filesystem.azureblob.azureblob_admin import AzureBlobAdmin
-from kashpy.filesystem.azureblob.azureblob_reader import AzureBlobReader
-from kashpy.filesystem.azureblob.azureblob_writer import AzureBlobWriter
+from kashpy.fs.fs import FS
+from kashpy.fs.azureblob.azureblob_admin import AzureBlobAdmin
+from kashpy.fs.azureblob.azureblob_reader import AzureBlobReader
+from kashpy.fs.azureblob.azureblob_writer import AzureBlobWriter
 
 #
 
-class AzureBlob(FileSystem):
+class AzureBlob(FS):
     def __init__(self, config_str):
         super().__init__("azureblobs", config_str, ["azure_blob"], [])
     

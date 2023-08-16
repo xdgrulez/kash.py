@@ -1,7 +1,7 @@
 import ast
 import json
 
-from kashpy.helpers import bytes_to_dict, bytes_to_str
+from kashpy.storage_reader import StorageReader
 
 # Constants
 
@@ -9,20 +9,27 @@ ALL_MESSAGES = -1
 
 #
 
-class FileSystemReader():
-    def __init__(self, filesystem_obj, file, **kwargs):
-        self.filesystem_obj = filesystem_obj
+class FSReader(StorageReader):
+    def __init__(self, fs_obj, *files, **kwargs):
+        super().__init__(fs_obj, *files, **kwargs)
         #
-        self.file_str = file
+        if isinstance(self.resource_str_list, list) and len(self.resource_str_list) > 1:
+            raise Exception("Reading from multiple files is not supported.")
         #
-        (self.key_type_str, self.value_type_str) = filesystem_obj.get_key_value_type_tuple(**kwargs)
+        self.file_str = self.resource_str_list[0]
+        #
+        self.offset_int = self.resource_str_offsets_dict_dict[self.file_str][0] if self.resource_str_offsets_dict_dict is not None else 0
 
     #
     
     def foldl(self, foldl_function, initial_acc, n=ALL_MESSAGES, **kwargs):
         n_int = n
         #
-        read_batch_size_int = kwargs["read_batch_size"] if "read_batch_size" in kwargs else self.filesystem_obj.read_batch_size()
+        read_batch_size_int = kwargs["read_batch_size"] if "read_batch_size" in kwargs else self.storage_obj.read_batch_size()
+        #
+        message_separator_bytes = kwargs["message_separator"] if "message_separator" in kwargs else self.storage_obj.message_separator()
+        #
+        file_offset_int = kwargs["file_offset"] if "file_offset" in kwargs else self.file_offset_int
         #
         size_int = self.file_size_int
         if read_batch_size_int > size_int:
@@ -32,10 +39,9 @@ class FileSystemReader():
         message_counter_int = 0
         break_bool = False
         acc = initial_acc
-        file_offset_int = 0
         #
-        def acc_bytes_to_acc(acc, bytes, break_bool, message_counter_int):
-            serialized_message_dict = ast.literal_eval(bytes.decode("utf-8"))
+        def acc_bytes_to_acc(acc, buffer_bytes, break_bool, message_counter_int):
+            serialized_message_dict = ast.literal_eval(buffer_bytes.decode("utf-8"))
             #
             deserialized_message_dict = self.deserialize(serialized_message_dict, self.key_type_str, self.value_type_str)
             #
@@ -59,9 +65,10 @@ class FileSystemReader():
                 break
             #
             buffer_bytes += batch_bytes
-            message_bytes_list = buffer_bytes.split(b"\n")
+            message_bytes_list = buffer_bytes.split(message_separator_bytes)
             for message_bytes in message_bytes_list[:-1]:
                 (acc, break_bool, message_counter_int) = acc_bytes_to_acc(acc, message_bytes, break_bool, message_counter_int)
+                #
                 if break_bool:
                     break
                 #
@@ -127,49 +134,57 @@ class FileSystemReader():
 
     #
 
-    def find_file_offset_of_message(self, message_int, **kwargs):
-
-
-self, foldl_function, initial_acc, n=ALL_MESSAGES, **kwargs
-
-
-
-read_batch_size_int = kwargs["read_batch_size"] if "read_batch_size" in kwargs else self.filesystem_obj.read_batch_size()
+    def find_file_offset_by_offset(self, **kwargs):
+        if self.offset_int == 0:
+            return 0
+        #
+        read_batch_size_int = kwargs["read_batch_size"] if "read_batch_size" in kwargs else self.storage_obj.read_batch_size()
+        #
+        message_separator_bytes = kwargs["message_separator"] if "message_separator" in kwargs else self.storage_obj.message_separator()
         #
         size_int = self.file_size_int
         if read_batch_size_int > size_int:
             read_batch_size_int = size_int
         #
+        buffer_bytes = b""
+        file_offset_int = 0
+        message_counter_int = 0
+        break_bool = False
+        #
         while True:
+            running_file_offset_int = file_offset_int
+            #
             if file_offset_int > size_int:
                 batch_bytes = b""
             else:
                 batch_bytes = self.read_bytes(read_batch_size_int, file_offset_int=file_offset_int, **kwargs)
                 file_offset_int += len(batch_bytes)
-                
+            #
             if batch_bytes == b"":
                 if buffer_bytes != b"":
-                    (acc, break_bool, message_counter_int) = acc_bytes_to_acc(acc, buffer_bytes, break_bool, message_counter_int)
+                    running_file_offset_int += len(buffer_bytes)
                 break
             #
             buffer_bytes += batch_bytes
-            message_bytes_list = buffer_bytes.split(b"\n")
+            message_bytes_list = buffer_bytes.split(message_separator_bytes)
             for message_bytes in message_bytes_list[:-1]:
-                (acc, break_bool, message_counter_int) = acc_bytes_to_acc(acc, message_bytes, break_bool, message_counter_int)
+                message_counter_int += 1
+                #
+                running_file_offset_int += len(message_bytes) + 1
+                #
                 if break_bool:
                     break
                 #
-                if n_int != ALL_MESSAGES:
-                    if message_counter_int >= n_int:
-                        break_bool = True
-                        break
+                if message_counter_int >= self.offset_int:
+                    break_bool = True
+                    break
             #
             if break_bool:
                 break
             #
             buffer_bytes = message_bytes_list[-1]
         #
-        return acc
+        return running_file_offset_int
 
     #
 

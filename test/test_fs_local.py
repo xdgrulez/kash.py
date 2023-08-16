@@ -9,7 +9,7 @@ if os.path.basename(os.getcwd()) == "test":
 else:
     sys.path.insert(1, ".")
 
-from kashpy.filesystem.local.local import *
+from kashpy.fs.local.local import *
 from kashpy.helpers import *
 
 #
@@ -67,6 +67,7 @@ class Test(unittest.TestCase):
 
     def test_create_delete(self):
         l = self.get_local()
+        x = l.root_dir()
         #
         file_str = self.create_test_file_name()
         w = l.openw(file_str, overwrite=True)
@@ -81,9 +82,11 @@ class Test(unittest.TestCase):
         l = self.get_local()
         #
         file_str = self.create_test_file_name()
+        # size=False, partitions=False, filesize=False
         old_file_str_list = l.ls(["test_*"])
         self.assertNotIn(file_str, old_file_str_list)
         l.touch(file_str)
+        # size=False, partitions=False, filesize=False
         new_file_str_list = l.ls(["test_*"])
         self.assertIn(file_str, new_file_str_list)
         #
@@ -92,17 +95,35 @@ class Test(unittest.TestCase):
         w.write("message 2")
         w.write("message 3")
         w.close()
-        #
+        # size=True, partitions=False, filesize=False
         file_str_total_size_int_dict_l = l.l(pattern=file_str)
         file_str_total_size_int_dict_ll = l.ll(pattern=file_str)
         self.assertEqual(file_str_total_size_int_dict_l, file_str_total_size_int_dict_ll)
         total_size_int = file_str_total_size_int_dict_l[file_str]
         self.assertEqual(total_size_int, 3)
-        file_str_size_int_filesize_int_tuple_dict = l.files(pattern=file_str, size=True, filesize=True)
-        self.assertEqual(file_str_size_int_filesize_int_tuple_dict[file_str][0], 3)
-        self.assertEqual(file_str_size_int_filesize_int_tuple_dict[file_str][1], 243)
-        file_str_filesize_int_dict = l.l(pattern=file_str, size=False, filesize=True)
+        # size=True, partitions=False, filesize=True
+        file_str_size_int_filesize_int_dict_dict = l.files(pattern=file_str, size=True, partitions=False, filesize=True)
+        self.assertEqual(file_str_size_int_filesize_int_dict_dict[file_str]["size"], 3)
+        self.assertEqual(file_str_size_int_filesize_int_dict_dict[file_str]["filesize"], 243)
+        # size=False, partitions=True, filesize=True
+        file_str_partitions_dict_filesize_int_dict_dict = l.files(pattern=file_str, size=False, partitions=True, filesize=True)
+        self.assertEqual(file_str_partitions_dict_filesize_int_dict_dict[file_str]["partitions"][0], 3)
+        self.assertEqual(file_str_partitions_dict_filesize_int_dict_dict[file_str]["filesize"], 243)
+        # size=False, partitions=False, filesize=True
+        file_str_filesize_int_dict = l.ls(pattern=file_str, size=False, partitions=False, filesize=True)
         self.assertEqual(file_str_filesize_int_dict[file_str], 243)
+        # size=True, partitions=True, filesize=True
+        file_str_size_int_partitions_dict_filesize_int_dict_dict = l.ls(pattern=file_str, size=True, partitions=True, filesize=True)
+        self.assertEqual(file_str_size_int_partitions_dict_filesize_int_dict_dict[file_str]["size"], 3)
+        self.assertEqual(file_str_size_int_partitions_dict_filesize_int_dict_dict[file_str]["partitions"][0], 3)
+        self.assertEqual(file_str_size_int_partitions_dict_filesize_int_dict_dict[file_str]["filesize"], 243)
+        # size=True, partitions=True, filesize=False
+        file_str_size_int_partitions_dict_dict = l.ls(pattern=file_str, size=True, partitions=True, filesize=False)
+        self.assertEqual(file_str_size_int_partitions_dict_dict[file_str]["size"], 3)
+        self.assertEqual(file_str_size_int_partitions_dict_dict[file_str]["partitions"][0], 3)
+        # size=False, partitions=True, filesize=False
+        file_str_partitions_dict_dict = l.ls(pattern=file_str, size=False, partitions=True, filesize=False)
+        self.assertEqual(file_str_partitions_dict_dict[file_str][0], 3)
 
     def test_exists(self):
         l = self.get_local()
@@ -145,7 +166,7 @@ class Test(unittest.TestCase):
         w = l.openw(file_str, key_type="str", value_type="json")
         w.write(self.snack_dict_list, key=self.snack_str_list, headers=self.headers_str_bytes_dict)
         w.close()
-        self.assertEqual(l.l(file_str, filesize=True)[file_str][0], 3)
+        self.assertEqual(l.ls(file_str, partitions=True)[file_str][0], 3)
         #
         # Upon read, the type "json" triggers the conversion into a dictionary, and "str" into a string.
         r = l.openr(file_str, key_type="json", value_type="str")
@@ -174,7 +195,7 @@ class Test(unittest.TestCase):
 
     # Shell
 
-    # Shell.cat -> Functional.map -> Functional.flatmap -> Functional.foldl -> LocalReader.openr/FilesystemReader.foldl/LocalReader.close -> LocalReader.consume
+    # Shell.cat -> Functional.map -> Functional.flatmap -> Functional.foldl -> LocalReader.openr/FSReader.foldl/LocalReader.close -> LocalReader.consume
     def test_cat(self):
         l = self.get_local()
         #
@@ -216,7 +237,7 @@ class Test(unittest.TestCase):
         self.assertEqual(1, n_int2)
         self.assertEqual(message_dict_list2[0]["value"], self.snack_dict_list[2])
 
-    # Shell.tail -> Functional.map -> Functional.flatmap -> Functional.foldl -> LocalReader.openr/FilesystemReader.foldl/LocalReader.close -> LocalReader.consume
+    # Shell.tail -> Functional.map -> Functional.flatmap -> Functional.foldl -> LocalReader.openr/FSReader.foldl/LocalReader.close -> LocalReader.consume
     def test_tail(self):
         l = self.get_local()
         #
@@ -237,7 +258,7 @@ class Test(unittest.TestCase):
         self.assertEqual(1, n_int2)
         self.assertEqual(message_dict_list2[0]["value"], self.snack_dict_list[2])
 
-    # Shell.cp -> Functional.map_to -> Functional.flatmap_to -> LocalReader.openw/Functional.foldl/LocalReader.close -> LocalReader.openr/FilesystemReader.foldl/LocalReader.close -> LocalReader.consume
+    # Shell.cp -> Functional.map_to -> Functional.flatmap_to -> LocalReader.openw/Functional.foldl/LocalReader.close -> LocalReader.openr/FSReader.foldl/LocalReader.close -> LocalReader.consume
     def test_cp(self):
         l = self.get_local()
         #

@@ -2,7 +2,7 @@ from kashpy.storage import Storage
 
 #
 
-class FileSystem(Storage):
+class FS(Storage):
     def __init__(self, dir_str, config_str, mandatory_section_str_list, optional_section_str_list):
         super().__init__(dir_str, config_str, mandatory_section_str_list, optional_section_str_list)
         #
@@ -38,6 +38,11 @@ class FileSystem(Storage):
                 self.bucket_name(str(self.s3_config_dict["bucket.name"]))
         else:
             self.s3_config_dict = None
+        # all kash section
+        if "message.separator" not in self.kash_config_dict:
+            self.message_separator(b"\n")
+        else:
+            self.message_separator(bytes(self.kash_config_dict["message.separator"]))
         #
         self.admin = self.get_admin()
 
@@ -56,53 +61,27 @@ class FileSystem(Storage):
     def bucket_name(self, new_value=None): # str
         return self.get_set_config("bucket.name", new_value, dict=self.s3_config_dict)
 
+    # all
+
+    def message_separator(self, new_value=None): # str
+        return self.get_set_config("message.separator", new_value, dict=self.s3_config_dict)
+
     #
 
     def files(self, pattern=None, size=False, **kwargs):
-        pattern_str_or_str_list = "*" if pattern is None else pattern
-        pattern_str_list = [pattern_str_or_str_list] if isinstance(pattern_str_or_str_list, str) else pattern_str_or_str_list
-        size_bool = size
-        filesize_bool = "filesize" in kwargs and kwargs["filesize"]
-        #
-        file_str_list = self.admin(list_files) os.listdir(self.root_dir_str)
-        file_str_list = [file_str for file_str in file_str_list if any(fnmatch(file_str, pattern_str) for pattern_str in pattern_str_list)]
-        #
-        if size_bool:
-            if filesize_bool:
-                file_str_size_int_filesize_int_tuple_dict = {file_str: (self.local_obj.cat(file_str)[1], os.stat(os.path.join(self.root_dir_str, file_str)).st_size) for file_str in file_str_list}
-                return file_str_size_int_filesize_int_tuple_dict
-            else:
-                file_str_size_int_dict = {file_str: self.local_obj.cat(file_str)[1] for file_str in file_str_list}
-                return file_str_size_int_dict
-        else:
-            if filesize_bool:
-                file_str_filesize_int_dict = {file_str: os.stat(os.path.join(self.root_dir_str, file_str)).st_size for file_str in file_str_list}
-                return file_str_filesize_int_dict
-            else:
-                file_str_list.sort()
-                return file_str_list
-
-    def ls(self, pattern=None, size=False, **kwargs):
-        return self.files(pattern, size=size, **kwargs)
+        return self.admin.files(pattern, size, **kwargs)
     
+    ls = files
+
     def l(self, pattern=None, size=True, **kwargs):
-        return self.files(pattern, size=size, **kwargs)
+        return self.admin.files(pattern=pattern, size=size, **kwargs)
 
     ll = l
-
-    def files(self, pattern=None, size=False, **kwargs):
-        return self.admin.files(pattern, size, **kwargs)
 
     def exists(self, file):
         file_str = file
         #
-        return self.files(file_str) != []
-
-    # Shell.tail
-    def get_offsets(self, file_str, n_int):
-        offset_int = self.files(file_str, size=True)[file_str] - n_int
-        #
-        return offset_int, "offset"
+        return self.admin.files(file_str) != []
 
     #
 
@@ -120,6 +99,9 @@ class FileSystem(Storage):
         return self.admin.delete(pattern)
 
     rm = delete
+
+    def partitions(self, pattern=None, verbose=False):
+        return self.admin.partitions(pattern, verbose)
 
     # Open
     def openr(self, file, **kwargs):

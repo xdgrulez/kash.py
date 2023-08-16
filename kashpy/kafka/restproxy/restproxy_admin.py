@@ -2,9 +2,11 @@ from fnmatch import fnmatch
 
 from kashpy.helpers import get, delete, post, is_pattern
 
+from kashpy.kafka.kafka_admin import *
+
 #
 
-class RestProxyAdmin:
+class RestProxyAdmin(KafkaAdmin):
     def __init__(self, restproxy_obj):
         self.restproxy_obj = restproxy_obj
         #

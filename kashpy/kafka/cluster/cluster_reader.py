@@ -23,8 +23,8 @@ class ClusterReader(KafkaReader):
     def __init__(self, cluster_obj, *topics, **kwargs):
         super().__init__(cluster_obj, *topics, **kwargs)
         #
-        if "schema.registry.url" in self.kafka_obj.schema_registry_config_dict:
-            self.schemaRegistry = SchemaRegistry(self.kafka_obj.schema_registry_config_dict, self.kafka_obj.kash_config_dict)
+        if "schema.registry.url" in self.storage_obj.schema_registry_config_dict:
+            self.schemaRegistry = SchemaRegistry(self.storage_obj.schema_registry_config_dict, self.storage_obj.kash_config_dict)
         else:
             self.schemaRegistry = None
         #
@@ -32,11 +32,11 @@ class ClusterReader(KafkaReader):
         #
         # Consumer Config
         #
-        self.consumer_config_dict = self.kafka_obj.kafka_config_dict.copy()
+        self.consumer_config_dict = self.storage_obj.kafka_config_dict.copy()
         self.consumer_config_dict["group.id"] = self.group_str
-        self.consumer_config_dict["auto.offset.reset"] = self.kafka_obj.auto_offset_reset()
-        self.consumer_config_dict["enable.auto.commit"] = self.kafka_obj.enable_auto_commit()
-        self.consumer_config_dict["session.timeout.ms"] = self.kafka_obj.session_timeout_ms()
+        self.consumer_config_dict["auto.offset.reset"] = self.storage_obj.auto_offset_reset()
+        self.consumer_config_dict["enable.auto.commit"] = self.storage_obj.enable_auto_commit()
+        self.consumer_config_dict["session.timeout.ms"] = self.storage_obj.session_timeout_ms()
         if "config" in kwargs:
             for key_str, value in kwargs["config"].items():
                 self.consumer_config_dict[key_str] = value
@@ -53,14 +53,14 @@ class ClusterReader(KafkaReader):
     def subscribe(self):
         def on_assign(consumer, partitions):
             def set_offset(topicPartition):
-                if topicPartition.topic in self.offsets_dict:
-                    offsets = self.offsets_dict[topicPartition.topic]
+                if topicPartition.topic in self.topic_str_offsets_dict_dict:
+                    offsets = self.topic_str_offsets_dict_dict[topicPartition.topic]
                     if topicPartition.partition in offsets:
                         offset_int = offsets[topicPartition.partition]
                         topicPartition.offset = offset_int
                 return topicPartition
             #
-            if self.offsets_dict is not None:
+            if self.topic_str_offsets_dict_dict is not None:
                 topicPartition_list = [set_offset(topicPartition) for topicPartition in partitions]
                 consumer.assign(topicPartition_list)
         self.consumer.subscribe(self.topic_str_list, on_assign=on_assign)
@@ -82,7 +82,7 @@ class ClusterReader(KafkaReader):
     def consume(self, **kwargs):
         n_int = kwargs["n"] if "n" in kwargs and kwargs["n"] != ALL_MESSAGES else 1
         #
-        message_list = self.consumer.consume(n_int, self.kafka_obj.consume_timeout())
+        message_list = self.consumer.consume(n_int, self.storage_obj.consume_timeout())
         #
         deserialized_message_dict_list = [self.deserialize(message, key_type=self.key_type_dict[message.topic()], value_type=self.value_type_dict[message.topic()]) for message in message_list]
         #
@@ -192,7 +192,7 @@ class ClusterReader(KafkaReader):
         return generalizedProtocolMessageType, schema_str
 
     def schema_id_int_and_schema_str_to_generalizedProtocolMessageType(self, schema_id_int, schema_str):
-        path_str = f"/{tempfile.gettempdir()}/kash.py/clusters/{self.kafka_obj.config_str}"
+        path_str = f"/{tempfile.gettempdir()}/kash.py/clusters/{self.storage_obj.config_str}"
         os.makedirs(path_str, exist_ok=True)
         file_str = f"schema_{schema_id_int}.proto"
         file_path_str = f"{path_str}/{file_str}"

@@ -1,39 +1,29 @@
 from kashpy.helpers import get_millis
 
+from kashpy.storage_reader import StorageReader
+
 # Constants
 
 ALL_MESSAGES = -1
 
 #
 
-class KafkaReader:
+class KafkaReader(StorageReader):
     def __init__(self, kafka_obj, *topics, **kwargs):
-        self.kafka_obj = kafka_obj
+        super().__init__(kafka_obj, *topics, **kwargs)
         #
-        # Topics
+        self.topic_str_list = self.resource_str_list
         #
-        self.topic_str_list = list(topics)
-        #
-        # Group
+        self.topic_str_offsets_dict_dict = self.resource_str_offsets_dict_dict
         #
         self.group_str = self.get_group_str(**kwargs)
-        #
-        # Offsets
-        #
-        self.offsets_dict = self.get_offsets_dict(self.topic_str_list, **kwargs)
-        #
-        # Key and Value Types
-        #
-        (self.key_type, self.value_type) = kafka_obj.get_key_value_type_tuple(**kwargs)
-        #
-        (self.key_type_dict, self.value_type_dict) = self.get_key_value_type_dict_tuple(self.key_type, self.value_type, self.topic_str_list)
 
     #
 
     def foldl(self, foldl_function, initial_acc, n=ALL_MESSAGES, **kwargs):
         n_int = n
         #
-        read_batch_size_int = kwargs["read_batch_size"] if "read_batch_size" in kwargs else self.kafka_obj.read_batch_size()
+        read_batch_size_int = kwargs["read_batch_size"] if "read_batch_size" in kwargs else self.storage_obj.read_batch_size()
         if n != ALL_MESSAGES and read_batch_size_int > n_int:
             read_batch_size_int = n_int
         #
@@ -80,30 +70,5 @@ class KafkaReader:
         if "group" in kwargs:
             return kwargs["group"]
         else:
-            prefix_str = self.kafka_obj.consumer_group_prefix()
+            prefix_str = self.storage_obj.consumer_group_prefix()
             return prefix_str + str(get_millis())
-
-    def get_offsets_dict(self, topic_str_list, **kwargs):
-        if "offsets" in kwargs and kwargs["offsets"] is not None:
-            offsets_dict = kwargs["offsets"]
-            str_or_int = list(offsets_dict.keys())[0]
-            if isinstance(str_or_int, int):
-                offsets_dict = {topic_str: offsets_dict for topic_str in topic_str_list}
-            else:
-                offsets_dict = offsets_dict
-        else:
-            offsets_dict = None
-        #
-        return offsets_dict
-
-    def get_key_value_type_dict_tuple(self, key_type, value_type, topic_str_list):
-        if isinstance(key_type, dict):
-            key_type_dict = key_type
-        else:
-            key_type_dict = {topic_str: key_type for topic_str in topic_str_list}
-        if isinstance(value_type, dict):
-            value_type_dict = value_type
-        else:
-            value_type_dict = {topic_str: value_type for topic_str in topic_str_list}
-        #
-        return (key_type_dict, value_type_dict)

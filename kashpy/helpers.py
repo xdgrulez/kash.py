@@ -202,18 +202,17 @@ def dict_to_bytes(dict):
     return bytes
 
 
-def find_file_offset_of_message(path_file_str, message_int, message_separator="\n"):
-    file_offset_int = 0
-    #
+# def find_file_offset_of_message(path_file_str, message_int, message_separator="\n"):
+#     file_offset_int = 0
+#     #
 
 
 
-        for _ in range(line_int):
-            line_str = bufferedReader.readline()
-            if not line_str:
-                break
-            file_offset_int += len(line_str)
-    #
-    return file_offset_int
-
+#         for _ in range(line_int):
+#             line_str = bufferedReader.readline()
+#             if not line_str:
+#                 break
+#             file_offset_int += len(line_str)
+#     #
+#     return file_offset_int
 
