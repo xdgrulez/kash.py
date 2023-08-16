@@ -190,10 +190,10 @@ class Test(unittest.TestCase):
         value_str_list1 = [message_dict["value"] for message_dict in message_dict_list1]
         self.assertEqual(value_str_list1, self.snack_str_list)
         #
-        (message_dict_list2, n_int2) = l.cat(file_str, offset=1, n=1)
+        (message_dict_list2, n_int2) = l.cat(file_str, offset=2, n=1)
         self.assertEqual(1, len(message_dict_list2))
         self.assertEqual(1, n_int2)
-        self.assertEqual(message_dict_list2[0]["value"], self.snack_str_list[1])
+        self.assertEqual(message_dict_list2[0]["value"], self.snack_str_list[2])
 
     # Shell.head -> Shell.cat
     def test_head(self):

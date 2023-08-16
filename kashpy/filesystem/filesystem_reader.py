@@ -127,6 +127,52 @@ class FileSystemReader():
 
     #
 
+    def find_file_offset_of_message(self, message_int, **kwargs):
+
+
+self, foldl_function, initial_acc, n=ALL_MESSAGES, **kwargs
+
+
+
+read_batch_size_int = kwargs["read_batch_size"] if "read_batch_size" in kwargs else self.filesystem_obj.read_batch_size()
+        #
+        size_int = self.file_size_int
+        if read_batch_size_int > size_int:
+            read_batch_size_int = size_int
+        #
+        while True:
+            if file_offset_int > size_int:
+                batch_bytes = b""
+            else:
+                batch_bytes = self.read_bytes(read_batch_size_int, file_offset_int=file_offset_int, **kwargs)
+                file_offset_int += len(batch_bytes)
+                
+            if batch_bytes == b"":
+                if buffer_bytes != b"":
+                    (acc, break_bool, message_counter_int) = acc_bytes_to_acc(acc, buffer_bytes, break_bool, message_counter_int)
+                break
+            #
+            buffer_bytes += batch_bytes
+            message_bytes_list = buffer_bytes.split(b"\n")
+            for message_bytes in message_bytes_list[:-1]:
+                (acc, break_bool, message_counter_int) = acc_bytes_to_acc(acc, message_bytes, break_bool, message_counter_int)
+                if break_bool:
+                    break
+                #
+                if n_int != ALL_MESSAGES:
+                    if message_counter_int >= n_int:
+                        break_bool = True
+                        break
+            #
+            if break_bool:
+                break
+            #
+            buffer_bytes = message_bytes_list[-1]
+        #
+        return acc
+
+    #
+
     def read(self, n=ALL_MESSAGES):
         def foldl_function(message_dict_list, message_dict):
             message_dict_list.append(message_dict)
