@@ -152,7 +152,7 @@ class FSReader(StorageReader):
         break_bool = False
         #
         while True:
-            running_file_offset_int = file_offset_int
+            current_file_offset_int = file_offset_int
             #
             if file_offset_int > size_int:
                 batch_bytes = b""
@@ -162,7 +162,7 @@ class FSReader(StorageReader):
             #
             if batch_bytes == b"":
                 if buffer_bytes != b"":
-                    running_file_offset_int += len(buffer_bytes)
+                    current_file_offset_int += len(buffer_bytes)
                 break
             #
             buffer_bytes += batch_bytes
@@ -170,7 +170,7 @@ class FSReader(StorageReader):
             for message_bytes in message_bytes_list[:-1]:
                 message_counter_int += 1
                 #
-                running_file_offset_int += len(message_bytes) + 1
+                current_file_offset_int += len(message_bytes) + 1
                 #
                 if break_bool:
                     break
@@ -184,7 +184,7 @@ class FSReader(StorageReader):
             #
             buffer_bytes = message_bytes_list[-1]
         #
-        return running_file_offset_int
+        return current_file_offset_int
 
     #
 

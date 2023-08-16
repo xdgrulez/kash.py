@@ -285,16 +285,16 @@ class Test(unittest.TestCase):
         w.produce("message 3")
         w.close()
         #
-        topic_str_total_size_int_dict_l = c.l(pattern=topic_str)
-        topic_str_total_size_int_dict_ll = c.ll(pattern=topic_str)
-        self.assertEqual(topic_str_total_size_int_dict_l, topic_str_total_size_int_dict_ll)
-        total_size_int = topic_str_total_size_int_dict_l[topic_str]
-        self.assertEqual(total_size_int, 3)
-        topic_str_total_size_int_size_dict_tuple_dict = c.topics(pattern=topic_str, size=True, partitions=True)
-        self.assertEqual(topic_str_total_size_int_size_dict_tuple_dict[topic_str][0], 3)
-        self.assertEqual(topic_str_total_size_int_size_dict_tuple_dict[topic_str][1][0], 3)
-        topic_str_total_size_int_size_dict_tuple_dict = c.l(pattern=topic_str, size=False, partitions=True)
-        self.assertEqual(topic_str_total_size_int_size_dict_tuple_dict[topic_str][0], 3)
+        topic_str_size_int_dict_l = c.l(pattern=topic_str)
+        topic_str_size_int_dict_ll = c.ll(pattern=topic_str)
+        self.assertEqual(topic_str_size_int_dict_l, topic_str_size_int_dict_ll)
+        size_int = topic_str_size_int_dict_l[topic_str]
+        self.assertEqual(size_int, 3)
+        topic_str_size_int_partitions_dict_dict = c.topics(pattern=topic_str, size=True, partitions=True)
+        self.assertEqual(topic_str_size_int_partitions_dict_dict[topic_str]["size"], 3)
+        self.assertEqual(topic_str_size_int_partitions_dict_dict[topic_str]["partitions"][0], 3)
+        topic_str_partitions_dict_dict = c.l(pattern=topic_str, size=False, partitions=True)
+        self.assertEqual(topic_str_partitions_dict_dict[topic_str][0], 3)
 
     def test_offsets_for_times(self):
         c = Cluster(config_str)
@@ -309,7 +309,7 @@ class Test(unittest.TestCase):
         w.write("message 2")
         w.close()
         #
-        self.assertEqual(c.l(topic_str, partitions=True)[topic_str][1][0], 2)
+        self.assertEqual(c.l(topic_str, partitions=True)[topic_str]["partitions"][0], 2)
         #
         group_str = self.create_test_group_name()
         r = c.openr(topic_str, group=group_str)
@@ -360,7 +360,7 @@ class Test(unittest.TestCase):
         w = c.openw(topic_str, key_type="bytes", value_type="str")
         w.write(self.snack_str_list, key=self.snack_str_list)
         w.close()
-        self.assertEqual(c.topics(topic_str, size=True, partitions=True)[topic_str][0], 3)
+        self.assertEqual(c.topics(topic_str, size=True, partitions=True)[topic_str]["size"], 3)
         #
         group_str = self.create_test_group_name()
         # Upon consume, the type "str" triggers the conversion into a string, and "bytes" into bytes.
@@ -381,7 +381,7 @@ class Test(unittest.TestCase):
         w = c.openw(topic_str, key_type="str", value_type="json")
         w.write(self.snack_dict_list, key=self.snack_str_list)
         w.close()
-        self.assertEqual(c.topics(topic_str, size=True, partitions=True)[topic_str][0], 3)
+        self.assertEqual(c.topics(topic_str, size=True, partitions=True)[topic_str]["size"], 3)
         #
         group_str = self.create_test_group_name()
         # Upon consume, the type "json" triggers the conversion into a dictionary, and "str" into a string.
@@ -402,7 +402,7 @@ class Test(unittest.TestCase):
         w = c.openw(topic_str, key_type="protobuf", value_type="pb", key_schema=self.protobuf_schema_str, value_schema=self.protobuf_schema_str)
         w.write(self.snack_dict_list, key=self.snack_str_list)
         w.close()
-        self.assertEqual(c.topics(topic_str, size=True, partitions=True)[topic_str][0], 3)
+        self.assertEqual(c.topics(topic_str, size=True, partitions=True)[topic_str]["size"], 3)
         #
         group_str = self.create_test_group_name()
         # Upon consume, the type "protobuf" (alias = "pb") triggers the conversion into a dictionary.
@@ -423,7 +423,7 @@ class Test(unittest.TestCase):
         w = c.openw(topic_str, key_type="protobuf", value_type="avro", key_schema=self.protobuf_schema_str, value_schema=self.avro_schema_str)
         w.write(self.snack_dict_list, key=self.snack_bytes_list)
         w.close()
-        self.assertEqual(c.topics(topic_str, size=True, partitions=True)[topic_str][0], 3)
+        self.assertEqual(c.topics(topic_str, size=True, partitions=True)[topic_str]["size"], 3)
         #
         group_str = self.create_test_group_name()
         # Upon consume, the types "protobuf" (alias = "pb") and "avro" trigger the conversion into a dictionary.
@@ -444,7 +444,7 @@ class Test(unittest.TestCase):
         w = c.openw(topic_str, key_type="str", value_type="jsonschema", value_schema=self.jsonschema_schema_str)
         w.write(self.snack_dict_list, key=self.snack_str_list)
         w.close()
-        self.assertEqual(c.topics(topic_str, size=True, partitions=True)[topic_str][0], 3)
+        self.assertEqual(c.topics(topic_str, size=True, partitions=True)[topic_str]["size"], 3)
         #
         group_str = self.create_test_group_name()
         # Upon consume, the types "json" and "jsonschema" (alias = "json_sr") trigger the conversion into a dictionary.
