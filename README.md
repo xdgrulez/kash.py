@@ -1,3 +1,5 @@
+Check out the successor of *kash.py* - [kafi](https://github.com/xdgrulez/kafi) - including support for Confluent REST Proxy, S3, Azure Blob Storage, Pandas etc.
+
 # kash.py
 
 *kash.py* is a Kafka shell based on Python, or, in other words, a Python-based client library for Kafka based on [confluent-kafka-python](https://github.com/confluentinc/confluent-kafka-python) by Magnus Edenhill, which is itself based on the native Kafka client library [librdkafka](https://github.com/edenhill/librdkafka) by the same author.
