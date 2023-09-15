@@ -10,7 +10,7 @@ if os.path.basename(os.getcwd()) == "test":
 else:
     sys.path.insert(1, ".")
 
-from kashpy.kash001 import *
+from kashpy.kash import *
 
 from confluent_kafka.admin import _ConsumerGroupTopicPartitions
 
@@ -190,8 +190,8 @@ class Test(unittest.TestCase):
         self.assertIsNone(group_dict["members"][0]["group_instance_id"])
         self.assertEqual(group_dict["partition_assignor"], "range")
         self.assertEqual(group_dict["state"], "stable")
-        self.assertEqual(group_dict["coordinator"]["id"], 0)
-        self.assertEqual(group_dict["coordinator"]["id_string"], "0")
+        self.assertEqual(group_dict["coordinator"]["id"], 1)
+        self.assertEqual(group_dict["coordinator"]["id_string"], "1")
         #
         cluster.close()
         cluster.delete(topic_str)
@@ -289,11 +289,12 @@ class Test(unittest.TestCase):
 
     def test_brokers(self):
         cluster = Cluster(cluster_str)
+        cluster_broker_int = 1
         if "confluent.cloud" not in cluster.config_dict["bootstrap.servers"]:
             broker_dict = cluster.brokers()
-            broker_dict1 = cluster.brokers("0")
+            broker_dict1 = cluster.brokers(f"{cluster_broker_int}")
             self.assertEqual(broker_dict, broker_dict1)
-            broker_dict2 = cluster.brokers([0])
+            broker_dict2 = cluster.brokers([cluster_broker_int])
             self.assertEqual(broker_dict1, broker_dict2)
             broker_int = list(broker_dict.keys())[0]
             old_background_threads_str = cluster.broker_config(broker_int)[broker_int]["background.threads"]
